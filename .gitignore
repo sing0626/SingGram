@@ -1,0 +1,15 @@
+.gradle/
+build/
+*/build/
+local.properties
+.idea/
+.DS_Store
+captures/
+*.iml
+*.keystore
+*.jks
+*.apk
+*.aab
+*.ap_
+tdlib/src/main/jniLibs/
+tdlib/src/main/java/org/drinkless/tdlib/
