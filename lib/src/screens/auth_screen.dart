@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
+import '../data/telegram_api_credentials.dart';
 import '../data/telegram_repository.dart';
 import '../models/telegram_models.dart';
 import '../widgets/glass_helpers.dart';
@@ -21,6 +22,15 @@ class _AuthScreenState extends State<AuthScreen> {
   final phoneController = TextEditingController();
   final codeController = TextEditingController();
   final passwordController = TextEditingController();
+  final embeddedCredentials = TelegramCredentialConfig.embeddedCredentials;
+
+  bool credentialsReady = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCredentialDefaults();
+  }
 
   @override
   void dispose() {
@@ -90,7 +100,9 @@ class _AuthScreenState extends State<AuthScreen> {
                       apiIdController: apiIdController,
                       apiHashController: apiHashController,
                       phoneController: phoneController,
+                      hasEmbeddedCredentials: embeddedCredentials != null,
                       connecting: authState.phase == AuthPhase.connecting,
+                      credentialsReady: credentialsReady,
                       onSubmit: _startLogin,
                     ),
                   if (authState.phase == AuthPhase.error &&
@@ -113,19 +125,47 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  Future<void> _startLogin() async {
-    final apiId = int.tryParse(apiIdController.text.trim());
-    if (apiId == null ||
-        apiHashController.text.trim().isEmpty ||
-        phoneController.text.trim().isEmpty) {
+  Future<void> _loadCredentialDefaults() async {
+    final embedded = embeddedCredentials;
+    if (embedded != null) {
+      apiIdController.text = embedded.apiId.toString();
+      apiHashController.text = embedded.apiHash;
+      setState(() => credentialsReady = true);
       return;
+    }
+
+    final stored = await widget.repository.loadApiCredentials();
+    if (!mounted) return;
+
+    if (stored != null) {
+      apiIdController.text = stored.apiId.toString();
+      apiHashController.text = stored.apiHash;
+    }
+    setState(() => credentialsReady = true);
+  }
+
+  Future<void> _startLogin() async {
+    final credentials = embeddedCredentials;
+    final apiId =
+        credentials?.apiId ?? int.tryParse(apiIdController.text.trim());
+    final apiHash = credentials?.apiHash ?? apiHashController.text.trim();
+    final phoneNumber = phoneController.text.trim();
+
+    if (apiId == null || apiHash.isEmpty || phoneNumber.isEmpty) {
+      return;
+    }
+
+    if (credentials == null) {
+      await widget.repository.saveApiCredentials(
+        TelegramApiCredentials(apiId: apiId, apiHash: apiHash),
+      );
     }
 
     await widget.repository.startLogin(
       LoginCredentials(
         apiId: apiId,
-        apiHash: apiHashController.text.trim(),
-        phoneNumber: phoneController.text.trim(),
+        apiHash: apiHash,
+        phoneNumber: phoneNumber,
       ),
     );
   }
@@ -153,37 +193,43 @@ class _CredentialForm extends StatelessWidget {
     required this.apiIdController,
     required this.apiHashController,
     required this.phoneController,
+    required this.hasEmbeddedCredentials,
     required this.connecting,
+    required this.credentialsReady,
     required this.onSubmit,
   });
 
   final TextEditingController apiIdController;
   final TextEditingController apiHashController;
   final TextEditingController phoneController;
+  final bool hasEmbeddedCredentials;
   final bool connecting;
+  final bool credentialsReady;
   final VoidCallback onSubmit;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        GlassTextField(
-          controller: apiIdController,
-          placeholder: 'API ID',
-          keyboardType: TextInputType.number,
-          textInputAction: TextInputAction.next,
-          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          prefixIcon: const Icon(Icons.numbers_rounded, size: 19),
-        ),
-        const SizedBox(height: 10),
-        GlassTextField(
-          controller: apiHashController,
-          placeholder: 'API hash',
-          obscureText: true,
-          textInputAction: TextInputAction.next,
-          prefixIcon: const Icon(Icons.key_rounded, size: 19),
-        ),
-        const SizedBox(height: 10),
+        if (!hasEmbeddedCredentials) ...[
+          GlassTextField(
+            controller: apiIdController,
+            placeholder: 'API ID',
+            keyboardType: TextInputType.number,
+            textInputAction: TextInputAction.next,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            prefixIcon: const Icon(Icons.numbers_rounded, size: 19),
+          ),
+          const SizedBox(height: 10),
+          GlassTextField(
+            controller: apiHashController,
+            placeholder: 'API hash',
+            obscureText: true,
+            textInputAction: TextInputAction.next,
+            prefixIcon: const Icon(Icons.key_rounded, size: 19),
+          ),
+          const SizedBox(height: 10),
+        ],
         GlassTextField(
           controller: phoneController,
           placeholder: 'Phone number',
@@ -195,7 +241,7 @@ class _CredentialForm extends StatelessWidget {
         const SizedBox(height: 16),
         GlassButton.custom(
           onTap: onSubmit,
-          enabled: !connecting,
+          enabled: !connecting && credentialsReady,
           height: 52,
           width: double.infinity,
           shape: const LiquidRoundedSuperellipse(borderRadius: 16),

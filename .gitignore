@@ -8,6 +8,7 @@ build/
 */build/
 .gradle/
 local.properties
+telegram_credentials.env
 .idea/
 .DS_Store
 captures/

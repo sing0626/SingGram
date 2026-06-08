@@ -30,7 +30,7 @@ The desired UI is close to `sdegenaar/liquid_glass_widgets`, which is a Flutter 
 
 `TdlibTelegramRepository` owns the current real login path. It initializes `libtdjson.so` on Android, stores TDLib data under app-private support directories, handles authorization state updates, submits phone/code/2FA password, and calls `getMe` for the signed-in profile.
 
-The user must register an app at `my.telegram.org` and enter their `api_id` and `api_hash` at runtime. Those secrets are not stored in the repository.
+For a private build, `TELEGRAM_API_ID` and `TELEGRAM_API_HASH` can be embedded with `--dart-define`, which gives the same app UX as a third-party client with built-in credentials. If no embedded credentials are present, the login form asks once for API ID/hash and stores them through `flutter_secure_storage`.
 
 ## Why Keep Android Native
 

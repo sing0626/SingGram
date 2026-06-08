@@ -7,15 +7,21 @@ import 'package:tdlib/td_api.dart' as td_api;
 import 'package:tdlib/tdlib.dart';
 
 import '../models/telegram_models.dart';
+import 'telegram_api_credentials.dart';
 import 'telegram_repository.dart';
 
 class TdlibTelegramRepository extends TelegramRepository {
-  TdlibTelegramRepository({TdlibClient? tdlib, TdlibDirectoryProvider? dirs})
-    : _tdlib = tdlib ?? const NativeTdlibClient(),
-      _dirs = dirs ?? const AppTdlibDirectoryProvider();
+  TdlibTelegramRepository({
+    TdlibClient? tdlib,
+    TdlibDirectoryProvider? dirs,
+    TelegramCredentialStore? credentialStore,
+  }) : _tdlib = tdlib ?? const NativeTdlibClient(),
+       _dirs = dirs ?? const AppTdlibDirectoryProvider(),
+       _credentialStore = credentialStore ?? const TelegramCredentialStore();
 
   final TdlibClient _tdlib;
   final TdlibDirectoryProvider _dirs;
+  final TelegramCredentialStore _credentialStore;
   final Map<String, Completer<td_api.TdObject>> _pending = {};
   final Map<String, List<ChatMessage>> _messages = {};
   final List<ChatDialog> _dialogs = [];
@@ -37,6 +43,16 @@ class TdlibTelegramRepository extends TelegramRepository {
   @override
   List<ChatMessage> messagesFor(String chatId) {
     return List.unmodifiable(_messages[chatId] ?? const []);
+  }
+
+  @override
+  Future<TelegramApiCredentials?> loadApiCredentials() {
+    return _credentialStore.load();
+  }
+
+  @override
+  Future<void> saveApiCredentials(TelegramApiCredentials credentials) {
+    return _credentialStore.save(credentials);
   }
 
   @override

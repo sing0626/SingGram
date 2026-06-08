@@ -37,15 +37,25 @@ For a debug APK:
 flutter build apk --debug
 ```
 
+To build with your Telegram API credentials embedded into the APK:
+
+```bash
+cp telegram_credentials.env.example telegram_credentials.env
+# edit telegram_credentials.env on your own machine
+scripts/build_android_with_credentials.sh
+```
+
+When `TELEGRAM_API_ID` and `TELEGRAM_API_HASH` are embedded, the login screen only asks for the phone number. Without embedded credentials, the app asks for API ID/hash once and stores them in Android-backed secure storage for later runs.
+
 ## Telegram Setup
 
 1. Create an app at [my.telegram.org](https://my.telegram.org).
 2. Keep `api_id` and `api_hash` private.
-3. Run the Android app and enter `api_id`, `api_hash`, and your phone number.
+3. Put `api_id` and `api_hash` in `telegram_credentials.env` if you want them built into your private APK.
 4. Enter the Telegram login code, then the 2FA password if your account uses one.
 5. After login, the sidebar shows your real Telegram name from TDLib `getMe`.
 
-Do not commit API credentials, login codes, session databases, keystores, APKs, AABs, or TDLib runtime data.
+Do not commit API credentials, login codes, session databases, keystores, APKs, AABs, or TDLib runtime data. `telegram_credentials.env` is ignored by git.
 
 ## Branch Plan
 

@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import '../models/telegram_models.dart';
+import 'telegram_api_credentials.dart';
 import 'telegram_repository.dart';
 
 class FakeTelegramRepository extends TelegramRepository {
@@ -75,10 +76,21 @@ class FakeTelegramRepository extends TelegramRepository {
       ),
     ],
   };
+  TelegramApiCredentials? _apiCredentials;
 
   @override
   List<ChatMessage> messagesFor(String chatId) {
     return List.unmodifiable(_messages[chatId] ?? const []);
+  }
+
+  @override
+  Future<TelegramApiCredentials?> loadApiCredentials() async {
+    return _apiCredentials;
+  }
+
+  @override
+  Future<void> saveApiCredentials(TelegramApiCredentials credentials) async {
+    _apiCredentials = credentials;
   }
 
   @override
