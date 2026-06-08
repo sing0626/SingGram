@@ -1,6 +1,12 @@
-.gradle/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
 build/
 */build/
+.gradle/
 local.properties
 .idea/
 .DS_Store
@@ -11,5 +17,3 @@ captures/
 *.apk
 *.aab
 *.ap_
-tdlib/src/main/jniLibs/
-tdlib/src/main/java/org/drinkless/tdlib/

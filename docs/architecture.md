@@ -1,38 +1,42 @@
 # Architecture
 
-## Android-First Shape
+## Flutter Android Shape
 
 ```mermaid
 flowchart LR
-  UI["app: Jetpack Compose"] --> Domain["core: models and repository contracts"]
-  UI --> Container["app: AppContainer"]
-  Container --> Fake["core: fake repository for UI work"]
-  Container -. later .-> TDLib["tdlib: TDLib repository"]
-  TDLib --> JNI["TDLib Java/JNI"]
-  JNI --> Telegram["Telegram API"]
+  UI["Flutter Liquid Glass UI"] --> DartRepo["Dart repository contract"]
+  DartRepo --> Fake["Fake in-memory data"]
+  DartRepo -. later .-> Channel["Flutter MethodChannel / Pigeon"]
+  Channel --> Android["Android Kotlin bridge"]
+  Android --> TDLib["TDLib Java/JNI"]
+  TDLib --> Telegram["Telegram API"]
 ```
 
-## Modules
+## Main Areas
 
-- `app`: Android entry point, Compose UI, dependency wiring.
-- `core`: pure Kotlin contracts and models. No Android dependency.
-- `tdlib`: Android library boundary for real TDLib integration.
+- `lib/`: Flutter app shell, Liquid Glass screens, fake repository, models, and platform bridge interface.
+- `android/`: Android host app and future TDLib native integration.
+- `docs/`: architecture and branch coordination notes.
 
-## Why Kotlin
+## Why Flutter Now
 
-Kotlin is the best main language for this app because Android tooling treats it as a first-class language, Compose is built around Kotlin APIs, and TDLib's Java interface is straightforward to call from Kotlin.
+The desired UI is close to `sdegenaar/liquid_glass_widgets`, which is a Flutter package. Switching now lets us use that UI system directly instead of rebuilding the whole effect in Jetpack Compose.
 
-## Why TDLib
+## Why Keep Android Native
 
-Bot API is for bots, not a personal user-account Telegram client. A third-party client needs Telegram API credentials and a client engine such as TDLib. TDLib handles network, encryption, local database, update ordering, and unreliable connections, so it is the right engine for an Android client.
+TDLib is still best wired through native Android. Flutter should own presentation and app flow; the Android layer should own TDLib libraries, session directories, authorization updates, and low-level Telegram calls. Flutter talks to it through a narrow typed bridge.
+
+## Current Baseline
+
+The baseline intentionally uses a fake repository. That lets the Liquid Glass UI, responsive chat layout, and branch structure progress while TDLib native build details are handled separately.
 
 ## Future macOS
 
-Do not build macOS yet. If we add it later, keep `core` shared and create a separate desktop client. TDLib is cross-platform, so the adapter idea still works.
+Do not build macOS yet. If we add it later, Flutter can add a macOS target for the UI. TDLib setup should still be platform-specific behind the same Dart repository shape.
 
 ## Privacy Defaults
 
 - Keep API credentials and sessions local.
-- Store TDLib database under app-private storage.
+- Store TDLib database under app-private Android storage.
 - Use Android Keystore for any app-level secret material added later.
-- Never automate spam, scraping, hidden reads, fake engagement, or account actions without visible user intent.
+- Do not automate spam, scraping, hidden reads, fake engagement, or account actions without visible user intent.

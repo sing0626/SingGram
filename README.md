@@ -1,45 +1,47 @@
 # TG Third By Sing
 
-Android-first private Telegram client scaffold.
+Android-first private Telegram client with a Flutter Liquid Glass UI.
 
-## Language Choice
+## Direction
 
-Use Kotlin for the Android app.
+The app is now Flutter for UI and Android native Kotlin for the Telegram engine bridge.
 
-- Kotlin has first-class Android tooling.
-- Jetpack Compose is Kotlin-native and keeps the UI fast to iterate.
-- Telegram TDLib exposes Java/JNI bindings, which Kotlin can call directly.
-- A Kotlin domain layer leaves room for a later macOS client without putting macOS code in this Android repo now.
+- Flutter drives the app shell and visual system.
+- `liquid_glass_widgets` provides Liquid Glass-style surfaces and controls.
+- Android native Kotlin remains available under `android/` for TDLib and MethodChannel work.
+- The current baseline uses fake in-memory Telegram data so UI work can move before TDLib is wired.
 
-If the goal changes to "complete Telegram clone as fast as possible", forking Telegram Android is a different path. For a private app we can shape ourselves, this repo uses Kotlin + Compose + TDLib boundaries.
+This is still Android-first. macOS can come later because Flutter can add a macOS target, but the repo currently only generates the Android platform.
 
 ## MVP Target
 
-- Login flow shell for API ID, API hash, phone, code, and optional password.
-- Dialog list.
-- Message pane.
-- Text sending.
-- TDLib adapter module separated from UI so auth, sync, and storage can be built in parallel branches.
-
-The current baseline uses a fake in-memory repository so the Android UI can be developed before native TDLib is wired.
+- API ID/API hash/phone/code login shell.
+- Glass chat list and responsive message view.
+- Text composer with fake local sending.
+- Platform channel boundary for TDLib integration.
+- Branches split so UI, auth, sync, native bridge, and local security can move in parallel.
 
 ## Run
 
-Open the project in Android Studio and run the `app` configuration.
+```bash
+flutter pub get
+flutter run -d android
+```
 
-Command-line build requires Gradle and Android SDK installed:
+For a debug APK:
 
 ```bash
-gradle :app:assembleDebug
+flutter build apk --debug
 ```
 
 ## Telegram Setup
 
 1. Create an app at [my.telegram.org](https://my.telegram.org).
 2. Keep `api_id` and `api_hash` private.
-3. Wire TDLib native libraries in the `tdlib` module before real login.
+3. Wire TDLib native libraries and Java bindings on the Android side.
+4. Expose only typed operations to Flutter through MethodChannel or Pigeon.
 
-Do not commit API credentials, login codes, session databases, keystores, APKs, or TDLib runtime data.
+Do not commit API credentials, login codes, session databases, keystores, APKs, AABs, or TDLib runtime data.
 
 ## Branch Plan
 
