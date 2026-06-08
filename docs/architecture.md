@@ -26,6 +26,10 @@ flowchart LR
 
 The desired UI is close to `sdegenaar/liquid_glass_widgets`, which is a Flutter package. Switching now lets us use that UI system directly instead of rebuilding the whole effect in Jetpack Compose.
 
+## UI Direction
+
+Screens should follow Telegram Android structure and interaction patterns first: phone login with country code selection, chat list top bar/search/FAB, conversation app bar, message bubbles, and composer. Liquid Glass is a skin for bars, sheets, composer surfaces, and selected emphasis; it should not replace the official Android information architecture with a separate demo-style layout.
+
 ## TDLib Login
 
 `TdlibTelegramRepository` owns the current real login path. It initializes `libtdjson.so` on Android, stores TDLib data under app-private support directories, handles authorization state updates, submits phone/code/2FA password, and calls `getMe` for the signed-in profile.

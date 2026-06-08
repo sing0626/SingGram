@@ -24,6 +24,7 @@ class _AuthScreenState extends State<AuthScreen> {
   final passwordController = TextEditingController();
   final embeddedCredentials = TelegramCredentialConfig.embeddedCredentials;
 
+  _CountryDialCode selectedCountry = _countryDialCodes.first;
   bool credentialsReady = false;
 
   @override
@@ -48,76 +49,72 @@ class _AuthScreenState extends State<AuthScreen> {
 
     return SafeArea(
       child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 520),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: GlassPanel(
-              useOwnLayer: true,
-              padding: const EdgeInsets.all(18),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Row(
-                    children: [
-                      const AppGlyph(),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'TG Third',
-                              style: Theme.of(context).textTheme.headlineSmall
-                                  ?.copyWith(fontWeight: FontWeight.w800),
-                            ),
-                            Text(
-                              _authLabel(authState),
-                              style: Theme.of(context).textTheme.bodyMedium,
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 430),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Center(child: AppGlyph(size: 72)),
+                const SizedBox(height: 26),
+                Text(
+                  _authTitle(authState),
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: const Color(0xFF143C38),
+                    fontWeight: FontWeight.w800,
                   ),
-                  const SizedBox(height: 18),
-                  if (authState.phase == AuthPhase.waitingCode)
-                    _CodeForm(
-                      controller: codeController,
-                      onSubmit: () =>
-                          widget.repository.submitCode(codeController.text),
-                    )
-                  else if (authState.phase == AuthPhase.waitingPassword)
-                    _PasswordForm(
-                      controller: passwordController,
-                      onSubmit: () => widget.repository.submitPassword(
-                        passwordController.text,
-                      ),
-                    )
-                  else
-                    _CredentialForm(
-                      apiIdController: apiIdController,
-                      apiHashController: apiHashController,
-                      phoneController: phoneController,
-                      hasEmbeddedCredentials: embeddedCredentials != null,
-                      connecting: authState.phase == AuthPhase.connecting,
-                      credentialsReady: credentialsReady,
-                      onSubmit: _startLogin,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _authSubtitle(authState),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.black.withValues(alpha: 0.58),
+                    fontSize: 15,
+                    height: 1.35,
+                  ),
+                ),
+                const SizedBox(height: 28),
+                if (authState.phase == AuthPhase.waitingCode)
+                  _CodeForm(
+                    controller: codeController,
+                    onSubmit: () =>
+                        widget.repository.submitCode(codeController.text),
+                  )
+                else if (authState.phase == AuthPhase.waitingPassword)
+                  _PasswordForm(
+                    controller: passwordController,
+                    onSubmit: () => widget.repository.submitPassword(
+                      passwordController.text,
                     ),
-                  if (authState.phase == AuthPhase.error &&
-                      authState.message != null) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      authState.message!,
-                      style: const TextStyle(
-                        color: Color(0xFF9B2F21),
-                        fontWeight: FontWeight.w700,
-                      ),
+                  )
+                else
+                  _CredentialForm(
+                    apiIdController: apiIdController,
+                    apiHashController: apiHashController,
+                    phoneController: phoneController,
+                    country: selectedCountry,
+                    hasEmbeddedCredentials: embeddedCredentials != null,
+                    connecting: authState.phase == AuthPhase.connecting,
+                    credentialsReady: credentialsReady,
+                    onCountryTap: _pickCountry,
+                    onSubmit: _startLogin,
+                  ),
+                if (authState.phase == AuthPhase.error &&
+                    authState.message != null) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    authState.message!,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Color(0xFF9B2F21),
+                      fontWeight: FontWeight.w700,
                     ),
-                  ],
+                  ),
                 ],
-              ),
+              ],
             ),
           ),
         ),
@@ -149,7 +146,7 @@ class _AuthScreenState extends State<AuthScreen> {
     final apiId =
         credentials?.apiId ?? int.tryParse(apiIdController.text.trim());
     final apiHash = credentials?.apiHash ?? apiHashController.text.trim();
-    final phoneNumber = phoneController.text.trim();
+    final phoneNumber = _normalizedPhoneNumber();
 
     if (apiId == null || apiHash.isEmpty || phoneNumber.isEmpty) {
       return;
@@ -170,20 +167,81 @@ class _AuthScreenState extends State<AuthScreen> {
     );
   }
 
-  String _authLabel(AuthState state) {
+  Future<void> _pickCountry() async {
+    final selected = await showModalBottomSheet<_CountryDialCode>(
+      context: context,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return GlassPanel(
+          radius: 28,
+          margin: const EdgeInsets.all(12),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: _countryDialCodes.length,
+            separatorBuilder: (_, _) =>
+                Divider(height: 1, color: Colors.black.withValues(alpha: 0.06)),
+            itemBuilder: (context, index) {
+              final country = _countryDialCodes[index];
+              return ListTile(
+                title: Text(country.name),
+                trailing: Text(
+                  country.dialCode,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                onTap: () => Navigator.of(context).pop(country),
+              );
+            },
+          ),
+        );
+      },
+    );
+
+    if (selected != null) {
+      setState(() => selectedCountry = selected);
+    }
+  }
+
+  String _normalizedPhoneNumber() {
+    final raw = phoneController.text.trim();
+    if (raw.isEmpty) return '';
+    if (raw.startsWith('+')) return raw.replaceAll(RegExp(r'\s+'), '');
+
+    final nationalNumber = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    if (nationalNumber.isEmpty) return '';
+    return '${selectedCountry.dialCode}$nationalNumber';
+  }
+
+  String _authTitle(AuthState state) {
     switch (state.phase) {
-      case AuthPhase.signedOut:
-        return 'Signed out';
+      case AuthPhase.waitingCode:
+        return 'Enter code';
+      case AuthPhase.waitingPassword:
+        return 'Two-step verification';
       case AuthPhase.connecting:
         return 'Connecting';
-      case AuthPhase.waitingCode:
-        return 'Code required';
-      case AuthPhase.waitingPassword:
-        return 'Password required';
       case AuthPhase.ready:
         return state.user?.displayName ?? 'Ready';
       case AuthPhase.error:
-        return 'Error';
+      case AuthPhase.signedOut:
+        return 'Your phone';
+    }
+  }
+
+  String _authSubtitle(AuthState state) {
+    switch (state.phase) {
+      case AuthPhase.waitingCode:
+        return 'We have sent you a Telegram login code.';
+      case AuthPhase.waitingPassword:
+        return 'Enter your Telegram 2FA password to continue.';
+      case AuthPhase.connecting:
+        return 'Checking your Telegram account.';
+      case AuthPhase.ready:
+        return 'Signed in';
+      case AuthPhase.error:
+      case AuthPhase.signedOut:
+        return 'Please confirm your country code and enter your phone number.';
     }
   }
 }
@@ -193,18 +251,22 @@ class _CredentialForm extends StatelessWidget {
     required this.apiIdController,
     required this.apiHashController,
     required this.phoneController,
+    required this.country,
     required this.hasEmbeddedCredentials,
     required this.connecting,
     required this.credentialsReady,
+    required this.onCountryTap,
     required this.onSubmit,
   });
 
   final TextEditingController apiIdController;
   final TextEditingController apiHashController;
   final TextEditingController phoneController;
+  final _CountryDialCode country;
   final bool hasEmbeddedCredentials;
   final bool connecting;
   final bool credentialsReady;
+  final VoidCallback onCountryTap;
   final VoidCallback onSubmit;
 
   @override
@@ -230,27 +292,129 @@ class _CredentialForm extends StatelessWidget {
           ),
           const SizedBox(height: 10),
         ],
-        GlassTextField(
-          controller: phoneController,
-          placeholder: 'Phone number',
-          keyboardType: TextInputType.phone,
-          textInputAction: TextInputAction.done,
-          onSubmitted: (_) => onSubmit(),
-          prefixIcon: const Icon(Icons.phone_rounded, size: 19),
+        GlassPanel(
+          padding: EdgeInsets.zero,
+          radius: 18,
+          child: Column(
+            children: [
+              InkWell(
+                onTap: onCountryTap,
+                borderRadius: BorderRadius.circular(18),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          country.name,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        country.dialCode,
+                        style: TextStyle(
+                          color: Colors.black.withValues(alpha: 0.58),
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(Icons.keyboard_arrow_down_rounded),
+                    ],
+                  ),
+                ),
+              ),
+              Divider(height: 1, color: Colors.black.withValues(alpha: 0.08)),
+              Row(
+                children: [
+                  SizedBox(
+                    width: 92,
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 16),
+                      child: Text(
+                        country.dialCode,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: TextField(
+                      controller: phoneController,
+                      autofocus: true,
+                      keyboardType: TextInputType.phone,
+                      textInputAction: TextInputAction.done,
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'[0-9\s()-]'),
+                        ),
+                      ],
+                      onSubmitted: (_) => onSubmit(),
+                      decoration: const InputDecoration(
+                        border: InputBorder.none,
+                        hintText: 'Phone number',
+                        contentPadding: EdgeInsets.symmetric(
+                          vertical: 16,
+                          horizontal: 12,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
-        const SizedBox(height: 16),
-        GlassButton.custom(
-          onTap: onSubmit,
-          enabled: !connecting && credentialsReady,
-          height: 52,
-          width: double.infinity,
-          shape: const LiquidRoundedSuperellipse(borderRadius: 16),
-          child: Text(connecting ? 'Connecting' : 'Login'),
+        const SizedBox(height: 22),
+        Align(
+          alignment: Alignment.centerRight,
+          child: GlassButton.custom(
+            onTap: onSubmit,
+            enabled: !connecting && credentialsReady,
+            height: 54,
+            width: 54,
+            shape: const LiquidRoundedSuperellipse(borderRadius: 18),
+            child: Icon(
+              connecting
+                  ? Icons.hourglass_top_rounded
+                  : Icons.arrow_forward_rounded,
+            ),
+          ),
         ),
       ],
     );
   }
 }
+
+class _CountryDialCode {
+  const _CountryDialCode({required this.name, required this.dialCode});
+
+  final String name;
+  final String dialCode;
+}
+
+const _countryDialCodes = <_CountryDialCode>[
+  _CountryDialCode(name: 'Hong Kong', dialCode: '+852'),
+  _CountryDialCode(name: 'Macau', dialCode: '+853'),
+  _CountryDialCode(name: 'China', dialCode: '+86'),
+  _CountryDialCode(name: 'Taiwan', dialCode: '+886'),
+  _CountryDialCode(name: 'United States', dialCode: '+1'),
+  _CountryDialCode(name: 'United Kingdom', dialCode: '+44'),
+  _CountryDialCode(name: 'Japan', dialCode: '+81'),
+  _CountryDialCode(name: 'South Korea', dialCode: '+82'),
+  _CountryDialCode(name: 'Singapore', dialCode: '+65'),
+  _CountryDialCode(name: 'Malaysia', dialCode: '+60'),
+  _CountryDialCode(name: 'Thailand', dialCode: '+66'),
+  _CountryDialCode(name: 'Australia', dialCode: '+61'),
+  _CountryDialCode(name: 'Canada', dialCode: '+1'),
+];
 
 class _CodeForm extends StatelessWidget {
   const _CodeForm({required this.controller, required this.onSubmit});

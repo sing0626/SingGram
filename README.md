@@ -8,6 +8,7 @@ The app is Flutter for the Liquid Glass UI and TDLib for the Telegram account se
 
 - Flutter drives the app shell and visual system.
 - `liquid_glass_widgets` provides Liquid Glass-style surfaces and controls.
+- Screens follow Telegram Android interaction patterns first; Liquid Glass is the visual treatment layered on top.
 - `tdlib` provides the Android bundled `libtdjson.so` runtime.
 - Android native Kotlin remains available under `android/` for deeper TDLib and MethodChannel work.
 - The normal app path now uses real TDLib authorization, not fake login.
@@ -19,7 +20,7 @@ This is still Android-first. macOS can come later because Flutter can add a macO
 - API ID/API hash/phone/code login using TDLib authorization states.
 - Telegram 2-step verification password when TDLib asks for it.
 - Real profile display from `getMe` after login.
-- Glass chat list and responsive message view.
+- Telegram Android-style chat list and conversation UI with Liquid Glass surfaces.
 - Text composer wired to TDLib `sendMessage`.
 - Platform channel boundary for TDLib integration.
 - Branches split so UI, auth, sync, native bridge, and local security can move in parallel.
