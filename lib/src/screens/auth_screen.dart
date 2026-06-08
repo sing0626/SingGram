@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
-import '../data/fake_telegram_repository.dart';
+import '../data/telegram_repository.dart';
 import '../models/telegram_models.dart';
 import '../widgets/glass_helpers.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({required this.repository, super.key});
 
-  final FakeTelegramRepository repository;
+  final TelegramRepository repository;
 
   @override
   State<AuthScreen> createState() => _AuthScreenState();

@@ -1,3 +1,5 @@
+import com.android.build.api.dsl.LibraryExtension
+
 allprojects {
     repositories {
         google()
@@ -17,6 +19,21 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+}
+
+subprojects {
+    if (name == "tdlib") {
+        plugins.withId("com.android.library") {
+            extensions.configure<LibraryExtension>("android") {
+                namespace = "org.naji.td.tdlib"
+            }
+        }
+        afterEvaluate {
+            extensions.configure<LibraryExtension>("android") {
+                compileSdk = 36
+            }
+        }
+    }
 }
 
 tasks.register<Delete>("clean") {

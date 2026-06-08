@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
-import 'data/fake_telegram_repository.dart';
+import 'data/tdlib_telegram_repository.dart';
+import 'data/telegram_repository.dart';
 import 'models/telegram_models.dart';
 import 'screens/auth_screen.dart';
 import 'screens/chat_screen.dart';
@@ -15,12 +16,12 @@ class TgThirdApp extends StatefulWidget {
 }
 
 class _TgThirdAppState extends State<TgThirdApp> {
-  late final FakeTelegramRepository repository;
+  late final TelegramRepository repository;
 
   @override
   void initState() {
     super.initState();
-    repository = FakeTelegramRepository();
+    repository = TdlibTelegramRepository();
   }
 
   @override

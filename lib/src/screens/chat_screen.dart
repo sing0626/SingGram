@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
-import '../data/fake_telegram_repository.dart';
+import '../data/telegram_repository.dart';
 import '../models/telegram_models.dart';
 import '../widgets/glass_helpers.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({required this.repository, super.key});
 
-  final FakeTelegramRepository repository;
+  final TelegramRepository repository;
 
   @override
   State<ChatScreen> createState() => _ChatScreenState();
@@ -25,6 +25,11 @@ class _ChatScreenState extends State<ChatScreen> {
     searchController.dispose();
     composerController.dispose();
     super.dispose();
+  }
+
+  Future<void> _selectChat(String chatId) async {
+    setState(() => selectedChatId = chatId);
+    await widget.repository.loadMessages(chatId);
   }
 
   @override
@@ -44,7 +49,7 @@ class _ChatScreenState extends State<ChatScreen> {
         searchController: searchController,
         onQueryChanged: (value) => setState(() => query = value),
         selectedChatId: selectedChatId,
-        onSelect: (chatId) => setState(() => selectedChatId = chatId),
+        onSelect: _selectChat,
       );
     }
 
@@ -68,7 +73,7 @@ class _ChatScreenState extends State<ChatScreen> {
               searchController: searchController,
               onQueryChanged: (value) => setState(() => query = value),
               selectedChatId: fallbackDialog?.id,
-              onSelect: (chatId) => setState(() => selectedChatId = chatId),
+              onSelect: _selectChat,
             ),
           ),
           Expanded(
@@ -94,7 +99,7 @@ class _DialogList extends StatelessWidget {
     required this.onSelect,
   });
 
-  final FakeTelegramRepository repository;
+  final TelegramRepository repository;
   final String query;
   final TextEditingController searchController;
   final ValueChanged<String> onQueryChanged;
@@ -135,11 +140,18 @@ class _DialogList extends StatelessWidget {
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.w800),
                         ),
-                        Text(
-                          '@${user?.username ?? 'me'}',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                        if (user?.username != null)
+                          Text(
+                            '@${user!.username}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          )
+                        else
+                          Text(
+                            user == null ? 'Signed in' : 'No username',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                       ],
                     ),
                   ),
@@ -263,7 +275,7 @@ class _Conversation extends StatelessWidget {
     this.onBack,
   });
 
-  final FakeTelegramRepository repository;
+  final TelegramRepository repository;
   final ChatDialog? dialog;
   final TextEditingController composerController;
   final VoidCallback? onBack;

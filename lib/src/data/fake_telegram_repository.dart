@@ -1,12 +1,13 @@
 import 'dart:math';
 
-import 'package:flutter/foundation.dart';
-
 import '../models/telegram_models.dart';
+import 'telegram_repository.dart';
 
-class FakeTelegramRepository extends ChangeNotifier {
+class FakeTelegramRepository extends TelegramRepository {
+  @override
   AuthState authState = const AuthState.signedOut();
 
+  @override
   final List<ChatDialog> dialogs = [
     ChatDialog(
       id: 'saved',
@@ -75,10 +76,12 @@ class FakeTelegramRepository extends ChangeNotifier {
     ],
   };
 
+  @override
   List<ChatMessage> messagesFor(String chatId) {
     return List.unmodifiable(_messages[chatId] ?? const []);
   }
 
+  @override
   Future<void> startLogin(LoginCredentials credentials) async {
     authState = const AuthState.connecting();
     notifyListeners();
@@ -88,6 +91,7 @@ class FakeTelegramRepository extends ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   Future<void> submitCode(String code) async {
     if (code.trim().isEmpty) {
       authState = const AuthState.error('Login code is empty.');
@@ -101,6 +105,7 @@ class FakeTelegramRepository extends ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   Future<void> submitPassword(String password) async {
     if (password.trim().isEmpty) {
       authState = const AuthState.error('Password is empty.');
@@ -108,6 +113,10 @@ class FakeTelegramRepository extends ChangeNotifier {
     }
   }
 
+  @override
+  Future<void> loadMessages(String chatId) async {}
+
+  @override
   Future<void> sendText({required String chatId, required String text}) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
@@ -139,6 +148,7 @@ class FakeTelegramRepository extends ChangeNotifier {
     notifyListeners();
   }
 
+  @override
   Future<void> logout() async {
     authState = const AuthState.signedOut();
     notifyListeners();

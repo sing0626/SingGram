@@ -4,20 +4,23 @@ Android-first private Telegram client with a Flutter Liquid Glass UI.
 
 ## Direction
 
-The app is now Flutter for UI and Android native Kotlin for the Telegram engine bridge.
+The app is Flutter for the Liquid Glass UI and TDLib for the Telegram account session.
 
 - Flutter drives the app shell and visual system.
 - `liquid_glass_widgets` provides Liquid Glass-style surfaces and controls.
-- Android native Kotlin remains available under `android/` for TDLib and MethodChannel work.
-- The current baseline uses fake in-memory Telegram data so UI work can move before TDLib is wired.
+- `tdlib` provides the Android bundled `libtdjson.so` runtime.
+- Android native Kotlin remains available under `android/` for deeper TDLib and MethodChannel work.
+- The normal app path now uses real TDLib authorization, not fake login.
 
 This is still Android-first. macOS can come later because Flutter can add a macOS target, but the repo currently only generates the Android platform.
 
 ## MVP Target
 
-- API ID/API hash/phone/code login shell.
+- API ID/API hash/phone/code login using TDLib authorization states.
+- Telegram 2-step verification password when TDLib asks for it.
+- Real profile display from `getMe` after login.
 - Glass chat list and responsive message view.
-- Text composer with fake local sending.
+- Text composer wired to TDLib `sendMessage`.
 - Platform channel boundary for TDLib integration.
 - Branches split so UI, auth, sync, native bridge, and local security can move in parallel.
 
@@ -38,8 +41,9 @@ flutter build apk --debug
 
 1. Create an app at [my.telegram.org](https://my.telegram.org).
 2. Keep `api_id` and `api_hash` private.
-3. Wire TDLib native libraries and Java bindings on the Android side.
-4. Expose only typed operations to Flutter through MethodChannel or Pigeon.
+3. Run the Android app and enter `api_id`, `api_hash`, and your phone number.
+4. Enter the Telegram login code, then the 2FA password if your account uses one.
+5. After login, the sidebar shows your real Telegram name from TDLib `getMe`.
 
 Do not commit API credentials, login codes, session databases, keystores, APKs, AABs, or TDLib runtime data.
 

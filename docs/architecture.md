@@ -5,30 +5,36 @@
 ```mermaid
 flowchart LR
   UI["Flutter Liquid Glass UI"] --> DartRepo["Dart repository contract"]
-  DartRepo --> Fake["Fake in-memory data"]
-  DartRepo -. later .-> Channel["Flutter MethodChannel / Pigeon"]
+  DartRepo --> TDLibDart["Dart TDLib repository"]
+  TDLibDart --> TDPlugin["tdlib Flutter plugin"]
+  TDPlugin --> TDJson["Android libtdjson.so"]
+  DartRepo --> Fake["Fake in-memory data for tests/dev only"]
+  DartRepo -. optional future .-> Channel["Flutter MethodChannel / Pigeon"]
   Channel --> Android["Android Kotlin bridge"]
   Android --> TDLib["TDLib Java/JNI"]
-  TDLib --> Telegram["Telegram API"]
+  TDJson --> Telegram["Telegram API"]
+  TDLib --> Telegram
 ```
 
 ## Main Areas
 
-- `lib/`: Flutter app shell, Liquid Glass screens, fake repository, models, and platform bridge interface.
-- `android/`: Android host app and future TDLib native integration.
+- `lib/`: Flutter app shell, Liquid Glass screens, real TDLib repository, fake test repository, models, and platform bridge interface.
+- `android/`: Android host app and optional deeper TDLib native integration.
 - `docs/`: architecture and branch coordination notes.
 
 ## Why Flutter Now
 
 The desired UI is close to `sdegenaar/liquid_glass_widgets`, which is a Flutter package. Switching now lets us use that UI system directly instead of rebuilding the whole effect in Jetpack Compose.
 
+## TDLib Login
+
+`TdlibTelegramRepository` owns the current real login path. It initializes `libtdjson.so` on Android, stores TDLib data under app-private support directories, handles authorization state updates, submits phone/code/2FA password, and calls `getMe` for the signed-in profile.
+
+The user must register an app at `my.telegram.org` and enter their `api_id` and `api_hash` at runtime. Those secrets are not stored in the repository.
+
 ## Why Keep Android Native
 
-TDLib is still best wired through native Android. Flutter should own presentation and app flow; the Android layer should own TDLib libraries, session directories, authorization updates, and low-level Telegram calls. Flutter talks to it through a narrow typed bridge.
-
-## Current Baseline
-
-The baseline intentionally uses a fake repository. That lets the Liquid Glass UI, responsive chat layout, and branch structure progress while TDLib native build details are handled separately.
+The Kotlin MethodChannel skeleton remains useful for future lower-level TDLib work, performance tuning, or Android-only security features. Flutter should own presentation and app flow; platform-specific engine details should stay behind a narrow typed boundary.
 
 ## Future macOS
 
