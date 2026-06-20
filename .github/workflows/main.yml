@@ -1,0 +1,191 @@
+name: Build SingGram Android
+
+on:
+  workflow_dispatch:
+    inputs:
+      gradle_task:
+        description: Gradle task to run
+        required: true
+        default: :TMessagesProj_App:assembleArm64Release
+      upload_name:
+        description: Artifact name
+        required: true
+        default: SingGram-arm64-release
+      publish_release:
+        description: Publish APK and update.json to a GitHub Release
+        required: true
+        type: boolean
+        default: false
+      prerelease:
+        description: Mark the GitHub Release as a pre-release
+        required: true
+        type: boolean
+        default: false
+      release_tag:
+        description: Release tag, leave blank to auto-generate
+        required: false
+        default: ""
+      release_title:
+        description: Release title, leave blank to auto-generate
+        required: false
+        default: ""
+      release_notes:
+        description: Release notes for update.json and GitHub Release
+        required: false
+        default: "SingGram public build."
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    env:
+      GRADLE_USER_HOME: ${{ github.workspace }}/.gradle
+      TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+      TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+      GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+      SINGGRAM_OFFICIAL_TASK: ${{ inputs.gradle_task }}
+      SINGGRAM_GRADLE_NO_DAEMON: "false"
+      SINGGRAM_FORCE_LIQUID_GLASS: "true"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android build packages
+        run: |
+          sdkmanager "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.10.2.4988404"
+
+      - name: Cache Gradle
+        uses: actions/cache@v4
+        with:
+          path: |
+            .gradle/caches
+            .gradle/wrapper
+            official-android/.gradle
+          key: gradle-${{ runner.os }}-${{ hashFiles('official-android/**/*.gradle', 'official-android/**/*.gradle.kts', 'official-android/gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+
+      - name: Check secrets
+        run: |
+          test -n "$TELEGRAM_API_ID"
+          test -n "$TELEGRAM_API_HASH"
+          test -n "$GOOGLE_SERVICES_JSON_BASE64"
+
+      - name: Restore Firebase config
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > /tmp/google-services.json
+          for target in \
+            official-android/TMessagesProj/google-services.json \
+            official-android/TMessagesProj_App/google-services.json \
+            official-android/TMessagesProj_AppStandalone/google-services.json \
+            official-android/TMessagesProj_AppHuawei/google-services.json \
+            official-android/TMessagesProj_AppHockeyApp/google-services.json
+          do
+            cp /tmp/google-services.json "$target"
+          done
+
+      - name: Build APK
+        run: scripts/build_official_android.sh
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.upload_name }}
+          path: official-android/TMessagesProj_App/build/outputs/apk/**/**/*.apk
+          if-no-files-found: error
+
+      - name: Prepare public release files
+        if: ${{ inputs.publish_release }}
+        id: release_files
+        shell: bash
+        env:
+          RELEASE_TAG_INPUT: ${{ inputs.release_tag }}
+          RELEASE_TITLE_INPUT: ${{ inputs.release_title }}
+          RELEASE_NOTES_INPUT: ${{ inputs.release_notes }}
+        run: |
+          set -euo pipefail
+
+          APK_IN="$(find official-android/TMessagesProj_App/build/outputs/apk -name '*.apk' -type f | sort | tail -n 1)"
+          mkdir -p release
+          cp "$APK_IN" release/SingGram-arm64-release.apk
+
+          AAPT="${ANDROID_HOME}/build-tools/35.0.0/aapt"
+          if [[ ! -x "$AAPT" ]]; then
+            AAPT="$(find "$ANDROID_HOME/build-tools" -name aapt -type f | sort | tail -n 1)"
+          fi
+
+          BADGING="$("$AAPT" dump badging release/SingGram-arm64-release.apk)"
+          VERSION_CODE="$(sed -n "s/.*versionCode='\([^']*\)'.*/\1/p" <<< "$BADGING")"
+          VERSION_NAME="$(sed -n "s/.*versionName='\([^']*\)'.*/\1/p" <<< "$BADGING")"
+          VERSION_CODE="${VERSION_CODE:-0}"
+          VERSION_NAME="${VERSION_NAME:-SingGram}"
+
+          TAG="${RELEASE_TAG_INPUT:-singgram-${VERSION_CODE}-${GITHUB_RUN_NUMBER}}"
+          TITLE="${RELEASE_TITLE_INPUT:-SingGram ${VERSION_NAME}}"
+          NOTES="${RELEASE_NOTES_INPUT:-SingGram public build.}"
+          SHA256="$(shasum -a 256 release/SingGram-arm64-release.apk | awk '{print $1}')"
+          APK_URL="https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/SingGram-arm64-release.apk"
+
+          jq -n \
+            --argjson versionCode "$VERSION_CODE" \
+            --arg versionName "$VERSION_NAME" \
+            --arg apkUrl "$APK_URL" \
+            --arg sha256 "$SHA256" \
+            --arg notes "$NOTES" \
+            '{
+              versionCode: $versionCode,
+              versionName: $versionName,
+              apkUrl: $apkUrl,
+              sha256: $sha256,
+              notes: $notes
+            }' > release/update.json
+
+          printf '%s\n' "$NOTES" > release/notes.md
+
+          {
+            echo "tag=$TAG"
+            echo "title=$TITLE"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Publish GitHub Release
+        if: ${{ inputs.publish_release }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.release_files.outputs.tag }}
+          RELEASE_TITLE: ${{ steps.release_files.outputs.title }}
+          PRERELEASE: ${{ inputs.prerelease }}
+        run: |
+          set -euo pipefail
+
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" release/SingGram-arm64-release.apk release/update.json --clobber
+          else
+            ARGS=()
+            if [[ "$PRERELEASE" == "true" ]]; then
+              ARGS+=(--prerelease)
+            fi
+            gh release create "$RELEASE_TAG" \
+              release/SingGram-arm64-release.apk \
+              release/update.json \
+              --title "$RELEASE_TITLE" \
+              --notes-file release/notes.md \
+              "${ARGS[@]}"
+          fi
