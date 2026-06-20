@@ -46,6 +46,9 @@ public class SingGramConfig {
     private static final String KEY_LAST_CRASH_TIME = "last_crash_time";
     private static final String KEY_LAST_CRASH_REASON = "last_crash_reason";
     private static final String KEY_SHOW_DIAGNOSTICS = "show_diagnostics";
+    private static final String KEY_LAST_UPDATE_VERSION_CODE = "last_update_version_code";
+    private static final String KEY_LAST_UPDATE_VERSION_NAME = "last_update_version_name";
+    private static final String KEY_LAST_UPDATE_CHECK_TIME = "last_update_check_time";
 
     public static final String DEFAULT_AI_MODEL = "gpt-4o-mini";
     private static boolean crashHandlerInstalled;
@@ -623,6 +626,30 @@ public class SingGramConfig {
 
     public static void setDiagnosticsEnabled(boolean enabled) {
         setBoolean(KEY_SHOW_DIAGNOSTICS, enabled);
+    }
+
+    public static void setLastUpdateCheck(int versionCode, String versionName) {
+        SharedPreferences preferences = prefs();
+        if (preferences != null) {
+            preferences.edit()
+                    .putInt(KEY_LAST_UPDATE_VERSION_CODE, versionCode)
+                    .putString(KEY_LAST_UPDATE_VERSION_NAME, versionName == null ? "" : versionName)
+                    .putLong(KEY_LAST_UPDATE_CHECK_TIME, System.currentTimeMillis())
+                    .apply();
+        }
+    }
+
+    public static int getLastUpdateVersionCode() {
+        return getInt(KEY_LAST_UPDATE_VERSION_CODE, 0);
+    }
+
+    public static String getLastUpdateVersionName() {
+        return getString(KEY_LAST_UPDATE_VERSION_NAME, "");
+    }
+
+    public static long getLastUpdateCheckTime() {
+        SharedPreferences preferences = prefs();
+        return preferences == null ? 0 : preferences.getLong(KEY_LAST_UPDATE_CHECK_TIME, 0);
     }
 
     public static boolean isCrashSafeModeEnabled() {

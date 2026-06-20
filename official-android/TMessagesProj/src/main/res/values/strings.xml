@@ -11010,4 +11010,27 @@
     <string name="SingGramDownloadStatusRecentState">Recent</string>
     <string name="SingGramDownloadStatusItemValue">%1$s / %2$s / %3$s</string>
     <string name="SingGramDownloadStatusUnknownFile">Unknown file</string>
+    <string name="SingGramUpdates">SingGram updates</string>
+    <string name="SingGramUpdateCurrentBuild">Current build</string>
+    <string name="SingGramUpdateLatestBuild">Latest release</string>
+    <string name="SingGramUpdateVersionCode">Version code</string>
+    <string name="SingGramUpdatePublishedAt">Published</string>
+    <string name="SingGramUpdateStatus">Status</string>
+    <string name="SingGramUpdateNotChecked">Not checked yet</string>
+    <string name="SingGramUpdateAvailable">Update available</string>
+    <string name="SingGramUpdateCurrent">Up to date</string>
+    <string name="SingGramUpdateActions">Actions</string>
+    <string name="SingGramUpdateCheck">Check for updates</string>
+    <string name="SingGramUpdateCheckInfo">Read the latest GitHub release manifest.</string>
+    <string name="SingGramUpdateOpenApk">Open APK link</string>
+    <string name="SingGramUpdateCopyApk">Copy APK link</string>
+    <string name="SingGramUpdateCopyApkInfo">Copy the latest release APK URL.</string>
+    <string name="SingGramUpdateNoApk">No APK link yet</string>
+    <string name="SingGramUpdateApkCopied">APK link copied</string>
+    <string name="SingGramUpdateNotes">Update notes</string>
+    <string name="SingGramUpdateNotesEmpty">No update notes yet.</string>
+    <string name="SingGramUpdateCopyNotes">Copy update notes</string>
+    <string name="SingGramUpdateCopyNotesInfo">Copy the release notes shown in update.json.</string>
+    <string name="SingGramUpdateNotesCopied">Update notes copied</string>
+    <string name="SingGramUpdateInfo">Updates are read from the public SingGram GitHub Release update.json. APK installation is still handled by Android/browser.</string>
 </resources>

@@ -20,6 +20,7 @@ import org.telegram.messenger.SingGramConfig;
 import org.telegram.messenger.SingGramDownloadStats;
 import org.telegram.messenger.SingGramEventLog;
 import org.telegram.messenger.SingGramPushDiagnostics;
+import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.UserConfig;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.BaseFragment;
@@ -88,6 +89,8 @@ public class SingGramDoctorActivity extends BaseFragment {
         LinearLayout diagnosticsSection = addSection(context, container);
         addInfoCell(context, diagnosticsSection, LocaleController.getString(R.string.SingGramCrashSafeMode), crashSafeValue());
         addDivider(context, diagnosticsSection);
+        addInfoCell(context, diagnosticsSection, LocaleController.getString(R.string.SingGramUpdates), updateValue());
+        addDivider(context, diagnosticsSection);
         addActionCell(context, diagnosticsSection, LocaleController.getString(R.string.SingGramDoctorCopyReport), LocaleController.getString(R.string.SingGramCopyDiagnostics), true, v -> copyReport());
         addDivider(context, diagnosticsSection);
         addActionCell(context, diagnosticsSection, LocaleController.getString(R.string.SingGramDoctorClearCrash), lastCrashValue(), SingGramConfig.getLastCrashTime() > 0, v -> clearCrash());
@@ -131,6 +134,19 @@ public class SingGramDoctorActivity extends BaseFragment {
             value += " / " + lastCrashValue();
         }
         return value;
+    }
+
+    private String updateValue() {
+        int versionCode = SingGramConfig.getLastUpdateVersionCode();
+        if (versionCode <= 0) {
+            return LocaleController.getString(R.string.SingGramUpdateNotChecked);
+        }
+        String versionName = SingGramConfig.getLastUpdateVersionName();
+        String version = TextUtils.isEmpty(versionName) ? String.valueOf(versionCode) : versionName;
+        String state = versionCode > SharedConfig.buildVersion()
+                ? LocaleController.getString(R.string.SingGramUpdateAvailable)
+                : LocaleController.getString(R.string.SingGramUpdateCurrent);
+        return version + " / " + state;
     }
 
     private String lastCrashValue() {
@@ -202,6 +218,9 @@ public class SingGramDoctorActivity extends BaseFragment {
         builder.append("crash_safe_mode: ").append(SingGramConfig.isCrashSafeModeEnabled()).append('\n');
         builder.append("last_crash_time: ").append(SingGramConfig.getLastCrashTime()).append('\n');
         builder.append("last_crash_reason: ").append(SingGramConfig.getLastCrashReason()).append('\n');
+        builder.append("last_update_version_code: ").append(SingGramConfig.getLastUpdateVersionCode()).append('\n');
+        builder.append("last_update_version_name: ").append(SingGramConfig.getLastUpdateVersionName()).append('\n');
+        builder.append("last_update_check_time: ").append(SingGramConfig.getLastUpdateCheckTime()).append('\n');
         builder.append(SingGramPushDiagnostics.buildReport());
         return builder.toString();
     }

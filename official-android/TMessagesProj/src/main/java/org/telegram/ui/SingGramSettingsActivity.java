@@ -26,6 +26,7 @@ import org.telegram.messenger.SingGramConfig;
 import org.telegram.messenger.SingGramDownloadStats;
 import org.telegram.messenger.SingGramEventLog;
 import org.telegram.messenger.SingGramPushDiagnostics;
+import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.UserConfig;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.AlertDialog;
@@ -346,6 +347,9 @@ public class SingGramSettingsActivity extends BaseFragment {
         addHeader(context, container, LocaleController.getString(R.string.SingGramTools));
         LinearLayout toolsSection = addSection(context, container);
         addIconActionCell(context, toolsSection, LocaleController.getString(R.string.SingGramCommandPalette), LocaleController.getString(R.string.SingGramCommandPaletteInfo), R.drawable.premium_ai_editor, 0xFF23B9C9, 0xFF2684E8, true, v -> presentFragment(new SingGramCommandPaletteActivity()));
+        addDivider(context, toolsSection);
+        addIconActionCell(context, toolsSection, LocaleController.getString(R.string.SingGramUpdates), updateSummaryValue(), R.drawable.settings_features, 0xFF4EA5F6, 0xFF3577E5, true, v -> presentFragment(new SingGramUpdateActivity()));
+        addDivider(context, toolsSection);
         addIconActionCell(context, toolsSection, LocaleController.getString(R.string.SingGramDoctor), LocaleController.getString(R.string.SingGramDoctorInfo), R.drawable.settings_power, 0xFFFF8B3D, 0xFFE45644, true, v -> presentFragment(new SingGramDoctorActivity()));
 
         addHeader(context, container, LocaleController.getString(R.string.SingGramSettingsCategories));
@@ -536,6 +540,8 @@ public class SingGramSettingsActivity extends BaseFragment {
         addDivider(context, diagnosticsSection);
         addActionCell(context, diagnosticsSection, LocaleController.getString(R.string.SingGramBuildInfo), buildInfoValue(), false, null);
         addDivider(context, diagnosticsSection);
+        addActionCell(context, diagnosticsSection, LocaleController.getString(R.string.SingGramUpdates), updateSummaryValue(), true, v -> presentFragment(new SingGramUpdateActivity()));
+        addDivider(context, diagnosticsSection);
         addActionCell(context, diagnosticsSection, LocaleController.getString(R.string.SingGramCopyDiagnostics), LocaleController.getString(R.string.SingGramDiagnosticsCopied), true, v -> copyDiagnostics());
     }
 
@@ -704,6 +710,19 @@ public class SingGramSettingsActivity extends BaseFragment {
         return BuildVars.BUILD_VERSION_STRING + " / " + packageName;
     }
 
+    private String updateSummaryValue() {
+        int versionCode = SingGramConfig.getLastUpdateVersionCode();
+        if (versionCode <= 0) {
+            return LocaleController.getString(R.string.SingGramUpdateNotChecked);
+        }
+        String versionName = SingGramConfig.getLastUpdateVersionName();
+        String version = TextUtils.isEmpty(versionName) ? String.valueOf(versionCode) : versionName;
+        String state = versionCode > SharedConfig.buildVersion()
+                ? LocaleController.getString(R.string.SingGramUpdateAvailable)
+                : LocaleController.getString(R.string.SingGramUpdateCurrent);
+        return version + " / " + state;
+    }
+
     private void copyDiagnostics() {
         StringBuilder builder = new StringBuilder();
         builder.append("SingGram diagnostics\n");
@@ -724,6 +743,9 @@ public class SingGramSettingsActivity extends BaseFragment {
         builder.append("download_boost_level: ").append(SingGramConfig.getDownloadBoostLevel()).append('\n');
         builder.append("crash_safe_mode: ").append(SingGramConfig.isCrashSafeModeEnabled()).append('\n');
         builder.append("read_receipt_exceptions: ").append(SingGramConfig.getReadReceiptsAllowedDialogCount()).append('\n');
+        builder.append("last_update_version_code: ").append(SingGramConfig.getLastUpdateVersionCode()).append('\n');
+        builder.append("last_update_version_name: ").append(SingGramConfig.getLastUpdateVersionName()).append('\n');
+        builder.append("last_update_check_time: ").append(SingGramConfig.getLastUpdateCheckTime()).append('\n');
         builder.append(SingGramPushDiagnostics.buildReport());
         AndroidUtilities.addToClipboard(builder.toString());
         Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramDiagnosticsCopied), Toast.LENGTH_SHORT).show();

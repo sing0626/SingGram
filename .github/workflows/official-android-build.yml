@@ -142,19 +142,25 @@ jobs:
           NOTES="${RELEASE_NOTES_INPUT:-SingGram public build.}"
           SHA256="$(shasum -a 256 release/SingGram-arm64-release.apk | awk '{print $1}')"
           APK_URL="https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/SingGram-arm64-release.apk"
+          PUBLISHED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
           jq -n \
             --argjson versionCode "$VERSION_CODE" \
             --arg versionName "$VERSION_NAME" \
             --arg apkUrl "$APK_URL" \
             --arg sha256 "$SHA256" \
-            --arg notes "$NOTES" \
+            --arg notesText "$NOTES" \
+            --arg publishedAt "$PUBLISHED_AT" \
+            --argjson changes "$(printf '%s\n' "$NOTES" | jq -R -s 'split("\n") | map(gsub("^[-*] "; "") | select(length > 0))')" \
             '{
               versionCode: $versionCode,
               versionName: $versionName,
               apkUrl: $apkUrl,
               sha256: $sha256,
-              notes: $notes
+              notes: $notesText,
+              notesText: $notesText,
+              changes: $changes,
+              publishedAt: $publishedAt
             }' > release/update.json
 
           printf '%s\n' "$NOTES" > release/notes.md

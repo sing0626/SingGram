@@ -301,4 +301,27 @@
     <string name="SingGramDownloadStatusRecentState">最近</string>
     <string name="SingGramDownloadStatusItemValue">%1$s / %2$s / %3$s</string>
     <string name="SingGramDownloadStatusUnknownFile">未知檔案</string>
+    <string name="SingGramUpdates">SingGram 更新</string>
+    <string name="SingGramUpdateCurrentBuild">目前版本</string>
+    <string name="SingGramUpdateLatestBuild">最新 Release</string>
+    <string name="SingGramUpdateVersionCode">版本代碼</string>
+    <string name="SingGramUpdatePublishedAt">發布時間</string>
+    <string name="SingGramUpdateStatus">狀態</string>
+    <string name="SingGramUpdateNotChecked">尚未檢查</string>
+    <string name="SingGramUpdateAvailable">有新版本</string>
+    <string name="SingGramUpdateCurrent">已是最新</string>
+    <string name="SingGramUpdateActions">動作</string>
+    <string name="SingGramUpdateCheck">檢查更新</string>
+    <string name="SingGramUpdateCheckInfo">讀取最新 GitHub Release manifest。</string>
+    <string name="SingGramUpdateOpenApk">開啟 APK 連結</string>
+    <string name="SingGramUpdateCopyApk">複製 APK 連結</string>
+    <string name="SingGramUpdateCopyApkInfo">複製最新 Release APK URL。</string>
+    <string name="SingGramUpdateNoApk">暫時未有 APK 連結</string>
+    <string name="SingGramUpdateApkCopied">APK 連結已複製</string>
+    <string name="SingGramUpdateNotes">更新日誌</string>
+    <string name="SingGramUpdateNotesEmpty">暫時未有更新日誌。</string>
+    <string name="SingGramUpdateCopyNotes">複製更新日誌</string>
+    <string name="SingGramUpdateCopyNotesInfo">複製 update.json 入面顯示的 release notes。</string>
+    <string name="SingGramUpdateNotesCopied">更新日誌已複製</string>
+    <string name="SingGramUpdateInfo">更新資料來自公開 SingGram GitHub Release update.json。APK 安裝仍由 Android/瀏覽器處理。</string>
 </resources>
