@@ -47,6 +47,7 @@ jobs:
       TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
       TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
       GOOGLE_SERVICES_JSON_BASE64: ${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}
+      RELEASE_KEYSTORE_BASE64: ${{ secrets.RELEASE_KEYSTORE_BASE64 }}
       SINGGRAM_OFFICIAL_TASK: ${{ inputs.gradle_task }}
       SINGGRAM_GRADLE_NO_DAEMON: "false"
       SINGGRAM_FORCE_LIQUID_GLASS: "true"
@@ -84,6 +85,7 @@ jobs:
           test -n "$TELEGRAM_API_ID"
           test -n "$TELEGRAM_API_HASH"
           test -n "$GOOGLE_SERVICES_JSON_BASE64"
+          test -n "$RELEASE_KEYSTORE_BASE64"
 
       - name: Restore Firebase config
         shell: bash
@@ -101,6 +103,14 @@ jobs:
           do
             cp /tmp/google-services.json "$target"
           done
+
+      - name: Restore release keystore
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p official-android/TMessagesProj/config
+          echo "$RELEASE_KEYSTORE_BASE64" | base64 --decode > official-android/TMessagesProj/config/release.keystore
 
       - name: Build APK
         run: scripts/build_official_android.sh
