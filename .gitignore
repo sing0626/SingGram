@@ -6,11 +6,18 @@
 .pub/
 build/
 */build/
+**/build/
 .gradle/
+.gradle-sandbox/
+**/.gradle/
+**/.cxx/
 local.properties
+**/local.properties
 telegram_credentials.env
+*.env
 .idea/
 .DS_Store
+**/.DS_Store
 captures/
 *.iml
 *.keystore
@@ -18,3 +25,18 @@ captures/
 *.apk
 *.aab
 *.ap_
+*.idsig
+*.so
+*.so.dbg
+*.hprof
+*.log
+
+# Keep public GitHub releases clean. Restore these in CI from secrets.
+google-services.json
+**/google-services.json
+
+# Android signing material must never be published.
+**/release.keystore
+**/debug.keystore
+**/*.keystore
+**/*.jks

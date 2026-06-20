@@ -1,0 +1,310 @@
+package org.telegram.ui;
+
+import android.content.Context;
+import android.text.TextUtils;
+import android.util.TypedValue;
+import android.view.Gravity;
+import android.view.View;
+import android.widget.FrameLayout;
+import android.widget.LinearLayout;
+import android.widget.ScrollView;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.ApplicationLoader;
+import org.telegram.messenger.BuildVars;
+import org.telegram.messenger.LocaleController;
+import org.telegram.messenger.R;
+import org.telegram.messenger.SingGramConfig;
+import org.telegram.messenger.SingGramDownloadStats;
+import org.telegram.messenger.SingGramEventLog;
+import org.telegram.messenger.SingGramPushDiagnostics;
+import org.telegram.messenger.UserConfig;
+import org.telegram.ui.ActionBar.ActionBar;
+import org.telegram.ui.ActionBar.BaseFragment;
+import org.telegram.ui.ActionBar.Theme;
+import org.telegram.ui.ActionBar.ThemeDescription;
+import org.telegram.ui.Cells.TextCheckCell;
+import org.telegram.ui.Components.LayoutHelper;
+
+import java.util.ArrayList;
+
+public class SingGramDoctorActivity extends BaseFragment {
+
+    @Override
+    public View createView(Context context) {
+        actionBar.setBackButtonImage(R.drawable.ic_ab_back);
+        actionBar.setTitle(LocaleController.getString(R.string.SingGramDoctor));
+        actionBar.setAllowOverlayTitle(true);
+        if (AndroidUtilities.isTablet()) {
+            actionBar.setOccupyStatusBar(false);
+        }
+        actionBar.setActionBarMenuOnItemClick(new ActionBar.ActionBarMenuOnItemClick() {
+            @Override
+            public void onItemClick(int id) {
+                if (id == -1) {
+                    finishFragment();
+                }
+            }
+        });
+
+        fragmentView = new FrameLayout(context);
+        fragmentView.setBackgroundColor(Theme.getColor(Theme.key_windowBackgroundGray));
+
+        ScrollView scrollView = new ScrollView(context);
+        ((FrameLayout) fragmentView).addView(scrollView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+
+        LinearLayout container = new LinearLayout(context);
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(0, AndroidUtilities.dp(12), 0, AndroidUtilities.dp(28));
+        scrollView.addView(container, new ScrollView.LayoutParams(ScrollView.LayoutParams.MATCH_PARENT, ScrollView.LayoutParams.WRAP_CONTENT));
+
+        addHeader(context, container, LocaleController.getString(R.string.SingGramDoctorSystem));
+        LinearLayout systemSection = addSection(context, container);
+        addInfoCell(context, systemSection, LocaleController.getString(R.string.SingGramDoctorVersion), BuildVars.BUILD_VERSION_STRING);
+        addDivider(context, systemSection);
+        addInfoCell(context, systemSection, LocaleController.getString(R.string.SingGramDoctorPackage), packageName());
+        addDivider(context, systemSection);
+        addInfoCell(context, systemSection, LocaleController.getString(R.string.SingGramDoctorAccounts), LocaleController.formatString(R.string.SingGramDoctorAccountsValue, UserConfig.getActivatedAccountsCount(), UserConfig.MAX_ACCOUNT_COUNT));
+
+        addHeader(context, container, LocaleController.getString(R.string.SingGramPushNotifications));
+        LinearLayout pushSection = addSection(context, container);
+        addPushDiagnosticsCells(context, pushSection, false);
+
+        addHeader(context, container, LocaleController.getString(R.string.SingGramDoctorFeatureHealth));
+        LinearLayout featureSection = addSection(context, container);
+        addInfoCell(context, featureSection, LocaleController.getString(R.string.SingGramAI), aiValue());
+        addDivider(context, featureSection);
+        addInfoCell(context, featureSection, LocaleController.getString(R.string.SingGramGhostMode), ghostValue());
+        addDivider(context, featureSection);
+        addInfoCell(context, featureSection, LocaleController.getString(R.string.SingGramMessageProtection), protectionValue());
+        addDivider(context, featureSection);
+        addInfoCell(context, featureSection, LocaleController.getString(R.string.SingGramDownload), downloadValue());
+        addDivider(context, featureSection);
+        addInfoCell(context, featureSection, LocaleController.getString(R.string.SingGramLiquidGlass), liquidGlassValue());
+
+        addHeader(context, container, LocaleController.getString(R.string.SingGramDiagnostics));
+        LinearLayout diagnosticsSection = addSection(context, container);
+        addInfoCell(context, diagnosticsSection, LocaleController.getString(R.string.SingGramCrashSafeMode), crashSafeValue());
+        addDivider(context, diagnosticsSection);
+        addActionCell(context, diagnosticsSection, LocaleController.getString(R.string.SingGramDoctorCopyReport), LocaleController.getString(R.string.SingGramCopyDiagnostics), true, v -> copyReport());
+        addDivider(context, diagnosticsSection);
+        addActionCell(context, diagnosticsSection, LocaleController.getString(R.string.SingGramDoctorClearCrash), lastCrashValue(), SingGramConfig.getLastCrashTime() > 0, v -> clearCrash());
+        addInfo(context, container, LocaleController.getString(R.string.SingGramDoctorInfo));
+        return fragmentView;
+    }
+
+    private String packageName() {
+        return ApplicationLoader.applicationContext == null ? "com.sing.singgram" : ApplicationLoader.applicationContext.getPackageName();
+    }
+
+    private String aiValue() {
+        String configured = TextUtils.isEmpty(SingGramConfig.getAiBaseUrl()) ? LocaleController.getString(R.string.SingGramDoctorNotConfigured) : SingGramConfig.getAiModel();
+        return stateValue(SingGramConfig.isAiEnabled()) + " / " + configured;
+    }
+
+    private String ghostValue() {
+        return stateValue(SingGramConfig.isGhostModeEnabled()) + " / " + LocaleController.formatString(R.string.SingGramGhostManagerSummary, SingGramConfig.getGhostDialogCount(), SingGramConfig.getReadReceiptsAllowedDialogCount());
+    }
+
+    private String protectionValue() {
+        String antiDelete = stateValue(SingGramConfig.shouldKeepDeletedMessages());
+        String antiEdit = stateValue(SingGramConfig.shouldKeepOriginalEdits());
+        return LocaleController.formatString(R.string.SingGramDoctorProtectionValue, antiDelete, antiEdit, SingGramEventLog.getEventCount());
+    }
+
+    private String downloadValue() {
+        SingGramDownloadStats.Snapshot snapshot = SingGramDownloadStats.getSnapshot();
+        String speed = AndroidUtilities.formatFileSize(snapshot.speedBytesPerSecond) + "/s";
+        return LocaleController.formatString(R.string.SingGramDownloadStatusSummary, stateValue(SingGramConfig.isDownloadBoostEnabled()), downloadLevelName(), snapshot.activeCount, speed);
+    }
+
+    private String liquidGlassValue() {
+        String custom = SingGramConfig.isLiquidGlassCustomEnabled() ? LocaleController.getString(R.string.SingGramDoctorCustom) : LocaleController.getString(R.string.SingGramLiquidGlassStudioPreset);
+        return stateValue(SingGramConfig.isLiquidGlassEnabled()) + " / " + levelValue(SingGramConfig.getLiquidGlassLevel()) + " / " + custom;
+    }
+
+    private String crashSafeValue() {
+        String value = stateValue(SingGramConfig.isCrashSafeModeEnabled());
+        if (SingGramConfig.getLastCrashTime() > 0) {
+            value += " / " + lastCrashValue();
+        }
+        return value;
+    }
+
+    private String lastCrashValue() {
+        if (SingGramConfig.getLastCrashTime() <= 0) {
+            return LocaleController.getString(R.string.SingGramDoctorNoCrash);
+        }
+        String value = LocaleController.formatDateTime(SingGramConfig.getLastCrashTime() / 1000, true);
+        String reason = SingGramConfig.getLastCrashReason();
+        if (!TextUtils.isEmpty(reason)) {
+            value += "\n" + reason;
+        }
+        return value;
+    }
+
+    private String stateValue(boolean enabled) {
+        return LocaleController.getString(enabled ? R.string.SingGramCommandPaletteOn : R.string.SingGramCommandPaletteOff);
+    }
+
+    private String levelValue(int level) {
+        if (level <= 0) {
+            return LocaleController.getString(R.string.SingGramLiquidGlassSoft);
+        }
+        if (level >= 2) {
+            return LocaleController.getString(R.string.SingGramLiquidGlassStrong);
+        }
+        return LocaleController.getString(R.string.SingGramLiquidGlassStandard);
+    }
+
+    private String downloadLevelName() {
+        int level = SingGramConfig.getDownloadBoostLevel();
+        if (level <= 0) {
+            return LocaleController.getString(R.string.SingGramDownloadBoostBalanced);
+        }
+        if (level >= 2) {
+            return LocaleController.getString(R.string.SingGramDownloadBoostMaximum);
+        }
+        return LocaleController.getString(R.string.SingGramDownloadBoostAggressive);
+    }
+
+    private void copyReport() {
+        AndroidUtilities.addToClipboard(buildReport());
+        Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramDiagnosticsCopied), Toast.LENGTH_SHORT).show();
+    }
+
+    private String buildReport() {
+        SingGramDownloadStats.Snapshot snapshot = SingGramDownloadStats.getSnapshot();
+        StringBuilder builder = new StringBuilder();
+        builder.append("SingGram doctor\n");
+        builder.append("version: ").append(BuildVars.BUILD_VERSION_STRING).append('\n');
+        builder.append("debug: ").append(BuildVars.DEBUG_VERSION).append('\n');
+        builder.append("package: ").append(packageName()).append('\n');
+        builder.append("accounts: ").append(UserConfig.getActivatedAccountsCount()).append('/').append(UserConfig.MAX_ACCOUNT_COUNT).append('\n');
+        builder.append("ai_enabled: ").append(SingGramConfig.isAiEnabled()).append('\n');
+        builder.append("ai_configured: ").append(!TextUtils.isEmpty(SingGramConfig.getAiBaseUrl())).append('\n');
+        builder.append("ghost_mode: ").append(SingGramConfig.isGhostModeEnabled()).append('\n');
+        builder.append("ghost_selected_chats_only: ").append(SingGramConfig.isGhostSelectedChatsOnly()).append('\n');
+        builder.append("ghost_selected_count: ").append(SingGramConfig.getGhostDialogCount()).append('\n');
+        builder.append("read_receipt_exceptions: ").append(SingGramConfig.getReadReceiptsAllowedDialogCount()).append('\n');
+        builder.append("anti_delete: ").append(SingGramConfig.shouldKeepDeletedMessages()).append('\n');
+        builder.append("anti_edit: ").append(SingGramConfig.shouldKeepOriginalEdits()).append('\n');
+        builder.append("event_log_count: ").append(SingGramEventLog.getEventCount()).append('\n');
+        builder.append("download_boost: ").append(SingGramConfig.isDownloadBoostEnabled()).append('\n');
+        builder.append("download_boost_level: ").append(SingGramConfig.getDownloadBoostLevel()).append('\n');
+        builder.append("download_active_count: ").append(snapshot.activeCount).append('\n');
+        builder.append("download_speed_bps: ").append(snapshot.speedBytesPerSecond).append('\n');
+        builder.append("liquid_glass: ").append(SingGramConfig.isLiquidGlassEnabled()).append('\n');
+        builder.append("liquid_glass_level: ").append(SingGramConfig.getLiquidGlassLevel()).append('\n');
+        builder.append("liquid_glass_custom: ").append(SingGramConfig.isLiquidGlassCustomEnabled()).append('\n');
+        builder.append("crash_safe_mode: ").append(SingGramConfig.isCrashSafeModeEnabled()).append('\n');
+        builder.append("last_crash_time: ").append(SingGramConfig.getLastCrashTime()).append('\n');
+        builder.append("last_crash_reason: ").append(SingGramConfig.getLastCrashReason()).append('\n');
+        builder.append(SingGramPushDiagnostics.buildReport());
+        return builder.toString();
+    }
+
+    private void addPushDiagnosticsCells(Context context, LinearLayout section, boolean actionsOnly) {
+        SingGramPushDiagnostics.Snapshot snapshot = SingGramPushDiagnostics.getSnapshot();
+        if (!actionsOnly) {
+            addInfoCell(context, section, LocaleController.getString(R.string.SingGramPushProvider), SingGramPushDiagnostics.summary(snapshot));
+            addDivider(context, section);
+            addInfoCell(context, section, LocaleController.getString(R.string.SingGramPushToken), snapshot.tokenStatus);
+            addDivider(context, section);
+            addInfoCell(context, section, LocaleController.getString(R.string.SingGramPushPermissions), SingGramPushDiagnostics.permissionValue(snapshot));
+            addDivider(context, section);
+            addInfoCell(context, section, LocaleController.getString(R.string.SingGramPushKeepAlive), SingGramPushDiagnostics.keepAliveValue(snapshot));
+            addDivider(context, section);
+            addInfoCell(context, section, LocaleController.getString(R.string.SingGramPushAccountsRegistered), SingGramPushDiagnostics.registeredAccountsValue(snapshot));
+            addDivider(context, section);
+            addInfoCell(context, section, LocaleController.getString(R.string.SingGramPushChannels), SingGramPushDiagnostics.channelValue(snapshot));
+            addDivider(context, section);
+        }
+        addActionCell(context, section, LocaleController.getString(R.string.SingGramPushRefreshToken), LocaleController.getString(R.string.SingGramPushRefreshTokenInfo), true, v -> refreshPushToken());
+        addDivider(context, section);
+        addActionCell(context, section, LocaleController.getString(R.string.SingGramPushResetChannels), LocaleController.getString(R.string.SingGramPushResetChannelsInfo), true, v -> resetPushChannels());
+    }
+
+    private void refreshPushToken() {
+        SingGramPushDiagnostics.requestTokenRefresh();
+        Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramPushRefreshRequested), Toast.LENGTH_SHORT).show();
+    }
+
+    private void resetPushChannels() {
+        SingGramPushDiagnostics.resetNotificationChannels();
+        Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramPushChannelsReset), Toast.LENGTH_SHORT).show();
+    }
+
+    private void clearCrash() {
+        SingGramConfig.clearLastCrash();
+        Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramDoctorCrashCleared), Toast.LENGTH_SHORT).show();
+        removeSelfFromStack();
+        presentFragment(new SingGramDoctorActivity());
+    }
+
+    private LinearLayout addSection(Context context, LinearLayout container) {
+        LinearLayout section = new LinearLayout(context);
+        section.setOrientation(LinearLayout.VERTICAL);
+        section.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(8), Theme.getColor(Theme.key_windowBackgroundWhite)));
+        container.addView(section, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 12, 0, 12, 0));
+        return section;
+    }
+
+    private void addHeader(Context context, LinearLayout container, String text) {
+        TextView textView = new TextView(context);
+        textView.setText(text);
+        textView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueHeader));
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
+        textView.setGravity((LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
+        textView.setTypeface(AndroidUtilities.bold());
+        textView.setIncludeFontPadding(false);
+        textView.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(18), AndroidUtilities.dp(24), AndroidUtilities.dp(8));
+        container.addView(textView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+    }
+
+    private void addInfoCell(Context context, LinearLayout container, String text, String value) {
+        TextCheckCell cell = new TextCheckCell(context, 16);
+        cell.setTextAndValue(text, value, true, false);
+        cell.setEnabled(false);
+        cell.setAlpha(0.86f);
+        container.addView(cell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+    }
+
+    private void addActionCell(Context context, LinearLayout container, String text, String value, boolean enabled, View.OnClickListener listener) {
+        TextCheckCell cell = new TextCheckCell(context, 16);
+        cell.setTextAndValue(text, value, true, false);
+        cell.setEnabled(enabled);
+        cell.setAlpha(enabled ? 1.0f : 0.58f);
+        if (enabled && listener != null) {
+            cell.setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector), Theme.RIPPLE_MASK_ALL));
+            cell.setOnClickListener(listener);
+        }
+        container.addView(cell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+    }
+
+    private void addDivider(Context context, LinearLayout container) {
+        View divider = new View(context);
+        divider.setBackgroundColor(Theme.getColor(Theme.key_divider));
+        container.addView(divider, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 1, 16, 0, 16, 0));
+    }
+
+    private void addInfo(Context context, LinearLayout container, String text) {
+        TextView textView = new TextView(context);
+        textView.setText(text);
+        textView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText4));
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
+        textView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        textView.setLineSpacing(AndroidUtilities.dp(2), 1.0f);
+        textView.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(10), AndroidUtilities.dp(24), 0);
+        container.addView(textView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+    }
+
+    @Override
+    public ArrayList<ThemeDescription> getThemeDescriptions() {
+        ArrayList<ThemeDescription> themeDescriptions = new ArrayList<>();
+        themeDescriptions.add(new ThemeDescription(fragmentView, ThemeDescription.FLAG_BACKGROUND, null, null, null, null, Theme.key_windowBackgroundGray));
+        return themeDescriptions;
+    }
+}
