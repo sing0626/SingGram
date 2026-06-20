@@ -91,6 +91,7 @@ jobs:
           set -euo pipefail
 
           echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > /tmp/google-services.json
+          bash scripts/prepare_google_services_json.sh /tmp/google-services.json com.sing.singgram
           for target in \
             official-android/TMessagesProj/google-services.json \
             official-android/TMessagesProj_App/google-services.json \
