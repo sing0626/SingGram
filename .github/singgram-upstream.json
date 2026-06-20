@@ -1,0 +1,7 @@
+{
+  "upstream": "https://github.com/DrKLO/Telegram.git",
+  "ref": "master",
+  "importedCommit": "9fea7264",
+  "importedVersion": "12.7.3",
+  "importedVersionCode": "6750"
+}

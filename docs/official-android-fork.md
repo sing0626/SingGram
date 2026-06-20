@@ -75,6 +75,14 @@ The official project requires Android SDK 35, Build Tools 35.0.0, NDK 27.2.12479
 
 Keep SingGram changes as a normal fork branch, then merge new Telegram Android releases into a temporary sync branch.
 
+The workflow at `.github/workflows/check-telegram-upstream.yml` checks
+`https://github.com/DrKLO/Telegram.git` every six hours and can also be started
+manually. It compares the upstream ref with `.github/singgram-upstream.json`;
+when a newer upstream commit exists, it opens an `upstream-update` issue with the
+latest commit. It does not auto-merge upstream into SingGram, because upstream
+changes can conflict with branding, settings, Liquid Glass, diagnostics,
+notifications, and update logic.
+
 ```bash
 scripts/sync_official_android_upstream.sh master
 ```
@@ -101,6 +109,8 @@ Recommended update rhythm:
 3. Build `:TMessagesProj_App:assembleArm64Release`.
 4. Install on a test phone and check login, chat open, media download, notifications, Liquid Glass, Ghost mode, and AI tools.
 5. Merge the sync branch back into the working SingGram branch only after the APK is usable.
+6. Update `.github/singgram-upstream.json` with the imported upstream
+   commit/version.
 
 ## GitHub Builds
 

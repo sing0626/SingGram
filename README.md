@@ -105,6 +105,11 @@ https://github.com/<owner>/<repo>/releases/latest/download/SingGram-arm64-releas
 
 ## Updating From Telegram
 
+GitHub Actions checks the official Telegram Android upstream on a schedule. If
+`DrKLO/Telegram` has moved beyond the imported commit recorded in
+`.github/singgram-upstream.json`, it opens an `upstream-update` issue so the
+merge can be reviewed before a public APK is released.
+
 Use the sync script to merge newer Telegram Android upstream changes into a temporary branch:
 
 ```bash
@@ -112,6 +117,10 @@ scripts/sync_official_android_upstream.sh master
 ```
 
 Then resolve conflicts, build, test on a phone, and merge the sync branch only after the APK is usable.
+
+After a reviewed upstream merge, update `.github/singgram-upstream.json` to the
+new imported Telegram commit/version so the scheduled checker knows the fork is
+current again.
 
 Recommended checks after every upstream update:
 

@@ -1,0 +1,133 @@
+name: Check Telegram Upstream
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream_ref:
+        description: Telegram upstream ref to check
+        required: true
+        default: master
+      dispatch_build:
+        description: Also start the SingGram build workflow
+        required: true
+        type: boolean
+        default: false
+  schedule:
+    - cron: "17 */6 * * *"
+
+permissions:
+  actions: write
+  contents: read
+  issues: write
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    env:
+      UPSTREAM_URL: https://github.com/DrKLO/Telegram.git
+      UPSTREAM_REF: ${{ github.event.inputs.upstream_ref || 'master' }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check upstream ref
+        id: upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          imported_commit="$(jq -r '.importedCommit' .github/singgram-upstream.json)"
+          imported_version="$(jq -r '.importedVersion' .github/singgram-upstream.json)"
+          latest_line="$(git ls-remote "$UPSTREAM_URL" "refs/heads/$UPSTREAM_REF" | head -n 1)"
+
+          if [[ -z "$latest_line" ]]; then
+            echo "Cannot find upstream ref: $UPSTREAM_REF" >&2
+            exit 1
+          fi
+
+          latest_commit="$(awk '{print $1}' <<< "$latest_line")"
+          latest_short="${latest_commit:0:8}"
+
+          {
+            echo "imported_commit=$imported_commit"
+            echo "imported_version=$imported_version"
+            echo "latest_commit=$latest_commit"
+            echo "latest_short=$latest_short"
+          } >> "$GITHUB_OUTPUT"
+
+          if [[ "$latest_commit" == "$imported_commit"* || "$imported_commit" == "$latest_short" ]]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Open update issue
+        if: ${{ steps.upstream.outputs.changed == 'true' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMPORTED_COMMIT: ${{ steps.upstream.outputs.imported_commit }}
+          IMPORTED_VERSION: ${{ steps.upstream.outputs.imported_version }}
+          LATEST_COMMIT: ${{ steps.upstream.outputs.latest_commit }}
+          LATEST_SHORT: ${{ steps.upstream.outputs.latest_short }}
+        run: |
+          set -euo pipefail
+
+          gh label create upstream-update \
+            --repo "$GITHUB_REPOSITORY" \
+            --color 0969da \
+            --description "Telegram upstream update detected" >/dev/null 2>&1 || true
+
+          if gh issue list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --label upstream-update \
+            --search "$LATEST_COMMIT in:body" \
+            --json number \
+            --jq 'length > 0' | grep -q true; then
+            echo "An upstream update issue already exists for $LATEST_COMMIT."
+            exit 0
+          fi
+
+          cat > /tmp/upstream-update.md <<EOF
+          Telegram Android upstream has a newer commit on \`$UPSTREAM_REF\`.
+
+          - Current SingGram import: \`$IMPORTED_VERSION\` / \`$IMPORTED_COMMIT\`
+          - Latest upstream commit: \`$LATEST_COMMIT\`
+          - Upstream compare: https://github.com/DrKLO/Telegram/commits/$UPSTREAM_REF
+
+          Suggested flow:
+
+          1. Sync upstream into SingGram in a review branch.
+          2. Resolve conflicts around SingGram-owned files, branding, update checker, Liquid Glass, notifications, and diagnostics.
+          3. Build \`:TMessagesProj_App:assembleArm64Release\`.
+          4. Test login, chat open/back navigation, notifications, downloads, SingGram settings, and Liquid Glass on a phone.
+          5. Publish a release after the APK is usable.
+          EOF
+
+          gh issue create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Telegram Android upstream update available: $LATEST_SHORT" \
+            --label upstream-update \
+            --body-file /tmp/upstream-update.md
+
+      - name: Dispatch build workflow
+        if: ${{ steps.upstream.outputs.changed == 'true' && github.event.inputs.dispatch_build == 'true' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LATEST_COMMIT: ${{ steps.upstream.outputs.latest_commit }}
+          LATEST_SHORT: ${{ steps.upstream.outputs.latest_short }}
+        run: |
+          set -euo pipefail
+
+          gh workflow run main.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref "$GITHUB_REF_NAME" \
+            -f gradle_task=':TMessagesProj_App:assembleArm64Release' \
+            -f upload_name='SingGram-arm64-release' \
+            -f publish_release=true \
+            -f prerelease=false \
+            -f release_notes="SingGram rebuild triggered after Telegram upstream update check.\n\n- Upstream latest: $LATEST_COMMIT"
