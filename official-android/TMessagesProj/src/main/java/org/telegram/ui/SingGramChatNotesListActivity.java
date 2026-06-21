@@ -2,7 +2,10 @@ package org.telegram.ui;
 
 import android.content.Context;
 import android.graphics.Color;
+import android.text.Editable;
+import android.text.InputType;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -20,11 +23,15 @@ import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.ActionBar.ThemeDescription;
+import org.telegram.ui.Components.EditTextBoldCursor;
 import org.telegram.ui.Components.LayoutHelper;
 
 import java.util.ArrayList;
 
 public class SingGramChatNotesListActivity extends BaseFragment {
+
+    private LinearLayout listSection;
+    private EditTextBoldCursor searchField;
 
     @Override
     public View createView(Context context) {
@@ -54,25 +61,68 @@ public class SingGramChatNotesListActivity extends BaseFragment {
         container.setPadding(0, AndroidUtilities.dp(12), 0, AndroidUtilities.dp(28));
         scrollView.addView(container, new ScrollView.LayoutParams(ScrollView.LayoutParams.MATCH_PARENT, ScrollView.LayoutParams.WRAP_CONTENT));
 
-        ArrayList<Long> dialogIds = SingGramChatNotesStore.getNotedDialogIds();
-        addHeader(context, container, LocaleController.formatString(R.string.SingGramChatNotesAllCount, dialogIds.size()));
-        LinearLayout section = addSection(context, container);
-        if (dialogIds.isEmpty()) {
-            addInfoCell(context, section, LocaleController.getString(R.string.SingGramChatNotesEmpty), "");
-        } else {
-            for (int i = 0; i < dialogIds.size(); i++) {
-                long dialogId = dialogIds.get(i);
-                if (i > 0) {
-                    addDivider(context, section);
-                }
-                addNoteCell(context, section, dialogId);
+        LinearLayout searchSection = addSection(context, container);
+        searchField = addSearchField(context, searchSection);
+        searchField.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
             }
-        }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                refreshNotes();
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+
+            }
+        });
+
+        addHeader(context, container, LocaleController.formatString(R.string.SingGramChatNotesAllCount, SingGramChatNotesStore.getNotesCount()));
+        listSection = addSection(context, container);
+        refreshNotes();
 
         LinearLayout actions = addSection(context, container);
         addButton(context, actions, LocaleController.getString(R.string.SingGramChatNotesCopyAll), v -> copyAll());
         addInfo(context, container, LocaleController.getString(R.string.SingGramChatNotesAllInfo));
         return fragmentView;
+    }
+
+    private void refreshNotes() {
+        if (listSection == null) {
+            return;
+        }
+        listSection.removeAllViews();
+        ArrayList<Long> dialogIds = SingGramChatNotesStore.getNotedDialogIds();
+        String query = searchField == null ? "" : searchField.getText().toString().trim().toLowerCase();
+        boolean added = false;
+        for (int i = 0; i < dialogIds.size(); i++) {
+            long dialogId = dialogIds.get(i);
+            if (!matchesQuery(dialogId, query)) {
+                continue;
+            }
+            if (added) {
+                addDivider(listSection.getContext(), listSection);
+            }
+            addNoteCell(listSection.getContext(), listSection, dialogId);
+            added = true;
+        }
+        if (!added) {
+            addInfoCell(listSection.getContext(), listSection, TextUtils.isEmpty(query) ? LocaleController.getString(R.string.SingGramChatNotesEmpty) : LocaleController.getString(R.string.SingGramChatNotesNoResults), "");
+        }
+    }
+
+    private boolean matchesQuery(long dialogId, String query) {
+        if (TextUtils.isEmpty(query)) {
+            return true;
+        }
+        String haystack = dialogId + " "
+                + SingGramChatNotesStore.getTags(dialogId) + " "
+                + SingGramChatNotesStore.getReminder(dialogId) + " "
+                + SingGramChatNotesStore.getNote(dialogId);
+        return haystack.toLowerCase().contains(query);
     }
 
     private void addNoteCell(Context context, LinearLayout container, long dialogId) {
@@ -114,6 +164,23 @@ public class SingGramChatNotesListActivity extends BaseFragment {
         }
         AndroidUtilities.addToClipboard(SingGramChatNotesStore.exportAllNotesText());
         Toast.makeText(getParentActivity(), LocaleController.getString(R.string.TextCopied), Toast.LENGTH_SHORT).show();
+    }
+
+    private EditTextBoldCursor addSearchField(Context context, LinearLayout container) {
+        EditTextBoldCursor editText = new EditTextBoldCursor(context);
+        editText.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        editText.setHintTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteHintText));
+        editText.setHintColor(Theme.getColor(Theme.key_windowBackgroundWhiteHintText));
+        editText.setCursorColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
+        editText.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
+        editText.setGravity((LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
+        editText.setPadding(AndroidUtilities.dp(16), 0, AndroidUtilities.dp(16), 0);
+        editText.setBackgroundColor(Color.TRANSPARENT);
+        editText.setSingleLine(true);
+        editText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        editText.setHint(LocaleController.getString(R.string.SingGramChatNotesSearchHint));
+        container.addView(editText, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 52));
+        return editText;
     }
 
     private LinearLayout addSection(Context context, LinearLayout container) {

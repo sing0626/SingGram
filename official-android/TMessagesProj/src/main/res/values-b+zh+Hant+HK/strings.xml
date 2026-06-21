@@ -310,6 +310,10 @@
     <string name="SingGramUpdateNotChecked">尚未檢查</string>
     <string name="SingGramUpdateAvailable">有新版本</string>
     <string name="SingGramUpdateCurrent">已是最新</string>
+    <string name="SingGramUpdateSameVersion">已安裝相同版本</string>
+    <string name="SingGramUpdateInstalledNewer">已安裝版本較新</string>
+    <string name="SingGramUpdateApkSize">APK 大小</string>
+    <string name="SingGramUpdateSha256">SHA-256</string>
     <string name="SingGramUpdateActions">動作</string>
     <string name="SingGramUpdateCheck">檢查更新</string>
     <string name="SingGramUpdateCheckInfo">讀取最新 GitHub Release manifest。</string>
@@ -330,4 +334,7 @@
     <string name="SingGramChatNotesCopyAll">複製所有聊天備註</string>
     <string name="SingGramChatNotesDialogValue">聊天 ID %1$s</string>
     <string name="SingGramAIAppendToChatNotes">存入聊天備註</string>
+    <string name="SingGramChatNotesSearchHint">搜尋備註、標籤或聊天 ID</string>
+    <string name="SingGramChatNotesNoResults">搵唔到符合嘅聊天備註。</string>
+    <string name="SingGramAISummarizeRecentChat">AI 摘要最近聊天</string>
 </resources>

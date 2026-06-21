@@ -1631,6 +1631,7 @@ public class ChatActivity extends BaseFragment implements
     private final static int singgram_settings = 75;
     private final static int singgram_chat_notes = 76;
     private final static int singgram_toggle_ghost = 77;
+    private final static int singgram_ai_recent_summary = 78;
 
     private final static int id_chat_compose_panel = 1000;
 
@@ -3906,6 +3907,8 @@ public class ChatActivity extends BaseFragment implements
                     presentFragment(new SingGramChatNotesActivity(getDialogId()));
                 } else if (id == singgram_toggle_ghost) {
                     toggleSingGramGhostForCurrentChat();
+                } else if (id == singgram_ai_recent_summary) {
+                    runSingGramAiForRecentChat();
                 } else if (id == search) {
                     openSearchWithText(isSupportedTags() ? "" : null);
                 } else if (id == translate) {
@@ -4326,6 +4329,7 @@ public class ChatActivity extends BaseFragment implements
             }
             if (chatMode == MODE_DEFAULT && dialog_id != 0 && !isInsideContainer && !isInPreviewMode()) {
                 headerItem.lazilyAddSubItem(singgram_settings, R.drawable.premium_ai_editor, LocaleController.getString(R.string.SingGramSettingsTitle));
+                headerItem.lazilyAddSubItem(singgram_ai_recent_summary, R.drawable.premium_ai_editor, LocaleController.getString(R.string.SingGramAISummarizeRecentChat));
                 headerItem.lazilyAddSubItem(singgram_chat_notes, R.drawable.msg_addbio, LocaleController.getString(SingGramChatNotesStore.hasNotes(dialog_id) ? R.string.SingGramChatNotesView : R.string.SingGramChatNotes));
                 if (dialog_id != getUserConfig().getClientUserId() && currentEncryptedChat == null) {
                     headerItem.lazilyAddSubItem(singgram_toggle_ghost, R.drawable.msg_secret, LocaleController.getString(SingGramConfig.isGhostModeForDialog(dialog_id) ? R.string.SingGramUnghostThisChat : R.string.SingGramGhostThisChat));
@@ -32666,6 +32670,62 @@ public class ChatActivity extends BaseFragment implements
             builder.setNeutralButton(LocaleController.getString(R.string.OK), null);
         }
         showDialog(builder.create());
+    }
+
+    private void runSingGramAiForRecentChat() {
+        if (getParentActivity() == null) {
+            return;
+        }
+        String input = buildSingGramRecentChatInput();
+        if (TextUtils.isEmpty(input)) {
+            BulletinFactory.of(this).createErrorBulletin(LocaleController.getString(R.string.SingGramAIEmptyInput), themeDelegate).show();
+            return;
+        }
+        AlertDialog progressDialog = new AlertDialog(getParentActivity(), AlertDialog.ALERT_TYPE_SPINNER);
+        progressDialog.setCanCancel(false);
+        progressDialog.show();
+        SingGramAiClient.runTextAction(SingGramAiClient.ACTION_SUMMARIZE, input, new SingGramAiClient.Callback() {
+            @Override
+            public void onResult(String text) {
+                try {
+                    progressDialog.dismiss();
+                } catch (Exception ignore) {
+
+                }
+                showSingGramAiResult(SingGramAiClient.ACTION_SUMMARIZE, getDialogId(), text);
+            }
+
+            @Override
+            public void onError(String error) {
+                try {
+                    progressDialog.dismiss();
+                } catch (Exception ignore) {
+
+                }
+                BulletinFactory.of(ChatActivity.this).createErrorBulletin(error, themeDelegate).show();
+            }
+        });
+    }
+
+    private String buildSingGramRecentChatInput() {
+        StringBuilder builder = new StringBuilder();
+        builder.append("Summarize these recent chat messages. Extract key points, decisions, follow-up tasks, dates, and suggested replies where useful.\n\n");
+        int added = 0;
+        for (int i = 0; i < messages.size() && added < 50 && builder.length() < 12000; i++) {
+            MessageObject messageObject = messages.get(i);
+            if (messageObject == null || messageObject.isAnimatedEmoji() || messageObject.isDice()) {
+                continue;
+            }
+            CharSequence text = getSingGramAiSourceText(messageObject, null);
+            if (TextUtils.isEmpty(text)) {
+                continue;
+            }
+            builder.append(messageObject.isOut() ? "Me: " : "Peer: ")
+                    .append(text.toString().replace('\n', ' ').trim())
+                    .append('\n');
+            added++;
+        }
+        return added == 0 ? "" : builder.toString();
     }
 
     private void appendSingGramAiResultToChatNotes(long dialogId, int action, String text) {

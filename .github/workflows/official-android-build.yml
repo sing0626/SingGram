@@ -16,6 +16,11 @@ on:
         required: true
         type: boolean
         default: false
+      auto_bump_version:
+        description: Increment APP_VERSION_CODE before publishing a release
+        required: true
+        type: boolean
+        default: true
       prerelease:
         description: Mark the GitHub Release as a pre-release
         required: true
@@ -112,6 +117,24 @@ jobs:
           mkdir -p official-android/TMessagesProj/config
           echo "$RELEASE_KEYSTORE_BASE64" | base64 --decode > official-android/TMessagesProj/config/release.keystore
 
+      - name: Bump Android versionCode
+        if: ${{ inputs.publish_release && inputs.auto_bump_version }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PROPS="official-android/gradle.properties"
+          CURRENT="$(sed -n 's/^APP_VERSION_CODE=//p' "$PROPS")"
+          test -n "$CURRENT"
+          NEXT="$((CURRENT + 1))"
+          perl -0pi -e "s/APP_VERSION_CODE=\\d+/APP_VERSION_CODE=$NEXT/" "$PROPS"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$PROPS"
+          git commit -m "Bump SingGram Android versionCode to $NEXT"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+
       - name: Build APK
         run: scripts/build_official_android.sh
 
@@ -153,6 +176,7 @@ jobs:
           NOTES="${RELEASE_NOTES_INPUT:-SingGram public build.}"
           NOTES="${NOTES//\\n/$'\n'}"
           SHA256="$(shasum -a 256 release/SingGram-arm64-release.apk | awk '{print $1}')"
+          APK_SIZE_BYTES="$(stat -c%s release/SingGram-arm64-release.apk)"
           APK_URL="https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/SingGram-arm64-release.apk"
           PUBLISHED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
@@ -161,6 +185,7 @@ jobs:
             --arg versionName "$VERSION_NAME" \
             --arg apkUrl "$APK_URL" \
             --arg sha256 "$SHA256" \
+            --argjson apkSizeBytes "$APK_SIZE_BYTES" \
             --arg notesText "$NOTES" \
             --arg publishedAt "$PUBLISHED_AT" \
             --argjson changes "$(printf '%s\n' "$NOTES" | jq -R -s 'split("\n") | map(gsub("^[-*] "; "") | select(length > 0))')" \
@@ -169,6 +194,7 @@ jobs:
               versionName: $versionName,
               apkUrl: $apkUrl,
               sha256: $sha256,
+              apkSizeBytes: $apkSizeBytes,
               notes: $notesText,
               notesText: $notesText,
               changes: $changes,

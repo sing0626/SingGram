@@ -82,6 +82,14 @@ public class SingGramUpdateActivity extends BaseFragment {
             addInfoCell(context, latestSection, LocaleController.getString(R.string.SingGramDoctorVersion), valueOrDash(updateInfo.versionName));
             addDivider(context, latestSection);
             addInfoCell(context, latestSection, LocaleController.getString(R.string.SingGramUpdateVersionCode), updateInfo.versionCode <= 0 ? "-" : String.valueOf(updateInfo.versionCode));
+            if (updateInfo.apkSizeBytes > 0) {
+                addDivider(context, latestSection);
+                addInfoCell(context, latestSection, LocaleController.getString(R.string.SingGramUpdateApkSize), AndroidUtilities.formatFileSize(updateInfo.apkSizeBytes));
+            }
+            if (!TextUtils.isEmpty(updateInfo.sha256)) {
+                addDivider(context, latestSection);
+                addInfoCell(context, latestSection, LocaleController.getString(R.string.SingGramUpdateSha256), updateInfo.sha256);
+            }
             if (!TextUtils.isEmpty(updateInfo.publishedAt)) {
                 addDivider(context, latestSection);
                 addInfoCell(context, latestSection, LocaleController.getString(R.string.SingGramUpdatePublishedAt), updateInfo.publishedAt);
@@ -114,7 +122,7 @@ public class SingGramUpdateActivity extends BaseFragment {
         if (TextUtils.isEmpty(updateInfo.sha256)) {
             return updateInfo.apkUrl;
         }
-        return updateInfo.apkUrl + "\nSHA-256 " + updateInfo.sha256;
+        return updateInfo.apkUrl;
     }
 
     private String notesValue() {

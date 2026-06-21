@@ -26,6 +26,7 @@ public class SingGramUpdateClient {
         public String versionName;
         public String apkUrl;
         public String sha256;
+        public long apkSizeBytes;
         public String notes;
         public String publishedAt;
 
@@ -35,10 +36,19 @@ public class SingGramUpdateClient {
 
         public String summary() {
             String version = TextUtils.isEmpty(versionName) ? "SingGram" : versionName;
-            String state = hasUpdate()
-                    ? LocaleController.getString(R.string.SingGramUpdateAvailable)
-                    : LocaleController.getString(R.string.SingGramUpdateCurrent);
-            return version + " / " + state;
+            return version + " / " + statusText();
+        }
+
+        public String statusText() {
+            int current = SharedConfig.buildVersion();
+            if (versionCode <= 0) {
+                return LocaleController.getString(R.string.SingGramUpdateNotChecked);
+            } else if (versionCode > current) {
+                return LocaleController.getString(R.string.SingGramUpdateAvailable);
+            } else if (versionCode == current) {
+                return LocaleController.getString(R.string.SingGramUpdateSameVersion);
+            }
+            return LocaleController.getString(R.string.SingGramUpdateInstalledNewer);
         }
     }
 
@@ -75,6 +85,7 @@ public class SingGramUpdateClient {
         info.versionName = object.optString("versionName", "");
         info.apkUrl = object.optString("apkUrl", "");
         info.sha256 = object.optString("sha256", "");
+        info.apkSizeBytes = object.optLong("apkSizeBytes", 0);
         info.publishedAt = object.optString("publishedAt", "");
 
         String notesText = object.optString("notesText", "");

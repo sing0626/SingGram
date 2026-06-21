@@ -11019,6 +11019,10 @@
     <string name="SingGramUpdateNotChecked">Not checked yet</string>
     <string name="SingGramUpdateAvailable">Update available</string>
     <string name="SingGramUpdateCurrent">Up to date</string>
+    <string name="SingGramUpdateSameVersion">Same version installed</string>
+    <string name="SingGramUpdateInstalledNewer">Installed build is newer</string>
+    <string name="SingGramUpdateApkSize">APK size</string>
+    <string name="SingGramUpdateSha256">SHA-256</string>
     <string name="SingGramUpdateActions">Actions</string>
     <string name="SingGramUpdateCheck">Check for updates</string>
     <string name="SingGramUpdateCheckInfo">Read the latest GitHub release manifest.</string>
@@ -11039,4 +11043,7 @@
     <string name="SingGramChatNotesCopyAll">Copy all chat notes</string>
     <string name="SingGramChatNotesDialogValue">Chat ID %1$s</string>
     <string name="SingGramAIAppendToChatNotes">Save to chat notes</string>
+    <string name="SingGramChatNotesSearchHint">Search notes, tags or chat ID</string>
+    <string name="SingGramChatNotesNoResults">No matching chat notes.</string>
+    <string name="SingGramAISummarizeRecentChat">AI summarize recent chat</string>
 </resources>
