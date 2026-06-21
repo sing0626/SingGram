@@ -1628,6 +1628,9 @@ public class ChatActivity extends BaseFragment implements
     private final static int charge_fee = 72;
 
     private final static int chat_menu_topic_create = 73;
+    private final static int singgram_settings = 75;
+    private final static int singgram_chat_notes = 76;
+    private final static int singgram_toggle_ghost = 77;
 
     private final static int id_chat_compose_panel = 1000;
 
@@ -3897,6 +3900,12 @@ public class ChatActivity extends BaseFragment implements
                     getSendMessagesHelper().sendMessage(SendMessagesHelper.SendMessageParams.of("/help", dialog_id, null, null, null, false, null, null, null, true, 0, 0, null, false));
                 } else if (id == bot_settings) {
                     getSendMessagesHelper().sendMessage(SendMessagesHelper.SendMessageParams.of("/settings", dialog_id, null, null, null, false, null, null, null, true, 0, 0, null, false));
+                } else if (id == singgram_settings) {
+                    presentFragment(new SingGramSettingsActivity());
+                } else if (id == singgram_chat_notes) {
+                    presentFragment(new SingGramChatNotesActivity(getDialogId()));
+                } else if (id == singgram_toggle_ghost) {
+                    toggleSingGramGhostForCurrentChat();
                 } else if (id == search) {
                     openSearchWithText(isSupportedTags() ? "" : null);
                 } else if (id == translate) {
@@ -4314,6 +4323,13 @@ public class ChatActivity extends BaseFragment implements
 
             if (searchItem != null) {
                 headerItem.lazilyAddSubItem(search, R.drawable.msg_search, LocaleController.getString(R.string.Search));
+            }
+            if (chatMode == MODE_DEFAULT && dialog_id != 0 && !isInsideContainer && !isInPreviewMode()) {
+                headerItem.lazilyAddSubItem(singgram_settings, R.drawable.premium_ai_editor, LocaleController.getString(R.string.SingGramSettingsTitle));
+                headerItem.lazilyAddSubItem(singgram_chat_notes, R.drawable.msg_addbio, LocaleController.getString(SingGramChatNotesStore.hasNotes(dialog_id) ? R.string.SingGramChatNotesView : R.string.SingGramChatNotes));
+                if (dialog_id != getUserConfig().getClientUserId() && currentEncryptedChat == null) {
+                    headerItem.lazilyAddSubItem(singgram_toggle_ghost, R.drawable.msg_secret, LocaleController.getString(SingGramConfig.isGhostModeForDialog(dialog_id) ? R.string.SingGramUnghostThisChat : R.string.SingGramGhostThisChat));
+                }
             }
             if (ChatObject.isBoostSupported(currentChat) && (getUserConfig().isPremium() || ChatObject.isBoosted(chatInfo) || ChatObject.hasAdminRights(currentChat))) {
                 RLottieDrawable drawable = new RLottieDrawable(R.raw.boosts, "" + R.raw.boosts, dp(24), dp(24));
@@ -32604,7 +32620,7 @@ public class ChatActivity extends BaseFragment implements
                 } catch (Exception ignore) {
 
                 }
-                showSingGramAiResult(action, text);
+                showSingGramAiResult(action, getDialogId(), text);
             }
 
             @Override
@@ -32619,7 +32635,7 @@ public class ChatActivity extends BaseFragment implements
         });
     }
 
-    private void showSingGramAiResult(int action, String text) {
+    private void showSingGramAiResult(int action, long dialogId, String text) {
         if (getParentActivity() == null) {
             return;
         }
@@ -32630,14 +32646,36 @@ public class ChatActivity extends BaseFragment implements
             AndroidUtilities.addToClipboard(text);
             BulletinFactory.of(ChatActivity.this).createCopyBulletin(LocaleController.getString(R.string.TextCopied)).show();
         });
-        if (chatActivityEnterView != null && SingGramConfig.isAiInsertResultEnabled()) {
+        if (dialogId != 0) {
+            builder.setNegativeButton(LocaleController.getString(R.string.SingGramAIAppendToChatNotes), (dialog, which) -> {
+                appendSingGramAiResultToChatNotes(dialogId, action, text);
+                BulletinFactory.of(ChatActivity.this).createSimpleBulletin(R.raw.contact_check, LocaleController.getString(R.string.SingGramChatNotesSaved)).show();
+            });
+        } else if (chatActivityEnterView != null && SingGramConfig.isAiInsertResultEnabled()) {
             builder.setNegativeButton(LocaleController.getString(R.string.SingGramAIInsertInput), (dialog, which) -> {
                 chatActivityEnterView.setFieldText(text);
                 chatActivityEnterView.openKeyboard();
             });
         }
-        builder.setNeutralButton(LocaleController.getString(R.string.OK), null);
+        if (chatActivityEnterView != null && SingGramConfig.isAiInsertResultEnabled() && dialogId != 0) {
+            builder.setNeutralButton(LocaleController.getString(R.string.SingGramAIInsertInput), (dialog, which) -> {
+                chatActivityEnterView.setFieldText(text);
+                chatActivityEnterView.openKeyboard();
+            });
+        } else {
+            builder.setNeutralButton(LocaleController.getString(R.string.OK), null);
+        }
         showDialog(builder.create());
+    }
+
+    private void appendSingGramAiResultToChatNotes(long dialogId, int action, String text) {
+        String current = SingGramChatNotesStore.getNote(dialogId);
+        StringBuilder builder = new StringBuilder();
+        if (!TextUtils.isEmpty(current)) {
+            builder.append(current.trim()).append("\n\n");
+        }
+        builder.append("[").append(SingGramAiClient.getActionTitle(action)).append("]\n").append(text == null ? "" : text.trim());
+        SingGramChatNotesStore.setNote(dialogId, builder.toString());
     }
 
     private void showSingGramAiActionMenu() {

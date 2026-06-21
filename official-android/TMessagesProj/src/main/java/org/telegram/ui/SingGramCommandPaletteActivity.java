@@ -19,6 +19,7 @@ import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SingGramBackupBundle;
+import org.telegram.messenger.SingGramChatNotesStore;
 import org.telegram.messenger.SingGramConfig;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.BaseFragment;
@@ -130,6 +131,7 @@ public class SingGramCommandPaletteActivity extends BaseFragment {
         commands.add(new Command(LocaleController.getString(R.string.SingGramDoctor), LocaleController.getString(R.string.SingGramDoctorInfo), () -> presentFragment(new SingGramDoctorActivity())));
         commands.add(new Command(LocaleController.getString(R.string.SingGramAccountOverview), LocaleController.getString(R.string.SingGramAccountOverviewInfo), () -> presentFragment(new SingGramAccountOverviewActivity())));
         commands.add(new Command(LocaleController.getString(R.string.SingGramAccountProfiles), LocaleController.getString(R.string.SingGramAccountProfilesInfo), () -> presentFragment(new SingGramAccountProfilesActivity())));
+        commands.add(new Command(LocaleController.getString(R.string.SingGramChatNotesAll), LocaleController.formatString(R.string.SingGramChatNotesAllCount, SingGramChatNotesStore.getNotesCount()), () -> presentFragment(new SingGramChatNotesListActivity())));
         commands.add(new Command(LocaleController.getString(R.string.SingGramGhostManager), LocaleController.formatString(R.string.SingGramGhostManagerSummary, SingGramConfig.getGhostDialogCount(), SingGramConfig.getReadReceiptsAllowedDialogCount()), () -> presentFragment(new SingGramGhostManagerActivity())));
         commands.add(new Command(LocaleController.getString(R.string.SingGramDownloadStatus), LocaleController.getString(R.string.SingGramDownloadStatusInfo), () -> presentFragment(new SingGramDownloadStatusActivity())));
         commands.add(new Command(LocaleController.getString(R.string.SingGramLiquidGlassStudio), LocaleController.getString(R.string.SingGramLiquidGlassStudioInfo), () -> presentFragment(new SingGramLiquidGlassStudioActivity())));

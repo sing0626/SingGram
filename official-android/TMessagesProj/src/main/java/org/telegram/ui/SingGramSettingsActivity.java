@@ -22,6 +22,7 @@ import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SingGramAiClient;
 import org.telegram.messenger.SingGramBackupBundle;
+import org.telegram.messenger.SingGramChatNotesStore;
 import org.telegram.messenger.SingGramConfig;
 import org.telegram.messenger.SingGramDownloadStats;
 import org.telegram.messenger.SingGramEventLog;
@@ -157,6 +158,8 @@ public class SingGramSettingsActivity extends BaseFragment {
         addSwitchSetting(context, chatSection, LocaleController.getString(R.string.SingGramAIReplyIdeasSwitch), LocaleController.getString(R.string.SingGramAIReplyIdeasSwitchInfo), SingGramConfig.isQuickReplyIdeasEnabled(), SingGramConfig::setQuickReplyIdeasEnabled, false);
         addDivider(context, chatSection);
         addSwitchSetting(context, chatSection, LocaleController.getString(R.string.SingGramAIInsertResultSwitch), LocaleController.getString(R.string.SingGramAIInsertResultSwitchInfo), SingGramConfig.isAiInsertResultEnabled(), SingGramConfig::setAiInsertResultEnabled, false);
+        addDivider(context, chatSection);
+        addActionCell(context, chatSection, LocaleController.getString(R.string.SingGramChatNotesAll), LocaleController.formatString(R.string.SingGramChatNotesAllCount, SingGramChatNotesStore.getNotesCount()), true, v -> presentFragment(new SingGramChatNotesListActivity()));
 
         addHeader(context, container, LocaleController.getString(R.string.SingGramDownload));
         LinearLayout downloadSection = addSection(context, container);
@@ -348,6 +351,8 @@ public class SingGramSettingsActivity extends BaseFragment {
         LinearLayout toolsSection = addSection(context, container);
         addIconActionCell(context, toolsSection, LocaleController.getString(R.string.SingGramCommandPalette), LocaleController.getString(R.string.SingGramCommandPaletteInfo), R.drawable.premium_ai_editor, 0xFF23B9C9, 0xFF2684E8, true, v -> presentFragment(new SingGramCommandPaletteActivity()));
         addDivider(context, toolsSection);
+        addIconActionCell(context, toolsSection, LocaleController.getString(R.string.SingGramChatNotesAll), LocaleController.formatString(R.string.SingGramChatNotesAllCount, SingGramChatNotesStore.getNotesCount()), R.drawable.msg_addbio, 0xFF55CA47, 0xFF27B434, true, v -> presentFragment(new SingGramChatNotesListActivity()));
+        addDivider(context, toolsSection);
         addIconActionCell(context, toolsSection, LocaleController.getString(R.string.SingGramUpdates), updateSummaryValue(), R.drawable.settings_features, 0xFF4EA5F6, 0xFF3577E5, true, v -> presentFragment(new SingGramUpdateActivity()));
         addDivider(context, toolsSection);
         addIconActionCell(context, toolsSection, LocaleController.getString(R.string.SingGramDoctor), LocaleController.getString(R.string.SingGramDoctorInfo), R.drawable.settings_power, 0xFFFF8B3D, 0xFFE45644, true, v -> presentFragment(new SingGramDoctorActivity()));
@@ -416,6 +421,8 @@ public class SingGramSettingsActivity extends BaseFragment {
         addSwitchSetting(context, chatSection, LocaleController.getString(R.string.SingGramAIReplyIdeasSwitch), LocaleController.getString(R.string.SingGramAIReplyIdeasSwitchInfo), SingGramConfig.isQuickReplyIdeasEnabled(), SingGramConfig::setQuickReplyIdeasEnabled, false);
         addDivider(context, chatSection);
         addSwitchSetting(context, chatSection, LocaleController.getString(R.string.SingGramAIInsertResultSwitch), LocaleController.getString(R.string.SingGramAIInsertResultSwitchInfo), SingGramConfig.isAiInsertResultEnabled(), SingGramConfig::setAiInsertResultEnabled, false);
+        addDivider(context, chatSection);
+        addActionCell(context, chatSection, LocaleController.getString(R.string.SingGramChatNotesAll), LocaleController.formatString(R.string.SingGramChatNotesAllCount, SingGramChatNotesStore.getNotesCount()), true, v -> presentFragment(new SingGramChatNotesListActivity()));
 
         addHeader(context, container, LocaleController.getString(R.string.SingGramAI));
         LinearLayout aiSection = addSection(context, container);

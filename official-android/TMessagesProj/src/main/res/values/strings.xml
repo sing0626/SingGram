@@ -11033,4 +11033,10 @@
     <string name="SingGramUpdateCopyNotesInfo">Copy the release notes shown in update.json.</string>
     <string name="SingGramUpdateNotesCopied">Update notes copied</string>
     <string name="SingGramUpdateInfo">Updates are read from the public SingGram GitHub Release update.json. APK installation is still handled by Android/browser.</string>
+    <string name="SingGramChatNotesAll">All chat notes</string>
+    <string name="SingGramChatNotesAllCount">%1$d noted chats</string>
+    <string name="SingGramChatNotesAllInfo">Tap a row to edit that chat note. Notes stay local on this device.</string>
+    <string name="SingGramChatNotesCopyAll">Copy all chat notes</string>
+    <string name="SingGramChatNotesDialogValue">Chat ID %1$s</string>
+    <string name="SingGramAIAppendToChatNotes">Save to chat notes</string>
 </resources>

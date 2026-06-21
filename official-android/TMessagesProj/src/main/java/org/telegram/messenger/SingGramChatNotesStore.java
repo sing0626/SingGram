@@ -6,6 +6,8 @@ import android.text.TextUtils;
 import android.util.Base64;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Map;
 
 public class SingGramChatNotesStore {
@@ -53,6 +55,41 @@ public class SingGramChatNotesStore {
         return !TextUtils.isEmpty(getNote(dialogId)) || !TextUtils.isEmpty(getTags(dialogId)) || !TextUtils.isEmpty(getReminder(dialogId));
     }
 
+    public static int getNotesCount() {
+        return getNotedDialogIds().size();
+    }
+
+    public static ArrayList<Long> getNotedDialogIds() {
+        SharedPreferences preferences = prefs();
+        ArrayList<Long> dialogIds = new ArrayList<>();
+        if (preferences == null) {
+            return dialogIds;
+        }
+        for (String key : preferences.getAll().keySet()) {
+            String id = null;
+            if (key.startsWith(KEY_NOTE)) {
+                id = key.substring(KEY_NOTE.length());
+            } else if (key.startsWith(KEY_TAGS)) {
+                id = key.substring(KEY_TAGS.length());
+            } else if (key.startsWith(KEY_REMINDER)) {
+                id = key.substring(KEY_REMINDER.length());
+            }
+            if (TextUtils.isEmpty(id)) {
+                continue;
+            }
+            try {
+                long dialogId = Long.parseLong(id);
+                if (hasNotes(dialogId) && !dialogIds.contains(dialogId)) {
+                    dialogIds.add(dialogId);
+                }
+            } catch (Exception ignore) {
+
+            }
+        }
+        Collections.sort(dialogIds);
+        return dialogIds;
+    }
+
     public static String exportNote(long dialogId) {
         StringBuilder builder = new StringBuilder();
         builder.append("SingGram chat notes\n");
@@ -87,6 +124,19 @@ public class SingGramChatNotesStore {
                 continue;
             }
             builder.append(bundleKey).append(": ").append(encode((String) value)).append('\n');
+        }
+        return builder.toString();
+    }
+
+    public static String exportAllNotesText() {
+        StringBuilder builder = new StringBuilder("SingGram chat notes\n");
+        ArrayList<Long> dialogIds = getNotedDialogIds();
+        for (int i = 0; i < dialogIds.size(); i++) {
+            long dialogId = dialogIds.get(i);
+            if (i > 0) {
+                builder.append("\n\n---\n");
+            }
+            builder.append(exportNote(dialogId));
         }
         return builder.toString();
     }

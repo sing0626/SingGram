@@ -324,4 +324,10 @@
     <string name="SingGramUpdateCopyNotesInfo">複製 update.json 入面顯示的 release notes。</string>
     <string name="SingGramUpdateNotesCopied">更新日誌已複製</string>
     <string name="SingGramUpdateInfo">更新資料來自公開 SingGram GitHub Release update.json。APK 安裝仍由 Android/瀏覽器處理。</string>
+    <string name="SingGramChatNotesAll">所有聊天備註</string>
+    <string name="SingGramChatNotesAllCount">%1$d 個聊天有備註</string>
+    <string name="SingGramChatNotesAllInfo">撳一列就可以改嗰個聊天備註。備註只會留喺呢部裝置。</string>
+    <string name="SingGramChatNotesCopyAll">複製所有聊天備註</string>
+    <string name="SingGramChatNotesDialogValue">聊天 ID %1$s</string>
+    <string name="SingGramAIAppendToChatNotes">存入聊天備註</string>
 </resources>
