@@ -3,5 +3,9 @@
   "ref": "master",
   "importedCommit": "9fea7264",
   "importedVersion": "12.7.3",
-  "importedVersionCode": "6750"
+  "importedVersionCode": "6750",
+  "pendingCommit": "9b50143d8896d255d03155598937e4f3e28afd86",
+  "pendingVersion": "12.7.3",
+  "lastCheckedAt": 1782246137.795894,
+  "lastCheckedCommit": "9b50143d8896d255d03155598937e4f3e28afd86"
 }
