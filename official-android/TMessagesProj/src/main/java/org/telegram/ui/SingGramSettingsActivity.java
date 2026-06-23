@@ -347,6 +347,16 @@ public class SingGramSettingsActivity extends BaseFragment {
             Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramLiquidGlassChanged), Toast.LENGTH_SHORT).show();
         }, false);
 
+        addHeader(context, container, LocaleController.getString(R.string.SingGramPreset));
+        LinearLayout presetSection = addSection(context, container);
+        addActionCell(context, presetSection, LocaleController.getString(R.string.SingGramPresetStatus), singGramPresetStatusValue(), false, null);
+        addDivider(context, presetSection);
+        addIconActionCell(context, presetSection, LocaleController.getString(R.string.SingGramPresetStealth), LocaleController.getString(R.string.SingGramPresetStealthInfo), R.drawable.settings_privacy, 0xFF4B8DFF, 0xFF7D4BFF, true, v -> applySingGramPreset(0));
+        addDivider(context, presetSection);
+        addIconActionCell(context, presetSection, LocaleController.getString(R.string.SingGramPresetDaily), LocaleController.getString(R.string.SingGramPresetDailyInfo), R.drawable.settings_features, 0xFF55CA47, 0xFF27B434, true, v -> applySingGramPreset(1));
+        addDivider(context, presetSection);
+        addIconActionCell(context, presetSection, LocaleController.getString(R.string.SingGramPresetPerformance), LocaleController.getString(R.string.SingGramPresetPerformanceInfo), R.drawable.settings_data, 0xFFFF8B3D, 0xFFE45644, true, v -> applySingGramPreset(2));
+
         addHeader(context, container, LocaleController.getString(R.string.SingGramTools));
         LinearLayout toolsSection = addSection(context, container);
         addIconActionCell(context, toolsSection, LocaleController.getString(R.string.SingGramCommandPalette), LocaleController.getString(R.string.SingGramCommandPaletteInfo), R.drawable.premium_ai_editor, 0xFF23B9C9, 0xFF2684E8, true, v -> presentFragment(new SingGramCommandPaletteActivity()));
@@ -681,6 +691,54 @@ public class SingGramSettingsActivity extends BaseFragment {
         showDialog(builder.create());
     }
 
+    private void applySingGramPreset(int preset) {
+        switch (preset) {
+            case 0:
+                SingGramConfig.setGhostModeEnabled(true);
+                SingGramConfig.setGhostSelectedChatsOnly(false);
+                SingGramConfig.setDisableReadReceiptsEnabled(true);
+                SingGramConfig.setHideTypingStatusEnabled(true);
+                SingGramConfig.setKeepDeletedMessages(true);
+                SingGramConfig.setKeepOriginalEdits(true);
+                SingGramConfig.setAiEnabled(true);
+                SingGramConfig.setAiContextMenuEnabled(true);
+                SingGramConfig.setAiTranslateActionEnabled(true);
+                SingGramConfig.setQuickReplyIdeasEnabled(true);
+                SingGramConfig.setLiquidGlassEnabled(true);
+                SingGramConfig.setLiquidGlassLevel(1);
+                SingGramConfig.setDownloadBoostEnabled(false);
+                break;
+            case 2:
+                SingGramConfig.setGhostModeEnabled(false);
+                SingGramConfig.setKeepDeletedMessages(false);
+                SingGramConfig.setKeepOriginalEdits(false);
+                SingGramConfig.setAiEnabled(false);
+                SingGramConfig.setDownloadBoostEnabled(true);
+                SingGramConfig.setDownloadBoostLevel(2);
+                SingGramConfig.setLiquidGlassEnabled(false);
+                SingGramConfig.setCrashSafeModeEnabled(false);
+                break;
+            case 1:
+            default:
+                SingGramConfig.setGhostModeEnabled(false);
+                SingGramConfig.setKeepDeletedMessages(true);
+                SingGramConfig.setKeepOriginalEdits(true);
+                SingGramConfig.setAiEnabled(true);
+                SingGramConfig.setAiContextMenuEnabled(true);
+                SingGramConfig.setAiTranslateActionEnabled(true);
+                SingGramConfig.setQuickReplyIdeasEnabled(true);
+                SingGramConfig.setDownloadBoostEnabled(true);
+                SingGramConfig.setDownloadBoostLevel(1);
+                SingGramConfig.setLiquidGlassEnabled(true);
+                SingGramConfig.setLiquidGlassLevel(1);
+                SingGramConfig.setCrashSafeModeEnabled(false);
+                break;
+        }
+        Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramPresetApplied), Toast.LENGTH_SHORT).show();
+        removeSelfFromStack();
+        presentFragment(new SingGramSettingsActivity());
+    }
+
     private void testNewApiConnection() {
         saveSettings();
         AlertDialog progressDialog = new AlertDialog(getParentActivity(), AlertDialog.ALERT_TYPE_SPINNER);
@@ -728,6 +786,43 @@ public class SingGramSettingsActivity extends BaseFragment {
                 ? LocaleController.getString(R.string.SingGramUpdateAvailable)
                 : LocaleController.getString(R.string.SingGramUpdateCurrent);
         return version + " / " + state;
+    }
+
+    private String singGramPresetStatusValue() {
+        int active = 0;
+        if (SingGramConfig.isGhostModeEnabled()) {
+            active++;
+        }
+        if (SingGramConfig.isDisableReadReceiptsEnabled()) {
+            active++;
+        }
+        if (SingGramConfig.isHideTypingStatusEnabled()) {
+            active++;
+        }
+        if (SingGramConfig.shouldKeepDeletedMessages()) {
+            active++;
+        }
+        if (SingGramConfig.shouldKeepOriginalEdits()) {
+            active++;
+        }
+        if (SingGramConfig.isAiEnabled()) {
+            active++;
+        }
+        if (SingGramConfig.isDownloadBoostEnabled()) {
+            active++;
+        }
+        if (SingGramConfig.isLiquidGlassEnabled()) {
+            active++;
+        }
+        String mode;
+        if (SingGramConfig.isGhostModeEnabled() && SingGramConfig.shouldDisableReadReceipts() && SingGramConfig.shouldHideTypingStatus()) {
+            mode = LocaleController.getString(R.string.SingGramPresetStealth);
+        } else if (SingGramConfig.isDownloadBoostEnabled() && SingGramConfig.getDownloadBoostLevel() >= 2 && !SingGramConfig.isLiquidGlassEnabled()) {
+            mode = LocaleController.getString(R.string.SingGramPresetPerformance);
+        } else {
+            mode = LocaleController.getString(R.string.SingGramPresetDaily);
+        }
+        return LocaleController.formatString(R.string.SingGramPresetStatusValue, active, 8, mode);
     }
 
     private void copyDiagnostics() {

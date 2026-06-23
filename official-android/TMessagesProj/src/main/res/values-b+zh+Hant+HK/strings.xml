@@ -23,6 +23,16 @@
     <string name="SingGramAppearanceSummary">Liquid Glass 同外觀調校</string>
     <string name="SingGramDiagnosticsSummary">安全模式、記錄同版本資訊</string>
     <string name="SingGramSettingsHomeInfo">揀一個分類入去，再調整入面嘅 SingGram 功能。</string>
+    <string name="SingGramPreset">推薦配置</string>
+    <string name="SingGramPresetStatus">目前 SingGram 模式</string>
+    <string name="SingGramPresetStatusValue">已開 %1$d/%2$d 項功能 / %3$s</string>
+    <string name="SingGramPresetStealth">隱身模式</string>
+    <string name="SingGramPresetStealthInfo">Ghost、已讀保護、防刪防改、AI 同 Liquid Glass。</string>
+    <string name="SingGramPresetDaily">日常模式</string>
+    <string name="SingGramPresetDailyInfo">平衡 AI、保護、下載加速同 Liquid Glass。</string>
+    <string name="SingGramPresetPerformance">效能模式</string>
+    <string name="SingGramPresetPerformanceInfo">下載加速開到最高，暫停較重嘅外觀同 AI 工具。</string>
+    <string name="SingGramPresetApplied">已套用 SingGram 配置。</string>
     <string name="SingGramAI">SingGram AI</string>
     <string name="SingGramAIEnableTools">啟用 AI 工具</string>
     <string name="SingGramAIBaseUrl">NewAPI 網址</string>

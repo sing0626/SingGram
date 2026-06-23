@@ -10716,6 +10716,16 @@
     <string name="SingGramAppearanceSummary">Liquid Glass and visual tuning</string>
     <string name="SingGramDiagnosticsSummary">Safe mode, logs and build info</string>
     <string name="SingGramSettingsHomeInfo">Choose a category to tune its SingGram options.</string>
+    <string name="SingGramPreset">Recommended presets</string>
+    <string name="SingGramPresetStatus">Current SingGram mode</string>
+    <string name="SingGramPresetStatusValue">%1$d/%2$d features active / %3$s</string>
+    <string name="SingGramPresetStealth">Stealth mode</string>
+    <string name="SingGramPresetStealthInfo">Ghost, read protection, edit/delete archive, AI and Liquid Glass.</string>
+    <string name="SingGramPresetDaily">Daily mode</string>
+    <string name="SingGramPresetDailyInfo">Balanced AI, protection, download boost and Liquid Glass.</string>
+    <string name="SingGramPresetPerformance">Performance mode</string>
+    <string name="SingGramPresetPerformanceInfo">Maximum download boost with heavier visual and AI tools paused.</string>
+    <string name="SingGramPresetApplied">SingGram preset applied.</string>
     <string name="SingGramAI">SingGram AI</string>
     <string name="SingGramAIEnableTools">Enable AI tools</string>
     <string name="SingGramAIBaseUrl">NewAPI endpoint URL</string>
