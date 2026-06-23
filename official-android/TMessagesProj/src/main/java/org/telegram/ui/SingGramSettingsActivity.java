@@ -3,7 +3,11 @@ package org.telegram.ui;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Color;
+import android.net.Uri;
+import android.os.Build;
+import android.provider.Settings;
 import android.text.InputType;
 import android.text.TextUtils;
 import android.util.TypedValue;
@@ -870,6 +874,10 @@ public class SingGramSettingsActivity extends BaseFragment {
         addActionCell(context, section, LocaleController.getString(R.string.SingGramPushRefreshToken), LocaleController.getString(R.string.SingGramPushRefreshTokenInfo), true, v -> refreshPushToken());
         addDivider(context, section);
         addActionCell(context, section, LocaleController.getString(R.string.SingGramPushResetChannels), LocaleController.getString(R.string.SingGramPushResetChannelsInfo), true, v -> resetPushChannels());
+        addDivider(context, section);
+        addActionCell(context, section, LocaleController.getString(R.string.SingGramDoctorRepairPush), LocaleController.getString(R.string.SingGramDoctorRepairPushInfo), true, v -> repairPush());
+        addDivider(context, section);
+        addActionCell(context, section, LocaleController.getString(R.string.SingGramDoctorOpenNotificationSettings), LocaleController.getString(R.string.SingGramDoctorOpenNotificationSettingsInfo), true, v -> openNotificationSettings());
     }
 
     private void refreshPushToken() {
@@ -880,6 +888,35 @@ public class SingGramSettingsActivity extends BaseFragment {
     private void resetPushChannels() {
         SingGramPushDiagnostics.resetNotificationChannels();
         Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramPushChannelsReset), Toast.LENGTH_SHORT).show();
+    }
+
+    private void repairPush() {
+        SingGramPushDiagnostics.repairPushSettings();
+        Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramDoctorRepairPushDone), Toast.LENGTH_SHORT).show();
+        removeSelfFromStack();
+        presentFragment(new SingGramSettingsActivity(MODE_DIAGNOSTICS));
+    }
+
+    private void openNotificationSettings() {
+        if (getParentActivity() == null) {
+            return;
+        }
+        String packageName = ApplicationLoader.applicationContext == null ? "com.sing.singgram" : ApplicationLoader.applicationContext.getPackageName();
+        try {
+            Intent intent;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        .putExtra(Settings.EXTRA_APP_PACKAGE, packageName);
+            } else {
+                intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                        .setData(Uri.parse("package:" + packageName));
+            }
+            getParentActivity().startActivity(intent);
+        } catch (Throwable ignore) {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                    .setData(Uri.parse("package:" + packageName));
+            getParentActivity().startActivity(intent);
+        }
     }
 
     private String crashSafeModeValue() {
