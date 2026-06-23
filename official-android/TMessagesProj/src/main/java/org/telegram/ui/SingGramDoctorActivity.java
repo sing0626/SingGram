@@ -1,6 +1,10 @@
 package org.telegram.ui;
 
 import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Build;
+import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -72,6 +76,10 @@ public class SingGramDoctorActivity extends BaseFragment {
         addHeader(context, container, LocaleController.getString(R.string.SingGramPushNotifications));
         LinearLayout pushSection = addSection(context, container);
         addPushDiagnosticsCells(context, pushSection, false);
+        addDivider(context, pushSection);
+        addActionCell(context, pushSection, LocaleController.getString(R.string.SingGramDoctorRepairPush), LocaleController.getString(R.string.SingGramDoctorRepairPushInfo), true, v -> repairPush());
+        addDivider(context, pushSection);
+        addActionCell(context, pushSection, LocaleController.getString(R.string.SingGramDoctorOpenNotificationSettings), LocaleController.getString(R.string.SingGramDoctorOpenNotificationSettingsInfo), true, v -> openNotificationSettings());
 
         addHeader(context, container, LocaleController.getString(R.string.SingGramDoctorFeatureHealth));
         LinearLayout featureSection = addSection(context, container);
@@ -254,6 +262,34 @@ public class SingGramDoctorActivity extends BaseFragment {
     private void resetPushChannels() {
         SingGramPushDiagnostics.resetNotificationChannels();
         Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramPushChannelsReset), Toast.LENGTH_SHORT).show();
+    }
+
+    private void repairPush() {
+        SingGramPushDiagnostics.repairPushSettings();
+        Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramDoctorRepairPushDone), Toast.LENGTH_SHORT).show();
+        removeSelfFromStack();
+        presentFragment(new SingGramDoctorActivity());
+    }
+
+    private void openNotificationSettings() {
+        if (getParentActivity() == null) {
+            return;
+        }
+        try {
+            Intent intent;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                        .putExtra(Settings.EXTRA_APP_PACKAGE, packageName());
+            } else {
+                intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                        .setData(Uri.parse("package:" + packageName()));
+            }
+            getParentActivity().startActivity(intent);
+        } catch (Throwable ignore) {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                    .setData(Uri.parse("package:" + packageName()));
+            getParentActivity().startActivity(intent);
+        }
     }
 
     private void clearCrash() {

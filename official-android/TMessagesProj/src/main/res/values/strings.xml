@@ -10902,6 +10902,7 @@
     <string name="SingGramCrashSafeModeInfo">Temporarily disables heavier SingGram features such as Liquid Glass and AI tools.</string>
     <string name="SingGramCrashSafeModeAutoInfo">A previous crash enabled Safe Mode automatically.</string>
     <string name="SingGramStealthReadBarTitle">Stealth preview is blocking read receipts</string>
+    <string name="SingGramGhostStatusBarTitle">Ghost mode is active for this chat</string>
     <string name="SingGramStealthReadBarSendRead">Send read</string>
     <string name="SingGramStealthReadBarSent">Read receipts allowed for this chat.</string>
     <string name="SingGramAccountProfiles">Account profiles</string>
@@ -10946,6 +10947,11 @@
     <string name="SingGramDoctorCopyReport">Copy Doctor report</string>
     <string name="SingGramDoctorClearCrash">Clear last crash</string>
     <string name="SingGramDoctorCrashCleared">Last crash cleared.</string>
+    <string name="SingGramDoctorRepairPush">Repair push notifications</string>
+    <string name="SingGramDoctorRepairPushInfo">Enable keep-alive, refresh token, and rebuild notification channels.</string>
+    <string name="SingGramDoctorRepairPushDone">Push repair requested.</string>
+    <string name="SingGramDoctorOpenNotificationSettings">Open system notification settings</string>
+    <string name="SingGramDoctorOpenNotificationSettingsInfo">Check Android notification permission and channel settings.</string>
     <string name="SingGramPushNotifications">Push notifications</string>
     <string name="SingGramPushSummary">%1$s / services %2$s / token %3$s / notifications %4$s</string>
     <string name="SingGramPushProvider">Push provider</string>

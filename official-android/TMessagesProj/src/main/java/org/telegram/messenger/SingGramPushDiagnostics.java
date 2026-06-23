@@ -139,6 +139,27 @@ public final class SingGramPushDiagnostics {
         NotificationsController.checkOtherNotificationsChannel();
     }
 
+    public static void repairPushSettings() {
+        try {
+            SharedPreferences preferences = MessagesController.getGlobalNotificationsSettings();
+            preferences.edit()
+                    .putBoolean("pushService", true)
+                    .putBoolean("pushConnection", true)
+                    .commit();
+            MessagesController.getMainSettings(UserConfig.selectedAccount).edit()
+                    .putBoolean("keepAliveService", true)
+                    .commit();
+            MessagesController.getInstance(UserConfig.selectedAccount).keepAliveService = true;
+            MessagesController.getInstance(UserConfig.selectedAccount).backgroundConnection = true;
+            org.telegram.tgnet.ConnectionsManager.getInstance(UserConfig.selectedAccount).setPushConnectionEnabled(true);
+            ApplicationLoader.startPushService();
+        } catch (Throwable e) {
+            FileLog.e(e);
+        }
+        requestTokenRefresh();
+        resetNotificationChannels();
+    }
+
     public static String buildReport() {
         Snapshot snapshot = getSnapshot();
         StringBuilder builder = new StringBuilder();

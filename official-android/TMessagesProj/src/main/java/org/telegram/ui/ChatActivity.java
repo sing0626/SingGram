@@ -520,6 +520,8 @@ public class ChatActivity extends BaseFragment implements
     @Nullable
     private TextView singGramStealthReadTextView;
     @Nullable
+    private TextView singGramStealthReadButton;
+    @Nullable
     private TextView addToContactsButton;
     private boolean addToContactsButtonArchive;
     @Nullable
@@ -32709,7 +32711,7 @@ public class ChatActivity extends BaseFragment implements
 
     private String buildSingGramRecentChatInput() {
         StringBuilder builder = new StringBuilder();
-        builder.append("Summarize these recent chat messages. Extract key points, decisions, follow-up tasks, dates, and suggested replies where useful.\n\n");
+        builder.append("Summarize these recent chat messages in Traditional Chinese or Cantonese. Use exactly these sections when useful: 重點, 待辦, 日期, 金額, 決定, 建議回覆. Keep it concise and practical.\n\n");
         int added = 0;
         for (int i = 0; i < messages.size() && added < 50 && builder.length() < 12000; i++) {
             MessageObject messageObject = messages.get(i);
@@ -45491,19 +45493,19 @@ public class ChatActivity extends BaseFragment implements
         singGramStealthReadTextView.setEllipsize(TextUtils.TruncateAt.END);
         singGramStealthReadBar.addView(singGramStealthReadTextView, LayoutHelper.createLinear(0, LayoutHelper.MATCH_PARENT, 1.0f));
 
-        TextView releaseButton = new TextView(context);
-        releaseButton.setText(LocaleController.getString(R.string.SingGramStealthReadBarSendRead));
-        releaseButton.setTextColor(Color.WHITE);
-        releaseButton.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
-        releaseButton.setTypeface(AndroidUtilities.bold());
-        releaseButton.setGravity(Gravity.CENTER);
-        releaseButton.setSingleLine(true);
-        releaseButton.setIncludeFontPadding(false);
-        releaseButton.setMinWidth(dp(76));
-        releaseButton.setPadding(dp(10), 0, dp(10), 0);
-        releaseButton.setBackground(Theme.createRadSelectorDrawable(accent, Theme.multAlpha(accent, 0.82f), 16, 16));
-        releaseButton.setOnClickListener(v -> releaseSingGramReadReceiptsForCurrentChat());
-        singGramStealthReadBar.addView(releaseButton, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, 32));
+        singGramStealthReadButton = new TextView(context);
+        singGramStealthReadButton.setText(LocaleController.getString(R.string.SingGramStealthReadBarSendRead));
+        singGramStealthReadButton.setTextColor(Color.WHITE);
+        singGramStealthReadButton.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
+        singGramStealthReadButton.setTypeface(AndroidUtilities.bold());
+        singGramStealthReadButton.setGravity(Gravity.CENTER);
+        singGramStealthReadButton.setSingleLine(true);
+        singGramStealthReadButton.setIncludeFontPadding(false);
+        singGramStealthReadButton.setMinWidth(dp(76));
+        singGramStealthReadButton.setPadding(dp(10), 0, dp(10), 0);
+        singGramStealthReadButton.setBackground(Theme.createRadSelectorDrawable(accent, Theme.multAlpha(accent, 0.82f), 16, 16));
+        singGramStealthReadButton.setOnClickListener(v -> releaseSingGramReadReceiptsForCurrentChat());
+        singGramStealthReadBar.addView(singGramStealthReadButton, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, 32));
 
         topPanelLayout.addView(singGramStealthReadBar, 0, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 44));
         topPanelLayout.setPriority(singGramStealthReadBar, 0);
@@ -45514,9 +45516,13 @@ public class ChatActivity extends BaseFragment implements
         if (singGramStealthReadBar == null || topPanelLayout == null) {
             return;
         }
-        boolean show = shouldShowSingGramStealthReadBar();
+        boolean blockingReads = shouldShowSingGramStealthReadBar();
+        boolean show = blockingReads || shouldShowSingGramGhostStatusBar();
         if (singGramStealthReadTextView != null) {
-            singGramStealthReadTextView.setText(LocaleController.getString(R.string.SingGramStealthReadBarTitle));
+            singGramStealthReadTextView.setText(LocaleController.getString(blockingReads ? R.string.SingGramStealthReadBarTitle : R.string.SingGramGhostStatusBarTitle));
+        }
+        if (singGramStealthReadButton != null) {
+            singGramStealthReadButton.setVisibility(blockingReads ? View.VISIBLE : View.GONE);
         }
         topPanelLayout.setViewVisible(singGramStealthReadBar, show, animated);
     }
@@ -45530,6 +45536,18 @@ public class ChatActivity extends BaseFragment implements
                 && !isInsideContainer
                 && !isInPreviewMode()
                 && SingGramConfig.shouldDisableReadReceipts(did);
+    }
+
+    private boolean shouldShowSingGramGhostStatusBar() {
+        long did = getDialogId();
+        return did != 0
+                && did != getUserConfig().getClientUserId()
+                && chatMode == MODE_DEFAULT
+                && currentEncryptedChat == null
+                && !isInsideContainer
+                && !isInPreviewMode()
+                && SingGramConfig.isGhostModeEnabled()
+                && SingGramConfig.isGhostModeAllowedForDialog(did);
     }
 
     private void releaseSingGramReadReceiptsForCurrentChat() {

@@ -426,6 +426,7 @@
     <string name="SingGramCrashSafeModeInfo">暫時關閉較重嘅 SingGram 功能，例如 Liquid Glass 同 AI 工具。</string>
     <string name="SingGramCrashSafeModeAutoInfo">上次閃退已自動開啟安全模式。</string>
     <string name="SingGramStealthReadBarTitle">隱身預覽中，已讀回條已暫停</string>
+    <string name="SingGramGhostStatusBarTitle">呢個聊天已開 Ghost 模式</string>
     <string name="SingGramStealthReadBarSendRead">送已讀</string>
     <string name="SingGramStealthReadBarSent">呢個 chat 之後會正常送已讀。</string>
     <string name="SingGramAccountProfiles">帳戶分類</string>
@@ -470,6 +471,11 @@
     <string name="SingGramDoctorCopyReport">複製 Doctor 報告</string>
     <string name="SingGramDoctorClearCrash">清除上次閃退</string>
     <string name="SingGramDoctorCrashCleared">上次閃退清咗。</string>
+    <string name="SingGramDoctorRepairPush">修復推送通知</string>
+    <string name="SingGramDoctorRepairPushInfo">開返保活、刷新 token，同重建通知通道。</string>
+    <string name="SingGramDoctorRepairPushDone">已要求修復推送。</string>
+    <string name="SingGramDoctorOpenNotificationSettings">開系統通知設定</string>
+    <string name="SingGramDoctorOpenNotificationSettingsInfo">檢查 Android 通知權限同通道設定。</string>
     <string name="SingGramPushNotifications">推送通知</string>
     <string name="SingGramPushSummary">%1$s / 服務 %2$s / 權杖 %3$s / 通知 %4$s</string>
     <string name="SingGramPushProvider">推送來源</string>

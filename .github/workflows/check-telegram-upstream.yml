@@ -17,8 +17,9 @@ on:
 
 permissions:
   actions: write
-  contents: read
+  contents: write
   issues: write
+  pull-requests: write
 
 jobs:
   check:
@@ -112,6 +113,60 @@ jobs:
             --title "Telegram Android upstream update available: $LATEST_SHORT" \
             --label upstream-update \
             --body-file /tmp/upstream-update.md
+
+      - name: Create tracking branch and PR
+        if: ${{ steps.upstream.outputs.changed == 'true' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMPORTED_COMMIT: ${{ steps.upstream.outputs.imported_commit }}
+          IMPORTED_VERSION: ${{ steps.upstream.outputs.imported_version }}
+          LATEST_COMMIT: ${{ steps.upstream.outputs.latest_commit }}
+          LATEST_SHORT: ${{ steps.upstream.outputs.latest_short }}
+        run: |
+          set -euo pipefail
+
+          BRANCH="upstream/${LATEST_SHORT}"
+          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
+            echo "Tracking branch already exists: $BRANCH"
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git switch -c "$BRANCH"
+            jq \
+              --arg commit "$LATEST_COMMIT" \
+              --arg version "$IMPORTED_VERSION" \
+              '.pendingCommit = $commit | .pendingVersion = $version | .lastCheckedAt = now | .lastCheckedCommit = $commit' \
+              .github/singgram-upstream.json > /tmp/singgram-upstream.json
+            mv /tmp/singgram-upstream.json .github/singgram-upstream.json
+            git add .github/singgram-upstream.json
+            git commit -m "Track Telegram upstream $LATEST_SHORT"
+            git push origin "$BRANCH"
+          fi
+
+          if ! gh pr list \
+            --repo "$GITHUB_REPOSITORY" \
+            --state open \
+            --head "$BRANCH" \
+            --json number \
+            --jq 'length > 0' | grep -q true; then
+            cat > /tmp/upstream-pr.md <<EOF
+          Telegram Android upstream has a newer commit available.
+
+          - Current SingGram import: \`$IMPORTED_VERSION\` / \`$IMPORTED_COMMIT\`
+          - Latest upstream commit: \`$LATEST_COMMIT\`
+          - Upstream commits: https://github.com/DrKLO/Telegram/commits/$UPSTREAM_REF
+
+          This PR is a tracking marker, not an automatic source merge. Use it to start the manual upstream sync branch and record conflict/test notes.
+          EOF
+
+            gh pr create \
+              --repo "$GITHUB_REPOSITORY" \
+              --base "$GITHUB_REF_NAME" \
+              --head "$BRANCH" \
+              --title "Track Telegram upstream $LATEST_SHORT" \
+              --body-file /tmp/upstream-pr.md
+          fi
 
       - name: Dispatch build workflow
         if: ${{ steps.upstream.outputs.changed == 'true' && github.event.inputs.dispatch_build == 'true' }}
