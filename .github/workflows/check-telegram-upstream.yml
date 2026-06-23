@@ -21,6 +21,10 @@ permissions:
   issues: write
   pull-requests: write
 
+concurrency:
+  group: check-telegram-upstream-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check:
     runs-on: ubuntu-latest

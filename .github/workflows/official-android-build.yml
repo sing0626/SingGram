@@ -42,6 +42,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: official-android-build-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
