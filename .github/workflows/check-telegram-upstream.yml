@@ -164,12 +164,30 @@ jobs:
           This PR is a tracking marker, not an automatic source merge. Use it to start the manual upstream sync branch and record conflict/test notes.
           EOF
 
-            gh pr create \
+            pr_create_error_log="${RUNNER_TEMP}/upstream-pr-create-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}.log"
+            touch "$pr_create_error_log"
+            pr_create_failed=false
+            if ! gh pr create \
               --repo "$GITHUB_REPOSITORY" \
               --base "$GITHUB_REF_NAME" \
               --head "$BRANCH" \
               --title "Track Telegram upstream $LATEST_SHORT" \
-              --body-file /tmp/upstream-pr.md
+              --body-file /tmp/upstream-pr.md 2>"$pr_create_error_log"; then
+              if grep -qiE \
+                -e "createPullRequest" \
+                -e "not permitted to create or approve pull requests" \
+                -e "resource not accessible by integration" \
+                "$pr_create_error_log"; then
+                echo "::warning::Cannot auto-create tracking PR because repository Actions settings disallow PR creation. Branch '$BRANCH' is ready; open the PR manually."
+              else
+                cat "$pr_create_error_log" >&2
+                pr_create_failed=true
+              fi
+            fi
+            rm -f "$pr_create_error_log"
+            if [[ "$pr_create_failed" == "true" ]]; then
+              exit 1
+            fi
           fi
 
       - name: Dispatch build workflow
