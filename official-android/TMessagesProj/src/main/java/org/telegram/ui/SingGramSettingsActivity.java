@@ -5,6 +5,7 @@ import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.provider.Settings;
@@ -14,6 +15,7 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -969,11 +971,62 @@ public class SingGramSettingsActivity extends BaseFragment {
         });
     }
 
-    private SettingsActivity.SettingCell addIconActionCell(Context context, LinearLayout container, String text, String value, int icon, int colorTop, int colorBottom, boolean enabled, View.OnClickListener listener) {
-        SettingsActivity.SettingCell cell = new SettingsActivity.SettingCell(context, null);
-        cell.set(colorTop, colorBottom, icon, text, value, null);
+    private View addIconActionCell(Context context, LinearLayout container, String text, String value, int icon, int colorTop, int colorBottom, boolean enabled, View.OnClickListener listener) {
+        LinearLayout cell = new LinearLayout(context);
+        cell.setOrientation(LinearLayout.HORIZONTAL);
+        cell.setGravity(Gravity.CENTER_VERTICAL);
+        cell.setMinimumHeight(AndroidUtilities.dp(72));
+        cell.setPadding(AndroidUtilities.dp(18), AndroidUtilities.dp(11), AndroidUtilities.dp(18), AndroidUtilities.dp(11));
         cell.setEnabled(enabled);
         cell.setAlpha(enabled ? 1.0f : 0.58f);
+
+        FrameLayout iconLayout = new FrameLayout(context);
+        GradientDrawable iconBackground = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[] { colorTop, colorBottom });
+        iconBackground.setCornerRadius(AndroidUtilities.dp(11));
+        iconLayout.setBackground(iconBackground);
+
+        ImageView iconView = new ImageView(context);
+        iconView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        iconView.setImageResource(icon);
+        iconView.setColorFilter(Color.WHITE);
+        iconLayout.addView(iconView, LayoutHelper.createFrame(24, 24, Gravity.CENTER));
+
+        LinearLayout textLayout = new LinearLayout(context);
+        textLayout.setOrientation(LinearLayout.VERTICAL);
+        textLayout.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView titleView = new TextView(context);
+        titleView.setText(text);
+        titleView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        titleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
+        titleView.setTypeface(AndroidUtilities.bold());
+        titleView.setSingleLine(false);
+        titleView.setMaxLines(2);
+        titleView.setIncludeFontPadding(false);
+        titleView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        textLayout.addView(titleView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        if (!TextUtils.isEmpty(value)) {
+            TextView subtitleView = new TextView(context);
+            subtitleView.setText(value);
+            subtitleView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText));
+            subtitleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
+            subtitleView.setSingleLine(false);
+            subtitleView.setMaxLines(3);
+            subtitleView.setIncludeFontPadding(false);
+            subtitleView.setLineSpacing(AndroidUtilities.dp(2), 1.0f);
+            subtitleView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+            textLayout.addView(subtitleView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 5, 0, 0));
+        }
+
+        if (LocaleController.isRTL) {
+            cell.addView(textLayout, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1, Gravity.CENTER_VERTICAL | Gravity.FILL_HORIZONTAL, 0, 0, 16, 0));
+            cell.addView(iconLayout, LayoutHelper.createLinear(34, 34, Gravity.CENTER_VERTICAL | Gravity.RIGHT));
+        } else {
+            cell.addView(iconLayout, LayoutHelper.createLinear(34, 34, Gravity.CENTER_VERTICAL | Gravity.LEFT));
+            cell.addView(textLayout, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1, Gravity.CENTER_VERTICAL | Gravity.FILL_HORIZONTAL, 16, 0, 0, 0));
+        }
+
         if (listener != null) {
             cell.setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector), Theme.RIPPLE_MASK_ALL));
             cell.setOnClickListener(listener);
