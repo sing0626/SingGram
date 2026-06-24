@@ -5,6 +5,9 @@ apply plugin: 'com.android.library'
 repositories {
     mavenCentral()
     google()
+    maven {
+        url "https://maven.mozilla.org/maven2/"
+    }
 }
 
 configurations {
@@ -49,6 +52,7 @@ dependencies {
     implementation 'com.google.guava:guava:31.1-android'
     implementation 'com.google.android.play:integrity:1.3.0'
     implementation 'com.google.android.gms:play-services-safetynet:18.0.1'
+    implementation 'org.mozilla.geckoview:geckoview:152.0.20260621191700'
 
     implementation 'com.google.android.gms:play-services-mlkit-subject-segmentation:16.0.0-beta1'
     implementation 'com.google.android.gms:play-services-mlkit-image-labeling:16.0.8'

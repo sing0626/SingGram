@@ -50,8 +50,11 @@ public class SingGramConfig {
     private static final String KEY_LAST_UPDATE_VERSION_NAME = "last_update_version_name";
     private static final String KEY_LAST_UPDATE_CHECK_TIME = "last_update_check_time";
     private static final String KEY_LAST_FEATURE_HUB_INTRO_BUILD = "last_feature_hub_intro_build";
+    private static final String KEY_BROWSER_ENGINE = "browser_engine";
 
     public static final String DEFAULT_AI_MODEL = "gpt-4o-mini";
+    public static final int BROWSER_ENGINE_SYSTEM_WEBVIEW = 0;
+    public static final int BROWSER_ENGINE_GECKOVIEW = 1;
     private static boolean crashHandlerInstalled;
 
     private static SharedPreferences prefs() {
@@ -128,6 +131,19 @@ public class SingGramConfig {
 
     public static boolean isAiConfigured() {
         return !TextUtils.isEmpty(getAiBaseUrl());
+    }
+
+    public static int getBrowserEngine() {
+        int engine = getInt(KEY_BROWSER_ENGINE, BROWSER_ENGINE_SYSTEM_WEBVIEW);
+        return engine == BROWSER_ENGINE_GECKOVIEW ? BROWSER_ENGINE_GECKOVIEW : BROWSER_ENGINE_SYSTEM_WEBVIEW;
+    }
+
+    public static void setBrowserEngine(int engine) {
+        setInt(KEY_BROWSER_ENGINE, engine == BROWSER_ENGINE_GECKOVIEW ? BROWSER_ENGINE_GECKOVIEW : BROWSER_ENGINE_SYSTEM_WEBVIEW);
+    }
+
+    public static boolean shouldUseGeckoBrowser() {
+        return !isCrashSafeModeEnabled() && getBrowserEngine() == BROWSER_ENGINE_GECKOVIEW;
     }
 
     public static boolean isLiquidGlassEnabled() {

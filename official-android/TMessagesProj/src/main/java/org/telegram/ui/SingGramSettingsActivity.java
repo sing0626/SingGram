@@ -517,6 +517,11 @@ public class SingGramSettingsActivity extends BaseFragment {
         addDivider(context, chatSection);
         addActionCell(context, chatSection, LocaleController.getString(R.string.SingGramChatNotesAll), LocaleController.formatString(R.string.SingGramChatNotesAllCount, SingGramChatNotesStore.getNotesCount()), true, v -> presentFragment(new SingGramChatNotesListActivity()));
 
+        addHeader(context, container, LocaleController.getString(R.string.SingGramAIBrowser));
+        LinearLayout browserSection = addSection(context, container);
+        addActionCell(context, browserSection, LocaleController.getString(R.string.SingGramBrowserEngine), browserEngineValue(), true, v -> showBrowserEngineDialog());
+        addInfo(context, container, LocaleController.getString(R.string.SingGramBrowserEngineInfo));
+
         addHeader(context, container, LocaleController.getString(R.string.SingGramAITestLab));
         LinearLayout testSection = addSection(context, container);
         inputField = addField(context, testSection, LocaleController.getString(R.string.SingGramAIInput), LocaleController.getString(R.string.SingGramAIInputHint), "", true);
@@ -1060,6 +1065,29 @@ public class SingGramSettingsActivity extends BaseFragment {
             return LocaleController.getString(R.string.SingGramLiquidGlassStrong);
         }
         return LocaleController.getString(R.string.SingGramLiquidGlassStandard);
+    }
+
+    private String browserEngineValue() {
+        return SingGramConfig.getBrowserEngine() == SingGramConfig.BROWSER_ENGINE_GECKOVIEW
+                ? LocaleController.getString(R.string.SingGramBrowserEngineGecko)
+                : LocaleController.getString(R.string.SingGramBrowserEngineSystem);
+    }
+
+    private void showBrowserEngineDialog() {
+        String[] items = new String[] {
+                LocaleController.getString(R.string.SingGramBrowserEngineSystem),
+                LocaleController.getString(R.string.SingGramBrowserEngineGecko)
+        };
+        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+        builder.setTitle(LocaleController.getString(R.string.SingGramBrowserEngine));
+        builder.setItems(items, (dialog, which) -> {
+            SingGramConfig.setBrowserEngine(which == 1 ? SingGramConfig.BROWSER_ENGINE_GECKOVIEW : SingGramConfig.BROWSER_ENGINE_SYSTEM_WEBVIEW);
+            Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramBrowserEngineChanged), Toast.LENGTH_SHORT).show();
+            if (getParentActivity() != null) {
+                createView(getParentActivity());
+            }
+        });
+        showDialog(builder.create());
     }
 
     private String downloadStatusValue() {

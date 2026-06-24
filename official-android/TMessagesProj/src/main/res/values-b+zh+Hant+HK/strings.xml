@@ -68,6 +68,13 @@
     <string name="SingGramAIBrowserSummarize">AI 摘要呢頁</string>
     <string name="SingGramAIBrowserTranslate">AI 翻譯呢頁</string>
     <string name="SingGramAIBrowserNoPage">暫時未有頁面可以分析。</string>
+    <string name="SingGramAIBrowser">AI Browser</string>
+    <string name="SingGramBrowserEngine">Browser 內核</string>
+    <string name="SingGramBrowserEngineSystem">系統 WebView</string>
+    <string name="SingGramBrowserEngineGecko">GeckoView 實驗版</string>
+    <string name="SingGramBrowserEngineInfo">GeckoView 會喺 Android 8+ 用內置 Firefox 內核開一般網頁。Telegram Web Apps 會繼續用系統 WebView，保持相容。</string>
+    <string name="SingGramBrowserEngineChanged">Browser 內核已更新。重新開 AI Browser 後生效。</string>
+    <string name="SingGramBrowserEngineFallback">GeckoView 開唔到呢頁，會改用系統 WebView。</string>
     <string name="SingGramDiagnostics">診斷</string>
     <string name="SingGramExportLogs">匯出記錄</string>
     <string name="SingGramExportLastLogs">匯出最近記錄</string>

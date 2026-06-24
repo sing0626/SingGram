@@ -288,6 +288,14 @@
                 android:name="com.google.mlkit.vision.DEPENDENCIES"
                 android:value="subject_segment" />
         </activity>
+
+        <activity
+            android:name="org.telegram.ui.SingGramGeckoBrowserActivity"
+            android:theme="@style/Theme.TMessages"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|uiMode|smallestScreenSize|screenLayout"
+            android:hardwareAccelerated="true"
+            android:exported="false" />
+
         <activity-alias
             android:name="org.telegram.ui.CallsActivity"
             android:targetActivity="org.telegram.ui.LaunchActivity"
