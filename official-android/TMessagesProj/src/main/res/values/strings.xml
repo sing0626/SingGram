@@ -1833,11 +1833,11 @@
     <string name="BrowserSettingsCacheClearText">Are you sure you want to clear browser cache%s?</string>
     <string name="BrowserSettingsCookiesClear">Clear Cookies</string>
     <string name="BrowserSettingsCookiesClearText">Are you sure you want to clear browser cookies%s?\n\nThis might log you out from website account sessions.</string>
-    <string name="BrowserSettingsCookiesInfo">Delete all cookies and cache from the SingGram in-app browser and miniapps.</string>
-    <string name="BrowserSettingsCustomTabs">New Pages within SingGram</string>
+    <string name="BrowserSettingsCookiesInfo">Delete all cookies and cache from AI Browser and miniapps.</string>
+    <string name="BrowserSettingsCustomTabs">New pages in AI Browser</string>
     <string name="BrowserSettingsCustomTabsTitle">Open external links in</string>
-    <string name="BrowserSettingsEnable">Enable In-App Browser</string>
-    <string name="BrowserSettingsEnableInfo">Open links inside SingGram without starting an external browser.</string>
+    <string name="BrowserSettingsEnable">Enable AI Browser</string>
+    <string name="BrowserSettingsEnableInfo">Open links in AI Browser without starting an external browser.</string>
     <string name="BrowserSettingsHistoryClear">Clear History</string>
     <string name="BrowserSettingsHistoryClearText">Are you sure you want to clear browser history since %s?</string>
     <string name="BrowserSettingsHistoryPages_one">%d page</string>
@@ -1851,7 +1851,7 @@
     <string name="BrowserSettingsNoCustomTabsInfo">You can choose to open external link without leaving SingGram.</string>
     <string name="BrowserSettingsSearchEngine">Search Engine</string>
     <string name="BrowserSettingsSearchEngineInfo">Search Engine is used in address bar to open search and auto-complete.</string>
-    <string name="BrowserSettingsTitle">Web Browser</string>
+    <string name="BrowserSettingsTitle">AI Browser</string>
     <string name="BubbleRadius">Message corners</string>
     <string name="BuildMyOwnTheme">Build my own theme</string>
     <string name="BusinessAway">Away Message</string>
@@ -5015,8 +5015,8 @@
     <string name="InactiveChannelSignature">channel, inactive for %1$s</string>
     <string name="InactiveChatSignature">%1$s, inactive for %2$s</string>
     <string name="InactiveChats">Inactive chats</string>
-    <string name="InappBrowser">In-App Browser</string>
-    <string name="InappBrowserInfo">Open external links within the app</string>
+    <string name="InappBrowser">AI Browser</string>
+    <string name="InappBrowserInfo">Open external links in AI Browser</string>
     <string name="IncomingCalls">Incoming calls</string>
     <string name="IncomingCallsCount_one">%1$d incoming call</string>
     <string name="IncomingCallsCount_other">%1$d incoming calls</string>
@@ -6314,7 +6314,7 @@
     <string name="OpenInExternalApp">Open in...</string>
     <string name="OpenInMaps">Open in Maps</string>
     <string name="OpenInSystemBrowser">Open in...</string>
-    <string name="OpenInTelegramBrowser">Open in SingGram</string>
+    <string name="OpenInTelegramBrowser">Open in AI Browser</string>
     <string name="OpenInstantView">Instant View</string>
     <string name="OpenLink">Open Link</string>
     <string name="OpenLocalInstantView">Instant View</string>

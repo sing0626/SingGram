@@ -194,14 +194,14 @@
     <string name="EnterYourPasscodeInfo">請輸入你目前嘅 SingGram 密碼以管理呢個選項。</string>
     <string name="EnterYourTelegramPasscode">輸入你嘅 SingGram 密碼</string>
 
-    <string name="OpenInTelegramBrowser">喺 SingGram 開啟</string>
-    <string name="BrowserSettingsTitle">網頁瀏覽器</string>
-    <string name="BrowserSettingsEnable">啟用內置瀏覽器</string>
-    <string name="BrowserSettingsEnableInfo">喺 SingGram 內開啟連結，唔需要開外部瀏覽器。</string>
-    <string name="BrowserSettingsCustomTabs">SingGram 內開新頁面</string>
+    <string name="OpenInTelegramBrowser">在 AI Browser 開啟</string>
+    <string name="BrowserSettingsTitle">AI Browser</string>
+    <string name="BrowserSettingsEnable">啟用 AI Browser</string>
+    <string name="BrowserSettingsEnableInfo">在 AI Browser 開啟連結，不需開啟外部瀏覽器。</string>
+    <string name="BrowserSettingsCustomTabs">AI Browser 內開新頁面</string>
     <string name="BrowserSettingsNoCustomTabs">喺外部瀏覽器開新分頁</string>
-    <string name="BrowserSettingsNoCustomTabsInfo">你可以選擇唔離開 SingGram 開啟外部連結。</string>
-    <string name="BrowserSettingsCookiesInfo">刪除 SingGram 內置瀏覽器同 miniapps 嘅所有 cookies 同快取。</string>
+    <string name="BrowserSettingsNoCustomTabsInfo">你可以選擇不離開 SingGram 開啟外部連結。</string>
+    <string name="BrowserSettingsCookiesInfo">刪除 AI Browser 和 miniapps 的所有 cookies 與快取。</string>
     <string name="BrowserSettingsNeverOpenInInfo">SingGram 會永遠喺外部瀏覽器開啟呢啲網站連結。</string>
     <string name="BrowserExternalRestricted">SingGram 之後會喺外部瀏覽器開啟呢個網站嘅連結。你可以喺 **設定** 更改。</string>
 
