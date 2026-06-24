@@ -74,6 +74,14 @@
     <string name="SingGramAIEmptyResponse">暫時未有 AI 結果。</string>
     <string name="SingGramClipboardEmpty">剪貼簿係空嘅。</string>
     <string name="SingGramAIInsertInput">放入輸入框</string>
+    <string name="SingGramAINewApiConnection">NewAPI 連線</string>
+    <string name="SingGramAIHeroReady">NewAPI 已準備好</string>
+    <string name="SingGramAIHeroDisabled">AI 工具未開</string>
+    <string name="SingGramAIHeroNeedsSetup">NewAPI 未設定好</string>
+    <string name="SingGramAIHeroNeedsSetupInfo">填好網址、API 金鑰同模型，再測試連線，就可以用聊天 AI 動作。</string>
+    <string name="SingGramAIHeroReadyInfo">%1$s 經 %2$s</string>
+    <string name="SingGramAIStatusEnabled">狀態</string>
+    <string name="SingGramAIStatusModel">模型</string>
     <string name="SingGramAccount">帳戶及備份</string>
     <string name="SingGramMaxAccounts100">最多 100 個帳戶</string>
     <string name="SingGramMaxAccounts100Info">而家有 %1$d 個啟用帳戶。SingGram 已將帳戶上限提高到 %2$d 個。</string>

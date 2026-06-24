@@ -257,6 +257,14 @@
     <string name="SingGramAIModel">模型</string>
     <string name="SingGramAISystemPrompt">系統提示詞</string>
     <string name="SingGramAISystemPromptHint">可填：想佢點講、點答</string>
+    <string name="SingGramAINewApiConnection">NewAPI 連線</string>
+    <string name="SingGramAIHeroReady">NewAPI 已準備好</string>
+    <string name="SingGramAIHeroDisabled">AI 工具未開</string>
+    <string name="SingGramAIHeroNeedsSetup">NewAPI 未設定好</string>
+    <string name="SingGramAIHeroNeedsSetupInfo">填好網址、API 金鑰同模型，再測試連線，就可以用聊天 AI 動作。</string>
+    <string name="SingGramAIHeroReadyInfo">%1$s 經 %2$s</string>
+    <string name="SingGramAIStatusEnabled">狀態</string>
+    <string name="SingGramAIStatusModel">模型</string>
     <string name="SingGramSettingsSaved">SingGram 設定儲存咗</string>
     <string name="SingGramSaveButton">儲存</string>
     <string name="SingGramCopyButton">複製</string>

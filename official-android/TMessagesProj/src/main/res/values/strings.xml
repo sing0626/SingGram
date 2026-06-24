@@ -10733,6 +10733,14 @@
     <string name="SingGramAIModel">Model</string>
     <string name="SingGramAISystemPrompt">System prompt</string>
     <string name="SingGramAISystemPromptHint">Optional style and behavior instructions</string>
+    <string name="SingGramAINewApiConnection">NewAPI connection</string>
+    <string name="SingGramAIHeroReady">NewAPI is ready</string>
+    <string name="SingGramAIHeroDisabled">AI tools are off</string>
+    <string name="SingGramAIHeroNeedsSetup">NewAPI needs setup</string>
+    <string name="SingGramAIHeroNeedsSetupInfo">Add your endpoint, API key and model, then test the connection before using chat actions.</string>
+    <string name="SingGramAIHeroReadyInfo">%1$s through %2$s</string>
+    <string name="SingGramAIStatusEnabled">Enabled</string>
+    <string name="SingGramAIStatusModel">Model</string>
     <string name="SingGramSettingsSaved">SingGram settings saved</string>
     <string name="SingGramSaveButton">Save</string>
     <string name="SingGramCopyButton">Copy</string>

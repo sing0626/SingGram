@@ -478,19 +478,9 @@ public class SingGramSettingsActivity extends BaseFragment {
     }
 
     private void buildAiPage(Context context, LinearLayout container) {
-        addHeader(context, container, LocaleController.getString(R.string.SingGramChatTools));
-        LinearLayout chatSection = addSection(context, container);
-        addSwitchSetting(context, chatSection, LocaleController.getString(R.string.SingGramAIContextMenu), LocaleController.getString(R.string.SingGramAIContextMenuInfo), SingGramConfig.isAiContextMenuEnabled(), SingGramConfig::setAiContextMenuEnabled, false);
-        addDivider(context, chatSection);
-        addSwitchSetting(context, chatSection, LocaleController.getString(R.string.SingGramAITranslateAction), LocaleController.getString(R.string.SingGramAITranslateActionInfo), SingGramConfig.isAiTranslateActionEnabled(), SingGramConfig::setAiTranslateActionEnabled, false);
-        addDivider(context, chatSection);
-        addSwitchSetting(context, chatSection, LocaleController.getString(R.string.SingGramAIReplyIdeasSwitch), LocaleController.getString(R.string.SingGramAIReplyIdeasSwitchInfo), SingGramConfig.isQuickReplyIdeasEnabled(), SingGramConfig::setQuickReplyIdeasEnabled, false);
-        addDivider(context, chatSection);
-        addSwitchSetting(context, chatSection, LocaleController.getString(R.string.SingGramAIInsertResultSwitch), LocaleController.getString(R.string.SingGramAIInsertResultSwitchInfo), SingGramConfig.isAiInsertResultEnabled(), SingGramConfig::setAiInsertResultEnabled, false);
-        addDivider(context, chatSection);
-        addActionCell(context, chatSection, LocaleController.getString(R.string.SingGramChatNotesAll), LocaleController.formatString(R.string.SingGramChatNotesAllCount, SingGramChatNotesStore.getNotesCount()), true, v -> presentFragment(new SingGramChatNotesListActivity()));
+        addAiHeroCard(context, container);
 
-        addHeader(context, container, LocaleController.getString(R.string.SingGramAI));
+        addHeader(context, container, LocaleController.getString(R.string.SingGramAINewApiConnection));
         LinearLayout aiSection = addSection(context, container);
         aiEnabledCell = addSwitchCell(context, aiSection, LocaleController.getString(R.string.SingGramAIEnableTools), SingGramConfig.isAiEnabled(), false);
         aiEnabledCell.setOnClickListener(v -> {
@@ -514,6 +504,18 @@ public class SingGramSettingsActivity extends BaseFragment {
         });
         addButton(context, aiSection, LocaleController.getString(R.string.SingGramAITestConnection), false, v -> testNewApiConnection());
         addInfo(context, container, LocaleController.getString(R.string.SingGramAIInfo));
+
+        addHeader(context, container, LocaleController.getString(R.string.SingGramChatTools));
+        LinearLayout chatSection = addSection(context, container);
+        addSwitchSetting(context, chatSection, LocaleController.getString(R.string.SingGramAIContextMenu), LocaleController.getString(R.string.SingGramAIContextMenuInfo), SingGramConfig.isAiContextMenuEnabled(), SingGramConfig::setAiContextMenuEnabled, false);
+        addDivider(context, chatSection);
+        addSwitchSetting(context, chatSection, LocaleController.getString(R.string.SingGramAITranslateAction), LocaleController.getString(R.string.SingGramAITranslateActionInfo), SingGramConfig.isAiTranslateActionEnabled(), SingGramConfig::setAiTranslateActionEnabled, false);
+        addDivider(context, chatSection);
+        addSwitchSetting(context, chatSection, LocaleController.getString(R.string.SingGramAIReplyIdeasSwitch), LocaleController.getString(R.string.SingGramAIReplyIdeasSwitchInfo), SingGramConfig.isQuickReplyIdeasEnabled(), SingGramConfig::setQuickReplyIdeasEnabled, false);
+        addDivider(context, chatSection);
+        addSwitchSetting(context, chatSection, LocaleController.getString(R.string.SingGramAIInsertResultSwitch), LocaleController.getString(R.string.SingGramAIInsertResultSwitchInfo), SingGramConfig.isAiInsertResultEnabled(), SingGramConfig::setAiInsertResultEnabled, false);
+        addDivider(context, chatSection);
+        addActionCell(context, chatSection, LocaleController.getString(R.string.SingGramChatNotesAll), LocaleController.formatString(R.string.SingGramChatNotesAllCount, SingGramChatNotesStore.getNotesCount()), true, v -> presentFragment(new SingGramChatNotesListActivity()));
 
         addHeader(context, container, LocaleController.getString(R.string.SingGramAITestLab));
         LinearLayout testSection = addSection(context, container);
@@ -1072,6 +1074,105 @@ public class SingGramSettingsActivity extends BaseFragment {
             SingGramConfig.setDownloadBoostLevel(level);
             Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramDownloadBoostChanged), Toast.LENGTH_SHORT).show();
         });
+    }
+
+    private void addAiHeroCard(Context context, LinearLayout container) {
+        LinearLayout card = new LinearLayout(context);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(AndroidUtilities.dp(18), AndroidUtilities.dp(18), AndroidUtilities.dp(18), AndroidUtilities.dp(16));
+        card.setBackground(aiHeroBackground());
+        container.addView(card, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 12, 0, 12, 4));
+
+        TextView eyebrow = new TextView(context);
+        eyebrow.setText(LocaleController.getString(R.string.SingGramAINewApiConnection));
+        eyebrow.setTextColor(Theme.multAlpha(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText), 0.90f));
+        eyebrow.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
+        eyebrow.setTypeface(AndroidUtilities.bold());
+        eyebrow.setGravity((LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
+        eyebrow.setIncludeFontPadding(false);
+        card.addView(eyebrow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        TextView title = new TextView(context);
+        title.setText(aiHeroTitle());
+        title.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        title.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 24);
+        title.setTypeface(AndroidUtilities.bold());
+        title.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        title.setIncludeFontPadding(false);
+        title.setPadding(0, AndroidUtilities.dp(8), 0, 0);
+        card.addView(title, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        TextView subtitle = new TextView(context);
+        subtitle.setText(aiHeroSubtitle());
+        subtitle.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
+        subtitle.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+        subtitle.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        subtitle.setLineSpacing(AndroidUtilities.dp(2), 1.0f);
+        subtitle.setPadding(0, AndroidUtilities.dp(8), 0, AndroidUtilities.dp(14));
+        card.addView(subtitle, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        LinearLayout row = new LinearLayout(context);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        card.addView(row, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        addAiHeroMetric(context, row, LocaleController.getString(R.string.SingGramAIStatusEnabled), stateValue(SingGramConfig.isAiEnabled()));
+        addAiHeroMetric(context, row, LocaleController.getString(R.string.SingGramAIStatusModel), TextUtils.isEmpty(SingGramConfig.getAiModel()) ? SingGramConfig.DEFAULT_AI_MODEL : SingGramConfig.getAiModel());
+    }
+
+    private void addAiHeroMetric(Context context, LinearLayout row, String label, String value) {
+        LinearLayout metric = new LinearLayout(context);
+        metric.setOrientation(LinearLayout.VERTICAL);
+        metric.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(10), AndroidUtilities.dp(12), AndroidUtilities.dp(10));
+        metric.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(12), Theme.multAlpha(Theme.getColor(Theme.key_windowBackgroundWhite), 0.64f)));
+        row.addView(metric, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1.0f, 0, 0, 6, 0));
+
+        TextView labelView = new TextView(context);
+        labelView.setText(label);
+        labelView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText4));
+        labelView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12);
+        labelView.setSingleLine(true);
+        labelView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        metric.addView(labelView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        TextView valueView = new TextView(context);
+        valueView.setText(value);
+        valueView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        valueView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
+        valueView.setTypeface(AndroidUtilities.bold());
+        valueView.setSingleLine(true);
+        valueView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        metric.addView(valueView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+    }
+
+    private GradientDrawable aiHeroBackground() {
+        int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
+        int white = Theme.getColor(Theme.key_windowBackgroundWhite);
+        GradientDrawable drawable = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[] {
+                Theme.multAlpha(accent, SingGramConfig.isLiquidGlassEnabled() ? 0.24f : 0.14f),
+                Theme.multAlpha(white, SingGramConfig.isLiquidGlassEnabled() ? 0.92f : 0.84f),
+                Theme.multAlpha(accent, SingGramConfig.isLiquidGlassEnabled() ? 0.12f : 0.08f)
+        });
+        drawable.setCornerRadius(AndroidUtilities.dp(SingGramConfig.isLiquidGlassEnabled() ? 18 : 12));
+        drawable.setStroke(AndroidUtilities.dp(1), Theme.multAlpha(accent, SingGramConfig.isLiquidGlassEnabled() ? 0.20f : 0.12f));
+        return drawable;
+    }
+
+    private String aiHeroTitle() {
+        if (!SingGramConfig.isAiEnabled()) {
+            return LocaleController.getString(R.string.SingGramAIHeroDisabled);
+        }
+        if (!SingGramConfig.isAiConfigured()) {
+            return LocaleController.getString(R.string.SingGramAIHeroNeedsSetup);
+        }
+        return LocaleController.getString(R.string.SingGramAIHeroReady);
+    }
+
+    private String aiHeroSubtitle() {
+        if (!SingGramConfig.isAiConfigured()) {
+            return LocaleController.getString(R.string.SingGramAIHeroNeedsSetupInfo);
+        }
+        String baseUrl = SingGramConfig.getAiBaseUrl();
+        String model = TextUtils.isEmpty(SingGramConfig.getAiModel()) ? SingGramConfig.DEFAULT_AI_MODEL : SingGramConfig.getAiModel();
+        return LocaleController.formatString(R.string.SingGramAIHeroReadyInfo, model, baseUrl);
     }
 
     private View addIconActionCell(Context context, LinearLayout container, String text, String value, int icon, int colorTop, int colorBottom, boolean enabled, View.OnClickListener listener) {
