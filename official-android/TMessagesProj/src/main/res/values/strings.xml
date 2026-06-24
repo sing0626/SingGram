@@ -10770,6 +10770,7 @@
     <string name="SingGramAIBrowserTranslate">AI translate page</string>
     <string name="SingGramAIBrowserNoPage">No page to analyze yet.</string>
     <string name="SingGramAIBrowser">AI Browser</string>
+    <string name="SingGramAIChatApp">Apps: chat with API</string>
     <string name="SingGramBrowserEngine">Browser engine</string>
     <string name="SingGramBrowserEngineSystem">System WebView</string>
     <string name="SingGramBrowserEngineGecko">GeckoView experimental</string>
@@ -10929,6 +10930,9 @@
     <string name="SingGramCrashSafeMode">Crash Safe Mode</string>
     <string name="SingGramCrashSafeModeInfo">Temporarily disables heavier SingGram features such as Liquid Glass and AI tools.</string>
     <string name="SingGramCrashSafeModeAutoInfo">A previous crash enabled Safe Mode automatically.</string>
+    <string name="SingGramCrashRecovery">Crash recovery</string>
+    <string name="SingGramCrashRecoveryInfo">Turn on Safe Mode, switch Browser back to WebView, and disable heavier experimental features.</string>
+    <string name="SingGramCrashRecoveryDone">Crash recovery settings applied.</string>
     <string name="SingGramStealthReadBarTitle">Stealth preview is blocking read receipts</string>
     <string name="SingGramGhostStatusBarTitle">Ghost mode is active for this chat</string>
     <string name="SingGramStealthReadBarSendRead">Send read</string>
@@ -11044,6 +11048,19 @@
     <string name="SingGramDownloadStatusRecentState">Recent</string>
     <string name="SingGramDownloadStatusItemValue">%1$s / %2$s / %3$s</string>
     <string name="SingGramDownloadStatusUnknownFile">Unknown file</string>
+    <string name="SingGramDownloadCenter">Download Center</string>
+    <string name="SingGramDownloadCenterActiveTitle">Downloads are moving</string>
+    <string name="SingGramDownloadCenterIdleTitle">Download queue is idle</string>
+    <string name="SingGramDownloadCenterHeroInfo">%1$d active / %2$s / %3$s</string>
+    <string name="SingGramDownloadCenterSpeed">Speed</string>
+    <string name="SingGramDownloadCenterThroughput">Throughput</string>
+    <string name="SingGramDownloadCenterTracked">Tracked items</string>
+    <string name="SingGramDownloadCenterQueue">Queue and limits</string>
+    <string name="SingGramDownloadCenterLimits">Limits note</string>
+    <string name="SingGramDownloadCenterActions">Actions</string>
+    <string name="SingGramDownloadCenterClearRecent">Clear recent activity</string>
+    <string name="SingGramDownloadCenterClearRecentInfo">Clear local download status rows.</string>
+    <string name="SingGramDownloadCenterCleared">Download activity cleared</string>
     <string name="SingGramUpdates">SingGram updates</string>
     <string name="SingGramUpdateCurrentBuild">Current build</string>
     <string name="SingGramUpdateLatestBuild">Latest release</string>
@@ -11087,6 +11104,8 @@
     <string name="SingGramOtaInstalled">Installed</string>
     <string name="SingGramOtaLatest">Latest</string>
     <string name="SingGramOtaBuildDelta">Build delta</string>
+    <string name="SingGramOtaLastChecked">Last checked</string>
+    <string name="SingGramOtaReleaseChannel">Release channel</string>
     <string name="SingGramOtaBuildsAhead">%1$d builds ahead</string>
     <string name="SingGramOtaBuildsNewerInstalled">Installed is %1$d builds newer</string>
     <string name="SingGramOtaOpenLatest">Open latest APK</string>

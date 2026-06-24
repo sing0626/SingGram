@@ -1,6 +1,7 @@
 package org.telegram.ui;
 
 import android.content.Context;
+import android.graphics.drawable.GradientDrawable;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -57,19 +58,23 @@ public class SingGramDownloadStatusActivity extends BaseFragment {
         container.setPadding(0, AndroidUtilities.dp(12), 0, AndroidUtilities.dp(28));
         scrollView.addView(container, new ScrollView.LayoutParams(ScrollView.LayoutParams.MATCH_PARENT, ScrollView.LayoutParams.WRAP_CONTENT));
 
+        addHeroCard(context, container, snapshot);
+
         addHeader(context, container, LocaleController.getString(R.string.SingGramDownloadStatusLive));
         LinearLayout liveSection = addSection(context, container);
         addInfoCell(context, liveSection, LocaleController.getString(R.string.SingGramDownloadStatusActive), LocaleController.formatString(R.string.SingGramDownloadStatusActiveValue, snapshot.activeCount, speedValue(snapshot.speedBytesPerSecond)));
         addDivider(context, liveSection);
-        addActionCell(context, liveSection, LocaleController.getString(R.string.SingGramDownloadStatusRefresh), LocaleController.getString(R.string.SingGramDownloadStatusRefreshInfo), true, v -> refresh());
+        addInfoCell(context, liveSection, LocaleController.getString(R.string.SingGramDownloadCenterThroughput), speedValue(snapshot.speedBytesPerSecond));
         addDivider(context, liveSection);
-        addActionCell(context, liveSection, LocaleController.getString(R.string.SingGramDownloadStatusCopy), LocaleController.getString(R.string.SingGramDownloadStatusCopyInfo), true, v -> copyStatus());
+        addInfoCell(context, liveSection, LocaleController.getString(R.string.SingGramDownloadCenterTracked), LocaleController.formatPluralString("items", snapshot.items.size()));
 
-        addHeader(context, container, LocaleController.getString(R.string.SingGramDownloadBoost));
-        LinearLayout boostSection = addSection(context, container);
-        addInfoCell(context, boostSection, LocaleController.getString(R.string.SingGramDownloadBoost), boostValue(snapshot));
-        addDivider(context, boostSection);
-        addInfoCell(context, boostSection, LocaleController.getString(R.string.SingGramDownloadStatusConcurrency), concurrencyValue());
+        addHeader(context, container, LocaleController.getString(R.string.SingGramDownloadCenterQueue));
+        LinearLayout queueSection = addSection(context, container);
+        addInfoCell(context, queueSection, LocaleController.getString(R.string.SingGramDownloadBoost), boostValue(snapshot));
+        addDivider(context, queueSection);
+        addInfoCell(context, queueSection, LocaleController.getString(R.string.SingGramDownloadStatusConcurrency), concurrencyValue());
+        addDivider(context, queueSection);
+        addInfoCell(context, queueSection, LocaleController.getString(R.string.SingGramDownloadCenterLimits), LocaleController.getString(R.string.SingGramDownloadBoostFootnote));
 
         addHeader(context, container, LocaleController.getString(R.string.SingGramDownloadStatusRecent));
         LinearLayout recentSection = addSection(context, container);
@@ -86,8 +91,96 @@ public class SingGramDownloadStatusActivity extends BaseFragment {
             }
         }
 
+        addHeader(context, container, LocaleController.getString(R.string.SingGramDownloadCenterActions));
+        LinearLayout actionsSection = addSection(context, container);
+        addActionCell(context, actionsSection, LocaleController.getString(R.string.SingGramDownloadStatusRefresh), LocaleController.getString(R.string.SingGramDownloadStatusRefreshInfo), true, v -> refresh());
+        addDivider(context, actionsSection);
+        addActionCell(context, actionsSection, LocaleController.getString(R.string.SingGramDownloadStatusCopy), LocaleController.getString(R.string.SingGramDownloadStatusCopyInfo), true, v -> copyStatus());
+        addDivider(context, actionsSection);
+        addActionCell(context, actionsSection, LocaleController.getString(R.string.SingGramDownloadCenterClearRecent), LocaleController.getString(R.string.SingGramDownloadCenterClearRecentInfo), !snapshot.items.isEmpty(), v -> clearRecent());
+
         addInfo(context, container, LocaleController.getString(R.string.SingGramDownloadStatusInfo));
         return fragmentView;
+    }
+
+    private void addHeroCard(Context context, LinearLayout container, SingGramDownloadStats.Snapshot snapshot) {
+        LinearLayout card = new LinearLayout(context);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(AndroidUtilities.dp(18), AndroidUtilities.dp(18), AndroidUtilities.dp(18), AndroidUtilities.dp(16));
+        card.setBackground(downloadHeroBackground());
+        container.addView(card, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 12, 0, 12, 4));
+
+        TextView eyebrow = new TextView(context);
+        eyebrow.setText(LocaleController.getString(R.string.SingGramDownloadCenter));
+        eyebrow.setTextColor(Theme.multAlpha(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText), 0.90f));
+        eyebrow.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
+        eyebrow.setTypeface(AndroidUtilities.bold());
+        eyebrow.setGravity((LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
+        eyebrow.setIncludeFontPadding(false);
+        card.addView(eyebrow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        TextView title = new TextView(context);
+        title.setText(snapshot.activeCount > 0 ? LocaleController.getString(R.string.SingGramDownloadCenterActiveTitle) : LocaleController.getString(R.string.SingGramDownloadCenterIdleTitle));
+        title.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        title.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 24);
+        title.setTypeface(AndroidUtilities.bold());
+        title.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        title.setIncludeFontPadding(false);
+        title.setPadding(0, AndroidUtilities.dp(8), 0, 0);
+        card.addView(title, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        TextView subtitle = new TextView(context);
+        subtitle.setText(LocaleController.formatString(R.string.SingGramDownloadCenterHeroInfo, snapshot.activeCount, speedValue(snapshot.speedBytesPerSecond), downloadLevelName()));
+        subtitle.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
+        subtitle.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+        subtitle.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        subtitle.setLineSpacing(AndroidUtilities.dp(2), 1.0f);
+        subtitle.setPadding(0, AndroidUtilities.dp(8), 0, AndroidUtilities.dp(14));
+        card.addView(subtitle, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        LinearLayout row = new LinearLayout(context);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        card.addView(row, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        addHeroMetric(context, row, LocaleController.getString(R.string.SingGramDownloadStatusActive), String.valueOf(snapshot.activeCount));
+        addHeroMetric(context, row, LocaleController.getString(R.string.SingGramDownloadCenterSpeed), speedValue(snapshot.speedBytesPerSecond));
+    }
+
+    private void addHeroMetric(Context context, LinearLayout row, String label, String value) {
+        LinearLayout metric = new LinearLayout(context);
+        metric.setOrientation(LinearLayout.VERTICAL);
+        metric.setPadding(AndroidUtilities.dp(12), AndroidUtilities.dp(10), AndroidUtilities.dp(12), AndroidUtilities.dp(10));
+        metric.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(12), Theme.multAlpha(Theme.getColor(Theme.key_windowBackgroundWhite), 0.64f)));
+        row.addView(metric, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1.0f, 0, 0, 6, 0));
+
+        TextView labelView = new TextView(context);
+        labelView.setText(label);
+        labelView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText4));
+        labelView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12);
+        labelView.setSingleLine(true);
+        labelView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        metric.addView(labelView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        TextView valueView = new TextView(context);
+        valueView.setText(value);
+        valueView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        valueView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 18);
+        valueView.setTypeface(AndroidUtilities.bold());
+        valueView.setSingleLine(true);
+        valueView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        metric.addView(valueView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+    }
+
+    private GradientDrawable downloadHeroBackground() {
+        int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
+        int white = Theme.getColor(Theme.key_windowBackgroundWhite);
+        GradientDrawable drawable = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[] {
+                Theme.multAlpha(accent, SingGramConfig.isLiquidGlassEnabled() ? 0.24f : 0.14f),
+                Theme.multAlpha(white, SingGramConfig.isLiquidGlassEnabled() ? 0.92f : 0.84f),
+                Theme.multAlpha(0xFF18A999, SingGramConfig.isLiquidGlassEnabled() ? 0.18f : 0.10f)
+        });
+        drawable.setCornerRadius(AndroidUtilities.dp(SingGramConfig.isLiquidGlassEnabled() ? 18 : 12));
+        drawable.setStroke(AndroidUtilities.dp(1), Theme.multAlpha(accent, SingGramConfig.isLiquidGlassEnabled() ? 0.20f : 0.12f));
+        return drawable;
     }
 
     private String boostValue(SingGramDownloadStats.Snapshot snapshot) {
@@ -174,6 +267,12 @@ public class SingGramDownloadStatusActivity extends BaseFragment {
     private void refresh() {
         removeSelfFromStack();
         presentFragment(new SingGramDownloadStatusActivity());
+    }
+
+    private void clearRecent() {
+        SingGramDownloadStats.clear();
+        Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramDownloadCenterCleared), Toast.LENGTH_SHORT).show();
+        refresh();
     }
 
     private LinearLayout addSection(Context context, LinearLayout container) {

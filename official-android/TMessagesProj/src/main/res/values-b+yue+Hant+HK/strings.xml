@@ -294,6 +294,7 @@
     <string name="SingGramAIBrowserTranslate">AI 翻譯呢頁</string>
     <string name="SingGramAIBrowserNoPage">暫時未有頁面可以分析。</string>
     <string name="SingGramAIBrowser">AI Browser</string>
+    <string name="SingGramAIChatApp">Apps：同 API 傾偈</string>
     <string name="SingGramBrowserEngine">Browser 內核</string>
     <string name="SingGramBrowserEngineSystem">系統 WebView</string>
     <string name="SingGramBrowserEngineGecko">GeckoView 實驗版</string>
@@ -453,6 +454,9 @@
     <string name="SingGramCrashSafeMode">閃退安全模式</string>
     <string name="SingGramCrashSafeModeInfo">暫時關閉較重嘅 SingGram 功能，例如 Liquid Glass 同 AI 工具。</string>
     <string name="SingGramCrashSafeModeAutoInfo">上次閃退已自動開啟安全模式。</string>
+    <string name="SingGramCrashRecovery">閃退自救</string>
+    <string name="SingGramCrashRecoveryInfo">開安全模式、Browser 切返 WebView，並停用比較重嘅實驗功能。</string>
+    <string name="SingGramCrashRecoveryDone">閃退自救設定套用咗。</string>
     <string name="SingGramStealthReadBarTitle">隱身預覽中，已讀回條已暫停</string>
     <string name="SingGramGhostStatusBarTitle">呢個聊天已開 Ghost 模式</string>
     <string name="SingGramStealthReadBarSendRead">送已讀</string>
@@ -568,6 +572,19 @@
     <string name="SingGramDownloadStatusRecentState">最近</string>
     <string name="SingGramDownloadStatusItemValue">%1$s / %2$s / %3$s</string>
     <string name="SingGramDownloadStatusUnknownFile">未知檔案</string>
+    <string name="SingGramDownloadCenter">下載中心</string>
+    <string name="SingGramDownloadCenterActiveTitle">下載郁緊</string>
+    <string name="SingGramDownloadCenterIdleTitle">下載隊列暫時空閒</string>
+    <string name="SingGramDownloadCenterHeroInfo">%1$d 個下載緊 / %2$s / %3$s</string>
+    <string name="SingGramDownloadCenterSpeed">速度</string>
+    <string name="SingGramDownloadCenterThroughput">總速度</string>
+    <string name="SingGramDownloadCenterTracked">追蹤項目</string>
+    <string name="SingGramDownloadCenterQueue">隊列同限制</string>
+    <string name="SingGramDownloadCenterLimits">限制提示</string>
+    <string name="SingGramDownloadCenterActions">動作</string>
+    <string name="SingGramDownloadCenterClearRecent">清除最近活動</string>
+    <string name="SingGramDownloadCenterClearRecentInfo">清走本機下載狀態列表。</string>
+    <string name="SingGramDownloadCenterCleared">下載活動已清除</string>
     <string name="SingGramUpdates">SingGram 更新</string>
     <string name="SingGramUpdateCurrentBuild">而家版本</string>
     <string name="SingGramUpdateLatestBuild">最新 Release</string>
@@ -611,6 +628,8 @@
     <string name="SingGramOtaInstalled">已安裝</string>
     <string name="SingGramOtaLatest">最新</string>
     <string name="SingGramOtaBuildDelta">Build 差距</string>
+    <string name="SingGramOtaLastChecked">最後檢查</string>
+    <string name="SingGramOtaReleaseChannel">Release channel</string>
     <string name="SingGramOtaBuildsAhead">新 %1$d 個 build</string>
     <string name="SingGramOtaBuildsNewerInstalled">已安裝版本新 %1$d 個 build</string>
     <string name="SingGramOtaOpenLatest">打開最新 APK</string>

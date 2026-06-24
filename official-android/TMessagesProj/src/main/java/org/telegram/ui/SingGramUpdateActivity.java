@@ -83,6 +83,10 @@ public class SingGramUpdateActivity extends BaseFragment {
         addInfoCell(context, versionSection, LocaleController.getString(R.string.SingGramOtaLatest), latestBuildValue());
         addDivider(context, versionSection);
         addInfoCell(context, versionSection, LocaleController.getString(R.string.SingGramOtaBuildDelta), buildDeltaValue());
+        addDivider(context, versionSection);
+        addInfoCell(context, versionSection, LocaleController.getString(R.string.SingGramOtaLastChecked), lastCheckedValue());
+        addDivider(context, versionSection);
+        addInfoCell(context, versionSection, LocaleController.getString(R.string.SingGramOtaReleaseChannel), SingGramUpdateClient.DEFAULT_RELEASE_URL);
 
         addHeader(context, contentContainer, LocaleController.getString(R.string.SingGramUpdateActions));
         LinearLayout actionSection = addSection(context, contentContainer);
@@ -245,6 +249,14 @@ public class SingGramUpdateActivity extends BaseFragment {
             return LocaleController.formatString(R.string.SingGramOtaBuildsNewerInstalled, Math.abs(delta));
         }
         return LocaleController.getString(R.string.SingGramUpdateSameVersion);
+    }
+
+    private String lastCheckedValue() {
+        long time = SingGramConfig.getLastUpdateCheckTime();
+        if (time <= 0) {
+            return LocaleController.getString(R.string.SingGramUpdateNotChecked);
+        }
+        return LocaleController.formatDateTime(time / 1000, true);
     }
 
     private String valueOrDash(String value) {

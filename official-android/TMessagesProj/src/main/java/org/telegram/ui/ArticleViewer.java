@@ -87,6 +87,7 @@ import android.view.animation.DecelerateInterpolator;
 import android.webkit.CookieManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.RenderProcessGoneDetail;
+import android.webkit.ValueCallback;
 import android.webkit.WebBackForwardList;
 import android.webkit.WebChromeClient;
 import android.webkit.WebHistoryItem;
@@ -332,6 +333,7 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
     private ImageView searchUpButton;
     private ImageView searchDownButton;
     private AnimatedTextView searchCountText;
+    private LinearLayout singGramAiSideToolbar;
 
     private FrameLayout bulletinContainer;
     public PageLayout[] pages;
@@ -4034,6 +4036,7 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
         };
         actionBar.occupyStatusBar(sheet != null && !BOTTOM_ACTION_BAR);
         containerView.addView(actionBar, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, BOTTOM_ACTION_BAR ? Gravity.BOTTOM : Gravity.TOP));
+        addSingGramAiSideToolbar(activity);
         actionBar.setOnClickListener(v -> {
             if (actionBar.longClicked) return;
             final PageLayout page = pages[0];
@@ -4782,6 +4785,32 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
         updatePaintColors();
     }
 
+    private void addSingGramAiSideToolbar(Context context) {
+        singGramAiSideToolbar = new LinearLayout(context);
+        singGramAiSideToolbar.setOrientation(LinearLayout.VERTICAL);
+        singGramAiSideToolbar.setPadding(dp(4), dp(4), dp(4), dp(4));
+        singGramAiSideToolbar.setBackground(Theme.createRoundRectDrawable(dp(18), Theme.multAlpha(getThemedColor(Theme.key_windowBackgroundWhite), 0.86f)));
+        singGramAiSideToolbar.setAlpha(0.92f);
+        addSingGramAiSideButton(context, R.drawable.premium_ai_editor, LocaleController.getString(R.string.SingGramAIBrowserSummarize), () -> runSingGramAiBrowserAction(SingGramAiClient.ACTION_SUMMARIZE));
+        addSingGramAiSideButton(context, R.drawable.msg_translate, LocaleController.getString(R.string.SingGramAIBrowserTranslate), () -> runSingGramAiBrowserAction(SingGramAiClient.ACTION_TRANSLATE_ZH_HANT));
+        containerView.addView(singGramAiSideToolbar, LayoutHelper.createFrame(44, LayoutHelper.WRAP_CONTENT, Gravity.RIGHT | Gravity.CENTER_VERTICAL, 0, 0, 10, 0));
+    }
+
+    private void addSingGramAiSideButton(Context context, int icon, String description, Runnable action) {
+        ImageView button = new ImageView(context);
+        button.setScaleType(ImageView.ScaleType.CENTER);
+        button.setImageResource(icon);
+        button.setColorFilter(new PorterDuffColorFilter(getThemedColor(Theme.key_windowBackgroundWhiteBlueText), PorterDuff.Mode.MULTIPLY));
+        button.setContentDescription(description);
+        button.setBackground(Theme.createSelectorDrawable(getThemedColor(Theme.key_listSelector), Theme.RIPPLE_MASK_CIRCLE_20DP));
+        button.setOnClickListener(v -> {
+            if (action != null) {
+                action.run();
+            }
+        });
+        singGramAiSideToolbar.addView(button, LayoutHelper.createLinear(36, 36, 0, 0, 0, 4));
+    }
+
     private boolean showRestrictedToastOnResume;
     private void showRestrictedWebsiteToast() {
         showRestrictedToastOnResume = false;
@@ -4803,14 +4832,27 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
         if (parentActivity == null || pages == null || pages[0] == null) {
             return;
         }
-        String input = buildSingGramAiBrowserInput();
-        if (TextUtils.isEmpty(input)) {
-            Toast.makeText(parentActivity, LocaleController.getString(R.string.SingGramAIBrowserNoPage), Toast.LENGTH_SHORT).show();
-            return;
-        }
         AlertDialog progressDialog = new AlertDialog(parentActivity, AlertDialog.ALERT_TYPE_SPINNER);
         progressDialog.setCanCancel(false);
         progressDialog.show();
+        buildSingGramAiBrowserInput(input -> {
+            if (TextUtils.isEmpty(input)) {
+                try {
+                    progressDialog.dismiss();
+                } catch (Exception ignore) {
+
+                }
+                Toast.makeText(parentActivity, LocaleController.getString(R.string.SingGramAIBrowserNoPage), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            runSingGramAiBrowserRequest(action, input, progressDialog);
+        });
+    }
+
+    private void runSingGramAiBrowserRequest(int action, String input, AlertDialog progressDialog) {
+        if (TextUtils.isEmpty(input)) {
+            return;
+        }
         SingGramAiClient.runTextAction(action, input, new SingGramAiClient.Callback() {
             @Override
             public void onResult(String text) {
@@ -4834,7 +4876,7 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
         });
     }
 
-    private String buildSingGramAiBrowserInput() {
+    private void buildSingGramAiBrowserInput(ValueCallback<String> callback) {
         String title = null;
         String url = null;
         if (pages[0].isWeb()) {
@@ -4842,6 +4884,14 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
             if (webView != null) {
                 title = webView.getTitle();
                 url = BotWebViewContainer.magic2tonsite(webView.getUrl());
+                String finalTitle = title;
+                String finalUrl = url;
+                try {
+                    webView.evaluateJavascript("(function(){var text=document.body?document.body.innerText:'';return (text||'').replace(/\\s+/g,' ').trim().slice(0,12000);})()", value -> callback.onReceiveValue(buildSingGramAiBrowserInput(finalTitle, finalUrl, decodeJavascriptString(value))));
+                    return;
+                } catch (Throwable ignore) {
+
+                }
             }
         } else if (pages[0].adapter != null && pages[0].adapter.currentPage != null) {
             TLRPC.WebPage page = pages[0].adapter.currentPage;
@@ -4851,19 +4901,37 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
                 title = page.site_name;
             }
         }
-        if (TextUtils.isEmpty(title) && TextUtils.isEmpty(url)) {
+        callback.onReceiveValue(buildSingGramAiBrowserInput(title, url, null));
+    }
+
+    private String buildSingGramAiBrowserInput(String title, String url, String pageText) {
+        if (TextUtils.isEmpty(title) && TextUtils.isEmpty(url) && TextUtils.isEmpty(pageText)) {
             return "";
         }
         StringBuilder builder = new StringBuilder();
-        builder.append("You are assisting inside SingGram AI Browser. Use the page title and URL as context. ");
-        builder.append("If the page content is unavailable, say the result is based on visible metadata only.\n\n");
+        builder.append("You are assisting inside SingGram AI Browser. Use the page text first, then the title and URL as context. ");
+        builder.append("If page text is unavailable, say the result is based on visible metadata only.\n\n");
         if (!TextUtils.isEmpty(title)) {
             builder.append("Title: ").append(title.trim()).append('\n');
         }
         if (!TextUtils.isEmpty(url)) {
             builder.append("URL: ").append(url.trim()).append('\n');
         }
+        if (!TextUtils.isEmpty(pageText)) {
+            builder.append("\nPage text:\n").append(pageText.trim()).append('\n');
+        }
         return builder.toString();
+    }
+
+    private String decodeJavascriptString(String value) {
+        if (TextUtils.isEmpty(value) || "null".equals(value)) {
+            return "";
+        }
+        try {
+            return new JSONObject("{\"value\":" + value + "}").optString("value", "");
+        } catch (Exception ignore) {
+            return value;
+        }
     }
 
     private void showSingGramAiBrowserResult(int action, String text) {

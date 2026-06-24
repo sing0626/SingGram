@@ -686,6 +686,19 @@ public class SingGramConfig {
         setBoolean(KEY_CRASH_SAFE_MODE, enabled);
     }
 
+    public static void applyCrashRecoveryPreset() {
+        SharedPreferences preferences = prefs();
+        if (preferences != null) {
+            preferences.edit()
+                    .putBoolean(KEY_CRASH_SAFE_MODE, true)
+                    .putBoolean(KEY_AI_ENABLED, false)
+                    .putBoolean(KEY_LIQUID_GLASS, false)
+                    .putBoolean(KEY_DOWNLOAD_BOOST, false)
+                    .putInt(KEY_BROWSER_ENGINE, BROWSER_ENGINE_SYSTEM_WEBVIEW)
+                    .apply();
+        }
+    }
+
     public static long getLastCrashTime() {
         SharedPreferences preferences = prefs();
         return preferences == null ? 0 : preferences.getLong(KEY_LAST_CRASH_TIME, 0);

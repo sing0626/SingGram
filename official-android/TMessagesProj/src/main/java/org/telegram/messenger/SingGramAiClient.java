@@ -25,6 +25,7 @@ public class SingGramAiClient {
     public static final int ACTION_EXTRACT_TASKS = 8;
     public static final int ACTION_TRANSLATE_YUE = 9;
     public static final int ACTION_TEST_CONNECTION = 10;
+    public static final int ACTION_CHAT_APP = 11;
 
     public interface Callback {
         void onResult(String text);
@@ -53,6 +54,8 @@ public class SingGramAiClient {
                 return LocaleController.getString(R.string.SingGramAITranslateCantonese);
             case ACTION_TEST_CONNECTION:
                 return LocaleController.getString(R.string.SingGramAITestConnection);
+            case ACTION_CHAT_APP:
+                return LocaleController.getString(R.string.SingGramAIChatApp);
             default:
                 return LocaleController.getString(R.string.SingGramAI);
         }
@@ -83,8 +86,8 @@ public class SingGramAiClient {
             try {
                 JSONObject body = new JSONObject();
                 body.put("model", SingGramConfig.getAiModel());
-                body.put("temperature", action == ACTION_REPLY_SUGGESTIONS ? 0.7 : action == ACTION_TEST_CONNECTION ? 0.0 : 0.35);
-                body.put("max_tokens", action == ACTION_TEST_CONNECTION ? 64 : action == ACTION_REPLY_SUGGESTIONS ? 900 : 1200);
+                body.put("temperature", action == ACTION_REPLY_SUGGESTIONS || action == ACTION_CHAT_APP ? 0.7 : action == ACTION_TEST_CONNECTION ? 0.0 : 0.35);
+                body.put("max_tokens", action == ACTION_TEST_CONNECTION ? 64 : action == ACTION_REPLY_SUGGESTIONS || action == ACTION_CHAT_APP ? 900 : 1200);
 
                 JSONArray messages = new JSONArray();
                 JSONObject system = new JSONObject();
@@ -164,6 +167,8 @@ public class SingGramAiClient {
                 return base + "\nTranslate the user's message into natural written Cantonese used in Hong Kong. Preserve names, links, code, and numbers.";
             case ACTION_TEST_CONNECTION:
                 return base + "\nThis is a connectivity test. Reply with a short OK message only.";
+            case ACTION_CHAT_APP:
+                return base + "\nYou are a chat app inside SingGram. Reply naturally to the user's draft or question, and keep the result ready to send in chat.";
             default:
                 return base;
         }

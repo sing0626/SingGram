@@ -301,6 +301,8 @@ public class SingGramSettingsActivity extends BaseFragment {
             }
         }, false);
         addDivider(context, diagnosticsSection);
+        addActionCell(context, diagnosticsSection, LocaleController.getString(R.string.SingGramCrashRecovery), LocaleController.getString(R.string.SingGramCrashRecoveryInfo), true, v -> applyCrashRecovery());
+        addDivider(context, diagnosticsSection);
         addSwitchSetting(context, diagnosticsSection, LocaleController.getString(R.string.SingGramDiagnosticsVisible), LocaleController.getString(R.string.SingGramDiagnosticsVisibleInfo), SingGramConfig.isDiagnosticsEnabled(), SingGramConfig::setDiagnosticsEnabled, false);
         if (SingGramConfig.isDiagnosticsEnabled()) {
             addDivider(context, diagnosticsSection);
@@ -1005,6 +1007,13 @@ public class SingGramSettingsActivity extends BaseFragment {
     private void repairPush() {
         SingGramPushDiagnostics.repairPushSettings();
         Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramDoctorRepairPushDone), Toast.LENGTH_SHORT).show();
+        removeSelfFromStack();
+        presentFragment(new SingGramSettingsActivity(MODE_DIAGNOSTICS));
+    }
+
+    private void applyCrashRecovery() {
+        SingGramConfig.applyCrashRecoveryPreset();
+        Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramCrashRecoveryDone), Toast.LENGTH_SHORT).show();
         removeSelfFromStack();
         presentFragment(new SingGramSettingsActivity(MODE_DIAGNOSTICS));
     }

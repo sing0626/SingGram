@@ -1205,6 +1205,7 @@ public class ChatActivity extends BaseFragment implements
     public final static int OPTION_SINGGRAM_CHAT_NOTES = 126;
     public final static int OPTION_SINGGRAM_AI_MENU = 127;
     public final static int OPTION_SINGGRAM_AI_DRAFT_MENU = 128;
+    public final static int OPTION_SINGGRAM_AI_CHAT_APP = 129;
 
     private final static int[] allowedNotificationsDuringChatListAnimations = new int[]{
             NotificationCenter.messagesRead,
@@ -32740,6 +32741,9 @@ public class ChatActivity extends BaseFragment implements
         items.add(LocaleController.getString(R.string.SingGramAISummarizeRecentChat));
         icons.add(R.drawable.premium_ai_editor);
         actions.add(0);
+        items.add(LocaleController.getString(R.string.SingGramAIChatApp));
+        icons.add(R.drawable.msg_bot);
+        actions.add(SingGramAiClient.ACTION_CHAT_APP);
 
         AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
         builder.setTitle(LocaleController.getString(R.string.SingGramAIDraftTools));
@@ -32750,6 +32754,8 @@ public class ChatActivity extends BaseFragment implements
             int action = actions.get(which);
             if (action == 0) {
                 runSingGramAiForRecentChat();
+            } else if (action == SingGramAiClient.ACTION_CHAT_APP) {
+                runSingGramAiChatApp();
             } else {
                 runSingGramAiForDraft(action);
             }
@@ -32778,6 +32784,42 @@ public class ChatActivity extends BaseFragment implements
 
                 }
                 showSingGramAiResult(action, 0, text);
+            }
+
+            @Override
+            public void onError(String error) {
+                try {
+                    progressDialog.dismiss();
+                } catch (Exception ignore) {
+
+                }
+                BulletinFactory.of(ChatActivity.this).createErrorBulletin(error, themeDelegate).show();
+            }
+        });
+    }
+
+    private void runSingGramAiChatApp() {
+        if (getParentActivity() == null) {
+            return;
+        }
+        CharSequence draft = chatActivityEnterView == null ? null : chatActivityEnterView.getFieldText();
+        String input = buildSingGramAiChatAppInput(draft);
+        if (TextUtils.isEmpty(input)) {
+            BulletinFactory.of(this).createErrorBulletin(LocaleController.getString(R.string.SingGramAIDraftEmpty), themeDelegate).show();
+            return;
+        }
+        AlertDialog progressDialog = new AlertDialog(getParentActivity(), AlertDialog.ALERT_TYPE_SPINNER);
+        progressDialog.setCanCancel(false);
+        progressDialog.show();
+        SingGramAiClient.runTextAction(SingGramAiClient.ACTION_CHAT_APP, input, new SingGramAiClient.Callback() {
+            @Override
+            public void onResult(String text) {
+                try {
+                    progressDialog.dismiss();
+                } catch (Exception ignore) {
+
+                }
+                showSingGramAiResult(SingGramAiClient.ACTION_CHAT_APP, 0, text);
             }
 
             @Override
@@ -32840,6 +32882,21 @@ public class ChatActivity extends BaseFragment implements
             added++;
         }
         return added == 0 ? "" : builder.toString();
+    }
+
+    private String buildSingGramAiChatAppInput(CharSequence draft) {
+        if (TextUtils.isEmpty(draft)) {
+            return "";
+        }
+        StringBuilder builder = new StringBuilder();
+        builder.append("The user is in a SingGram chat and wants to talk to an AI app using NewAPI. Reply directly to this draft or question. ");
+        builder.append("If it looks like they want a message, produce a send-ready reply.\n\n");
+        long did = getDialogId();
+        if (did != 0) {
+            builder.append("Chat ID: ").append(did).append('\n');
+        }
+        builder.append("User draft/question:\n").append(draft.toString().trim());
+        return builder.toString();
     }
 
     private void appendSingGramAiResultToChatNotes(long dialogId, int action, String text) {

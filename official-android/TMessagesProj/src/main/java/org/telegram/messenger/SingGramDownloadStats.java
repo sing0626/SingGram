@@ -120,6 +120,12 @@ public class SingGramDownloadStats {
         }
     }
 
+    public static void clear() {
+        synchronized (lock) {
+            items.clear();
+        }
+    }
+
     private static void markDone(String fileName, boolean completed) {
         if (TextUtils.isEmpty(fileName)) {
             return;
