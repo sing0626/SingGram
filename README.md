@@ -1,6 +1,6 @@
 # SingGram
 
-SingGram is an Android fork based on the official Telegram Android source. The production app lives in `official-android/`; the older Flutter prototype remains in this repository only as reference material.
+SingGram is an Android fork based on the official Telegram Android source. The production app lives in `official-android/`.
 
 ## What This Fork Is
 
@@ -31,8 +31,6 @@ scripts/sync_official_android_upstream.sh Sync helper for Telegram upstream
 .github/workflows/official-android-build.yml
 docs/official-android-fork.md             Fork, build, update, and release notes
 ```
-
-The old Flutter prototype folders are still present for history, but new production work should target `official-android/`.
 
 ## Local Build
 

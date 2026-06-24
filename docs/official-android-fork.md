@@ -1,6 +1,6 @@
 # SingGram Official Android Fork
 
-This branch pivots from the Flutter prototype to the official Telegram Android source as the base UI and client engine.
+This branch uses the official Telegram Android source as the base UI and client engine.
 
 ## Source Base
 
@@ -9,7 +9,7 @@ This branch pivots from the Flutter prototype to the official Telegram Android s
 - Imported upstream commit: `9fea7264 update to 12.7.3 (6750)`
 - License: GPL-2.0 or later, as shipped by upstream.
 
-The Flutter prototype remains in the repository for reference only. New production work should target `official-android/`.
+Production work should target `official-android/`.
 
 ## Private Build Credentials
 
