@@ -11120,6 +11120,10 @@
     <string name="SingGramOtaDownloadComplete">APK downloaded</string>
     <string name="SingGramOtaInstallDownloaded">Install downloaded APK</string>
     <string name="SingGramOtaInstallDownloadedInfo">Open Android installer for the downloaded APK.</string>
+    <string name="SingGramOtaUpdatePromptTitle">SingGram update available</string>
+    <string name="SingGramOtaUpdatePromptMessage">Version %1$s is ready. Open OTA Update Center to download and install it.</string>
+    <string name="SingGramOtaUpdatePromptOpen">Update now</string>
+    <string name="SingGramOtaUpdatePromptLater">Later</string>
     <string name="SingGramOtaReleaseManifest">Release manifest</string>
     <string name="SingGramOtaInfo">OTA data comes from SingGram Release update.json. Install and permissions remain controlled by Android.</string>
     <string name="SingGramChatNotesAll">All chat notes</string>

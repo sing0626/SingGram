@@ -126,6 +126,8 @@ import org.telegram.messenger.R;
 import org.telegram.messenger.SendMessagesHelper;
 import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.SharedPrefsHelper;
+import org.telegram.messenger.SingGramConfig;
+import org.telegram.messenger.SingGramUpdateClient;
 import org.telegram.messenger.TopicsController;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.UserObject;
@@ -283,6 +285,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
     private ActionMode visibleActionMode;
 
     private boolean wasMutedByAdminRaisedHand;
+    private boolean singGramOtaCheckInProgress;
 
     private final PipActivityController pipActivityController = new PipActivityController(this);
     private final IPipActivityHandler pipActivityHandler = pipActivityController.getHandler();
@@ -7037,6 +7040,7 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         if (ApplicationLoader.applicationLoaderInstance != null) {
             ApplicationLoader.applicationLoaderInstance.onResume();
         }
+        maybeCheckSingGramOtaOnResume();
         if (whenResumed != null) {
             whenResumed.run();
             whenResumed = null;
@@ -7049,6 +7053,52 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         //if (refreshRateController != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
         //    refreshRateController.start();
         //}
+    }
+
+    private void maybeCheckSingGramOtaOnResume() {
+        if (singGramOtaCheckInProgress || !isResumed || finished || isFinishing() || actionBarLayout == null) {
+            return;
+        }
+        singGramOtaCheckInProgress = true;
+        AndroidUtilities.runOnUIThread(() -> {
+            if (!isResumed || isFinishing() || passcodeDialog != null && passcodeDialog.passcodeView.getVisibility() == View.VISIBLE) {
+                singGramOtaCheckInProgress = false;
+                return;
+            }
+            SingGramUpdateClient.check(new SingGramUpdateClient.Callback() {
+                @Override
+                public void onResult(SingGramUpdateClient.UpdateInfo info) {
+                    singGramOtaCheckInProgress = false;
+                    if (info == null || !info.hasUpdate() || !isResumed || isFinishing()) {
+                        return;
+                    }
+                    SingGramConfig.setLastUpdateCheck(info.versionCode, info.versionName);
+                    showSingGramOtaUpdatePrompt(info);
+                }
+
+                @Override
+                public void onError(String error) {
+                    singGramOtaCheckInProgress = false;
+                }
+            });
+        }, 900);
+    }
+
+    private void showSingGramOtaUpdatePrompt(SingGramUpdateClient.UpdateInfo info) {
+        if (mainFragmentsStack.isEmpty() || getVisibleDialog() != null) {
+            return;
+        }
+        BaseFragment fragment = mainFragmentsStack.get(mainFragmentsStack.size() - 1);
+        if (fragment == null || fragment.getParentActivity() == null) {
+            return;
+        }
+        String version = TextUtils.isEmpty(info.versionName) ? String.valueOf(info.versionCode) : info.versionName + " / " + info.versionCode;
+        AlertDialog.Builder builder = new AlertDialog.Builder(fragment.getParentActivity());
+        builder.setTitle(LocaleController.getString(R.string.SingGramOtaUpdatePromptTitle));
+        builder.setMessage(LocaleController.formatString(R.string.SingGramOtaUpdatePromptMessage, version));
+        builder.setPositiveButton(LocaleController.getString(R.string.SingGramOtaUpdatePromptOpen), (dialog, which) -> fragment.presentFragment(new SingGramUpdateActivity()));
+        builder.setNegativeButton(LocaleController.getString(R.string.SingGramOtaUpdatePromptLater), null);
+        fragment.showDialog(builder.create());
     }
 
     public static Runnable whenResumed;

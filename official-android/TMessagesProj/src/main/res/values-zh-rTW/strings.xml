@@ -640,6 +640,10 @@
     <string name="SingGramOtaDownloadComplete">APK 已下載</string>
     <string name="SingGramOtaInstallDownloaded">安裝已下載 APK</string>
     <string name="SingGramOtaInstallDownloadedInfo">開啟 Android 安裝器安裝已下載 APK。</string>
+    <string name="SingGramOtaUpdatePromptTitle">SingGram 有新版本</string>
+    <string name="SingGramOtaUpdatePromptMessage">版本 %1$s 已準備好。開啟 OTA 更新中心即可下載並安裝。</string>
+    <string name="SingGramOtaUpdatePromptOpen">立即更新</string>
+    <string name="SingGramOtaUpdatePromptLater">稍後</string>
     <string name="SingGramOtaReleaseManifest">Release manifest</string>
     <string name="SingGramOtaInfo">OTA 資料來自 SingGram Release update.json。安裝與權限仍由 Android 控制。</string>
     <string name="SingGramChatNotesAll">所有聊天備註</string>
