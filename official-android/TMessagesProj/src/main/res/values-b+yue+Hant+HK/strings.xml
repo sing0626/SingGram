@@ -290,6 +290,9 @@
     <string name="SingGramAIShorten">縮短啲</string>
     <string name="SingGramAIPasteClipboard">貼剪貼簿</string>
     <string name="SingGramAIResultPlaceholder">AI 結果會喺呢度出。</string>
+    <string name="SingGramAIBrowserSummarize">AI 摘要呢頁</string>
+    <string name="SingGramAIBrowserTranslate">AI 翻譯呢頁</string>
+    <string name="SingGramAIBrowserNoPage">暫時未有頁面可以分析。</string>
     <string name="SingGramDiagnostics">診斷</string>
     <string name="SingGramExportLogs">匯出記錄</string>
     <string name="SingGramExportLastLogs">匯出最近記錄</string>

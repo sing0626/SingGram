@@ -142,6 +142,7 @@ import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SendMessagesHelper;
 import org.telegram.messenger.SharedConfig;
+import org.telegram.messenger.SingGramAiClient;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.Utilities;
 import org.telegram.messenger.WebFile;
@@ -4420,6 +4421,10 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
             if (id == WebActionBar.search_item) {
                 actionBar.setHeight(currentHeaderHeight = dp(56));
                 actionBar.showSearch(true, true);
+            } else if (id == WebActionBar.singgram_ai_summary_item) {
+                runSingGramAiBrowserAction(SingGramAiClient.ACTION_SUMMARIZE);
+            } else if (id == WebActionBar.singgram_ai_translate_item) {
+                runSingGramAiBrowserAction(SingGramAiClient.ACTION_TRANSLATE_ZH_HANT);
             } else if (id == WebActionBar.share_item) {
                 String url;
                 if (pages[0].isWeb()) {
@@ -4792,6 +4797,91 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
         BulletinFactory.of(container, getResourcesProvider())
             .createSimpleBulletin(R.raw.chats_infotip, AndroidUtilities.replaceSingleTag(getString(R.string.BrowserExternalRestricted), this::openWebSettings), 4)
             .show(true);
+    }
+
+    private void runSingGramAiBrowserAction(int action) {
+        if (parentActivity == null || pages == null || pages[0] == null) {
+            return;
+        }
+        String input = buildSingGramAiBrowserInput();
+        if (TextUtils.isEmpty(input)) {
+            Toast.makeText(parentActivity, LocaleController.getString(R.string.SingGramAIBrowserNoPage), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        AlertDialog progressDialog = new AlertDialog(parentActivity, AlertDialog.ALERT_TYPE_SPINNER);
+        progressDialog.setCanCancel(false);
+        progressDialog.show();
+        SingGramAiClient.runTextAction(action, input, new SingGramAiClient.Callback() {
+            @Override
+            public void onResult(String text) {
+                try {
+                    progressDialog.dismiss();
+                } catch (Exception ignore) {
+
+                }
+                showSingGramAiBrowserResult(action, text);
+            }
+
+            @Override
+            public void onError(String error) {
+                try {
+                    progressDialog.dismiss();
+                } catch (Exception ignore) {
+
+                }
+                Toast.makeText(parentActivity, error, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private String buildSingGramAiBrowserInput() {
+        String title = null;
+        String url = null;
+        if (pages[0].isWeb()) {
+            BotWebViewContainer.MyWebView webView = pages[0].getWebView();
+            if (webView != null) {
+                title = webView.getTitle();
+                url = BotWebViewContainer.magic2tonsite(webView.getUrl());
+            }
+        } else if (pages[0].adapter != null && pages[0].adapter.currentPage != null) {
+            TLRPC.WebPage page = pages[0].adapter.currentPage;
+            title = page.title;
+            url = page.url;
+            if (TextUtils.isEmpty(title)) {
+                title = page.site_name;
+            }
+        }
+        if (TextUtils.isEmpty(title) && TextUtils.isEmpty(url)) {
+            return "";
+        }
+        StringBuilder builder = new StringBuilder();
+        builder.append("You are assisting inside SingGram AI Browser. Use the page title and URL as context. ");
+        builder.append("If the page content is unavailable, say the result is based on visible metadata only.\n\n");
+        if (!TextUtils.isEmpty(title)) {
+            builder.append("Title: ").append(title.trim()).append('\n');
+        }
+        if (!TextUtils.isEmpty(url)) {
+            builder.append("URL: ").append(url.trim()).append('\n');
+        }
+        return builder.toString();
+    }
+
+    private void showSingGramAiBrowserResult(int action, String text) {
+        if (parentActivity == null) {
+            return;
+        }
+        final String result = TextUtils.isEmpty(text) ? LocaleController.getString(R.string.SingGramAIEmptyResponse) : text;
+        AlertDialog.Builder builder = new AlertDialog.Builder(parentActivity, getResourcesProvider());
+        builder.setTitle(action == SingGramAiClient.ACTION_TRANSLATE_ZH_HANT
+                ? LocaleController.getString(R.string.SingGramAIBrowserTranslate)
+                : LocaleController.getString(R.string.SingGramAIBrowserSummarize));
+        builder.setMessage(result);
+        builder.setPositiveButton(LocaleController.getString(R.string.SingGramCopyButton), (dialog, which) -> {
+            AndroidUtilities.addToClipboard(result);
+            Toast.makeText(parentActivity, LocaleController.getString(R.string.SingGramTextCopied), Toast.LENGTH_SHORT).show();
+        });
+        builder.setNegativeButton(LocaleController.getString(R.string.OK), null);
+        showDialog(builder.create());
     }
 
     public void openBookmark(String link) {

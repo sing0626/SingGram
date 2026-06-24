@@ -128,6 +128,8 @@ public class WebActionBar extends FrameLayout {
     public static final int history_item = 8;
     public static final int forward_item = 9;
     public static final int instant_item = 10;
+    public static final int singgram_ai_summary_item = 101;
+    public static final int singgram_ai_translate_item = 102;
 
     public WebActionBar(Context context, Theme.ResourcesProvider resourcesProvider) {
         super(context);
@@ -240,6 +242,8 @@ public class WebActionBar extends FrameLayout {
                 }
                 o.add(R.drawable.msg_reset, getString(R.string.Refresh), click.run(reload_item));
                 o.add(R.drawable.msg_search, getString(R.string.Search), click.run(search_item));
+                o.add(R.drawable.premium_ai_editor, getString(R.string.SingGramAIBrowserSummarize), click.run(singgram_ai_summary_item));
+                o.add(R.drawable.msg_translate, getString(R.string.SingGramAIBrowserTranslate), click.run(singgram_ai_translate_item));
                 o.add(R.drawable.msg_saved, getString(R.string.WebBookmark), click.run(bookmark_item));
                 o.add(R.drawable.msg_share, getString(R.string.ShareFile), click.run(share_item));
                 o.addGap();

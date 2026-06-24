@@ -10766,6 +10766,9 @@
     <string name="SingGramAIShorten">Shorten text</string>
     <string name="SingGramAIPasteClipboard">Paste clipboard</string>
     <string name="SingGramAIResultPlaceholder">AI result will appear here.</string>
+    <string name="SingGramAIBrowserSummarize">AI summarize page</string>
+    <string name="SingGramAIBrowserTranslate">AI translate page</string>
+    <string name="SingGramAIBrowserNoPage">No page to analyze yet.</string>
     <string name="SingGramDiagnostics">Diagnostics</string>
     <string name="SingGramExportLogs">Export logs</string>
     <string name="SingGramExportLastLogs">Export recent logs</string>
