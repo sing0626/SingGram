@@ -128,6 +128,7 @@ public class SingGramCommandPaletteActivity extends BaseFragment {
 
     private ArrayList<Command> buildCommands() {
         ArrayList<Command> commands = new ArrayList<>();
+        commands.add(new Command(LocaleController.getString(R.string.SingGramFeatureHub), LocaleController.getString(R.string.SingGramFeatureHubInfo), () -> presentFragment(new SingGramFeatureHubActivity())));
         commands.add(new Command(LocaleController.getString(R.string.SingGramDoctor), LocaleController.getString(R.string.SingGramDoctorInfo), () -> presentFragment(new SingGramDoctorActivity())));
         commands.add(new Command(LocaleController.getString(R.string.SingGramAccountOverview), LocaleController.getString(R.string.SingGramAccountOverviewInfo), () -> presentFragment(new SingGramAccountOverviewActivity())));
         commands.add(new Command(LocaleController.getString(R.string.SingGramAccountProfiles), LocaleController.getString(R.string.SingGramAccountProfilesInfo), () -> presentFragment(new SingGramAccountProfilesActivity())));

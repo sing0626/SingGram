@@ -11080,4 +11080,19 @@
     <string name="SingGramChatNotesSearchHint">Search notes, tags or chat ID</string>
     <string name="SingGramChatNotesNoResults">No matching chat notes.</string>
     <string name="SingGramAISummarizeRecentChat">AI summarize recent chat</string>
+    <string name="SingGramFeatureHub">Feature hub</string>
+    <string name="SingGramFeatureHubInfo">Overview of OTA, Liquid Glass, AI, privacy, downloads, push and icon polish.</string>
+    <string name="SingGramFeatureHubTitle">SingGram feature hub</string>
+    <string name="SingGramFeatureHubSubtitle">A quick launch page for the SingGram features added to this fork.</string>
+    <string name="SingGramFeatureHubBuild">Build</string>
+    <string name="SingGramFeatureHubEnabled">Active</string>
+    <string name="SingGramFeatureHubNow">Ready now</string>
+    <string name="SingGramFeatureHubPrivacyAi">Privacy and AI</string>
+    <string name="SingGramFeatureHubSetup">Setup and polish</string>
+    <string name="SingGramFeatureHubPrivacyValue">%1$s / %2$d Ghost chats / %3$d events</string>
+    <string name="SingGramPrivacyPanel">Privacy status panel</string>
+    <string name="SingGramAIShortcutTools">AI shortcut tools</string>
+    <string name="SingGramMaterialYouIcon">Material You icon</string>
+    <string name="SingGramMaterialYouIconInfo">Adaptive and themed monochrome launcher icons are included.</string>
+    <string name="SingGramFeatureHubFootnote">This page only lists SingGram fork features and links to their full controls.</string>
 </resources>

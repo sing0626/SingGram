@@ -604,4 +604,19 @@
     <string name="SingGramChatNotesSearchHint">搜尋備註、標籤或聊天 ID</string>
     <string name="SingGramChatNotesNoResults">搵唔到符合嘅聊天備註。</string>
     <string name="SingGramAISummarizeRecentChat">AI 摘要最近聊天</string>
+    <string name="SingGramFeatureHub">功能總覽</string>
+    <string name="SingGramFeatureHubInfo">集中睇 OTA、Liquid Glass、AI、私隱、下載、推送同 icon 狀態。</string>
+    <string name="SingGramFeatureHubTitle">SingGram 功能總覽</string>
+    <string name="SingGramFeatureHubSubtitle">呢度係今次 fork 加落去嘅功能入口，方便一次過睇晒同打開。</string>
+    <string name="SingGramFeatureHubBuild">版本</string>
+    <string name="SingGramFeatureHubEnabled">已啟用</string>
+    <string name="SingGramFeatureHubNow">已準備</string>
+    <string name="SingGramFeatureHubPrivacyAi">私隱同 AI</string>
+    <string name="SingGramFeatureHubSetup">設定同修飾</string>
+    <string name="SingGramFeatureHubPrivacyValue">%1$s / %2$d 個 Ghost 聊天 / %3$d 個事件</string>
+    <string name="SingGramPrivacyPanel">私隱狀態面板</string>
+    <string name="SingGramAIShortcutTools">AI 快捷工具</string>
+    <string name="SingGramMaterialYouIcon">Material You icon</string>
+    <string name="SingGramMaterialYouIconInfo">已加入 adaptive 同主題色 monochrome launcher icon。</string>
+    <string name="SingGramFeatureHubFootnote">呢頁只列 SingGram fork 功能，撳入去會開完整控制頁。</string>
 </resources>

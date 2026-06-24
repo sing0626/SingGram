@@ -79,6 +79,30 @@ public class SingGramSettingsActivity extends BaseFragment {
         this.mode = mode;
     }
 
+    public static SingGramSettingsActivity accountsPage() {
+        return new SingGramSettingsActivity(MODE_ACCOUNTS);
+    }
+
+    public static SingGramSettingsActivity privacyPage() {
+        return new SingGramSettingsActivity(MODE_PRIVACY);
+    }
+
+    public static SingGramSettingsActivity aiPage() {
+        return new SingGramSettingsActivity(MODE_AI);
+    }
+
+    public static SingGramSettingsActivity downloadsPage() {
+        return new SingGramSettingsActivity(MODE_DOWNLOADS);
+    }
+
+    public static SingGramSettingsActivity appearancePage() {
+        return new SingGramSettingsActivity(MODE_APPEARANCE);
+    }
+
+    public static SingGramSettingsActivity diagnosticsPage() {
+        return new SingGramSettingsActivity(MODE_DIAGNOSTICS);
+    }
+
     @Override
     public View createView(Context context) {
         actionBar.setBackButtonImage(R.drawable.ic_ab_back);
@@ -365,6 +389,8 @@ public class SingGramSettingsActivity extends BaseFragment {
 
         addHeader(context, container, LocaleController.getString(R.string.SingGramTools));
         LinearLayout toolsSection = addSection(context, container);
+        addIconActionCell(context, toolsSection, LocaleController.getString(R.string.SingGramFeatureHub), LocaleController.getString(R.string.SingGramFeatureHubInfo), R.drawable.settings_features, 0xFF4B8DFF, 0xFF23B9C9, true, v -> presentFragment(new SingGramFeatureHubActivity()));
+        addDivider(context, toolsSection);
         addIconActionCell(context, toolsSection, LocaleController.getString(R.string.SingGramCommandPalette), LocaleController.getString(R.string.SingGramCommandPaletteInfo), R.drawable.premium_ai_editor, 0xFF23B9C9, 0xFF2684E8, true, v -> presentFragment(new SingGramCommandPaletteActivity()));
         addDivider(context, toolsSection);
         addIconActionCell(context, toolsSection, LocaleController.getString(R.string.SingGramChatNotesAll), LocaleController.formatString(R.string.SingGramChatNotesAllCount, SingGramChatNotesStore.getNotesCount()), R.drawable.msg_addbio, 0xFF55CA47, 0xFF27B434, true, v -> presentFragment(new SingGramChatNotesListActivity()));
