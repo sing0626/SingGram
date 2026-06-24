@@ -13,12 +13,15 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.BuildVars;
+import org.telegram.messenger.FileLog;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.SingGramConfig;
 import org.telegram.messenger.SingGramUpdateClient;
+import org.telegram.messenger.Utilities;
 import org.telegram.messenger.browser.Browser;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.BaseFragment;
@@ -27,15 +30,31 @@ import org.telegram.ui.ActionBar.ThemeDescription;
 import org.telegram.ui.Cells.TextCheckCell;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.LayoutHelper;
+import org.telegram.ui.Components.LineProgressView;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.ArrayList;
+import java.util.Locale;
 
 public class SingGramUpdateActivity extends BaseFragment {
 
     private LinearLayout contentContainer;
     private SingGramUpdateClient.UpdateInfo updateInfo;
     private boolean checking;
+    private boolean downloading;
+    private boolean downloadComplete;
+    private long downloadedBytes;
+    private long downloadTotalBytes;
+    private long downloadSpeedBytesPerSecond;
+    private File downloadedApkFile;
     private String lastError;
+    private LineProgressView downloadProgressView;
+    private TextView downloadProgressTitle;
+    private TextView downloadProgressSubtitle;
 
     @Override
     public View createView(Context context) {
@@ -91,6 +110,10 @@ public class SingGramUpdateActivity extends BaseFragment {
         addHeader(context, contentContainer, LocaleController.getString(R.string.SingGramUpdateActions));
         LinearLayout actionSection = addSection(context, contentContainer);
         addPrimaryButton(context, actionSection, checking ? LocaleController.getString(R.string.SingGramOtaChecking) : LocaleController.getString(R.string.SingGramUpdateCheck), LocaleController.getString(R.string.SingGramUpdateCheckInfo), true, v -> checkForUpdates());
+        addDivider(context, actionSection);
+        addPrimaryButton(context, actionSection, downloadButtonTitle(), downloadButtonSubtitle(), updateInfo != null && !TextUtils.isEmpty(updateInfo.apkUrl) && !downloading, v -> downloadLatestApk());
+        addDivider(context, actionSection);
+        addDownloadProgressCard(context, actionSection);
         addDivider(context, actionSection);
         addActionCell(context, actionSection, LocaleController.getString(R.string.SingGramOtaOpenLatest), apkValue(), updateInfo != null && !TextUtils.isEmpty(updateInfo.apkUrl), v -> openApk());
         addDivider(context, actionSection);
@@ -230,6 +253,29 @@ public class SingGramUpdateActivity extends BaseFragment {
         return LocaleController.getString(R.string.SingGramOtaCurrentInfo);
     }
 
+    private String downloadButtonTitle() {
+        if (downloadComplete) {
+            return LocaleController.getString(R.string.SingGramOtaInstallDownloaded);
+        }
+        if (downloading) {
+            return LocaleController.getString(R.string.SingGramOtaDownloading);
+        }
+        return LocaleController.getString(R.string.SingGramOtaDownloadApk);
+    }
+
+    private String downloadButtonSubtitle() {
+        if (downloadComplete) {
+            return LocaleController.getString(R.string.SingGramOtaInstallDownloadedInfo);
+        }
+        if (downloading) {
+            return downloadStatusValue();
+        }
+        if (updateInfo != null && updateInfo.apkSizeBytes > 0) {
+            return LocaleController.formatString(R.string.SingGramOtaDownloadApkInfo, AndroidUtilities.formatFileSize(updateInfo.apkSizeBytes));
+        }
+        return LocaleController.getString(R.string.SingGramOtaDownloadApkInfoUnknown);
+    }
+
     private String latestBuildValue() {
         if (updateInfo == null || updateInfo.versionCode <= 0) {
             return "-";
@@ -323,6 +369,143 @@ public class SingGramUpdateActivity extends BaseFragment {
         Browser.openUrl(getParentActivity(), updateInfo.apkUrl);
     }
 
+    private void downloadLatestApk() {
+        if (updateInfo == null || TextUtils.isEmpty(updateInfo.apkUrl)) {
+            Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramUpdateNoApk), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        if (downloadComplete && downloadedApkFile != null && downloadedApkFile.exists()) {
+            installDownloadedApk();
+            return;
+        }
+        if (downloading) {
+            return;
+        }
+        downloading = true;
+        downloadComplete = false;
+        lastError = null;
+        downloadedBytes = 0;
+        downloadTotalBytes = updateInfo.apkSizeBytes;
+        downloadSpeedBytesPerSecond = 0;
+        downloadedApkFile = null;
+        updateDownloadProgressViews();
+        buildContent(getParentActivity(), true);
+        final String apkUrl = updateInfo.apkUrl;
+        final long manifestSize = updateInfo.apkSizeBytes;
+        final String versionName = updateInfo.versionName;
+        Utilities.globalQueue.postRunnable(() -> runApkDownload(apkUrl, versionName, manifestSize));
+    }
+
+    private void runApkDownload(String apkUrl, String versionName, long manifestSize) {
+        HttpURLConnection connection = null;
+        InputStream inputStream = null;
+        FileOutputStream outputStream = null;
+        try {
+            File dir = new File(ApplicationLoader.applicationContext.getCacheDir(), "updates");
+            if (!dir.exists()) {
+                dir.mkdirs();
+            }
+            File file = new File(dir, "SingGram-" + (TextUtils.isEmpty(versionName) ? "latest" : versionName.replaceAll("[^A-Za-z0-9._-]", "_")) + ".apk");
+            connection = (HttpURLConnection) new URL(apkUrl).openConnection();
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(15000);
+            connection.setReadTimeout(60000);
+            connection.setRequestProperty("Accept", "application/vnd.android.package-archive,*/*");
+            int responseCode = connection.getResponseCode();
+            if (responseCode < 200 || responseCode >= 300) {
+                throw new Exception("HTTP " + responseCode);
+            }
+            long total = connection.getContentLength();
+            if (total <= 0) {
+                total = manifestSize;
+            }
+            inputStream = connection.getInputStream();
+            outputStream = new FileOutputStream(file);
+            byte[] buffer = new byte[64 * 1024];
+            long startTime = System.currentTimeMillis();
+            long lastUiTime = startTime;
+            long lastUiBytes = 0;
+            long current = 0;
+            postDownloadProgress(current, total, 0, false, null, null);
+            int read;
+            while ((read = inputStream.read(buffer)) != -1) {
+                outputStream.write(buffer, 0, read);
+                current += read;
+                long now = System.currentTimeMillis();
+                if (now - lastUiTime >= 400) {
+                    long deltaBytes = current - lastUiBytes;
+                    long deltaTime = Math.max(1, now - lastUiTime);
+                    long speed = deltaBytes * 1000L / deltaTime;
+                    postDownloadProgress(current, total, speed, false, null, null);
+                    lastUiTime = now;
+                    lastUiBytes = current;
+                }
+            }
+            outputStream.flush();
+            long elapsed = Math.max(1, System.currentTimeMillis() - startTime);
+            long averageSpeed = current * 1000L / elapsed;
+            postDownloadProgress(current, total, averageSpeed, true, file, null);
+        } catch (Exception e) {
+            FileLog.e(e);
+            postDownloadProgress(downloadedBytes, downloadTotalBytes, 0, false, null, e.getMessage());
+        } finally {
+            try {
+                if (outputStream != null) {
+                    outputStream.close();
+                }
+            } catch (Exception ignore) {
+
+            }
+            try {
+                if (inputStream != null) {
+                    inputStream.close();
+                }
+            } catch (Exception ignore) {
+
+            }
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+    }
+
+    private void postDownloadProgress(long current, long total, long speed, boolean complete, File file, String error) {
+        AndroidUtilities.runOnUIThread(() -> {
+            if (!TextUtils.isEmpty(error)) {
+                downloading = false;
+                downloadComplete = false;
+                lastError = error;
+                if (getParentActivity() != null) {
+                    Toast.makeText(getParentActivity(), error, Toast.LENGTH_LONG).show();
+                }
+                buildContent(getParentActivity(), true);
+                return;
+            }
+            downloadedBytes = current;
+            downloadTotalBytes = total > 0 ? total : downloadTotalBytes;
+            downloadSpeedBytesPerSecond = speed;
+            if (complete) {
+                downloading = false;
+                downloadComplete = true;
+                downloadedApkFile = file;
+                if (getParentActivity() != null) {
+                    Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramOtaDownloadComplete), Toast.LENGTH_SHORT).show();
+                }
+                buildContent(getParentActivity(), true);
+                installDownloadedApk();
+            } else {
+                updateDownloadProgressViews();
+            }
+        });
+    }
+
+    private void installDownloadedApk() {
+        if (downloadedApkFile == null || !downloadedApkFile.exists() || getParentActivity() == null) {
+            return;
+        }
+        AndroidUtilities.openForView(downloadedApkFile, downloadedApkFile.getName(), "application/vnd.android.package-archive", getParentActivity(), getResourceProvider(), false);
+    }
+
     private void copyApkUrl() {
         if (updateInfo == null || TextUtils.isEmpty(updateInfo.apkUrl)) {
             return;
@@ -398,6 +581,89 @@ public class SingGramUpdateActivity extends BaseFragment {
         button.setBackground(Theme.createRadSelectorDrawable(Theme.getColor(Theme.key_featuredStickers_addButton), Theme.getColor(Theme.key_featuredStickers_addButtonPressed), 8, 8));
         button.setOnClickListener(listener);
         container.addView(button, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 12, 12, 12, 12));
+    }
+
+    private void addDownloadProgressCard(Context context, LinearLayout container) {
+        LinearLayout card = new LinearLayout(context);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(14), AndroidUtilities.dp(16), AndroidUtilities.dp(14));
+        card.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(8), Theme.multAlpha(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText), 0.08f)));
+        container.addView(card, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 12, 12, 12, 12));
+
+        downloadProgressTitle = new TextView(context);
+        downloadProgressTitle.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        downloadProgressTitle.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+        downloadProgressTitle.setTypeface(AndroidUtilities.bold());
+        downloadProgressTitle.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        downloadProgressTitle.setIncludeFontPadding(false);
+        card.addView(downloadProgressTitle, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        downloadProgressSubtitle = new TextView(context);
+        downloadProgressSubtitle.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
+        downloadProgressSubtitle.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
+        downloadProgressSubtitle.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        downloadProgressSubtitle.setLineSpacing(AndroidUtilities.dp(2), 1.0f);
+        downloadProgressSubtitle.setPadding(0, AndroidUtilities.dp(8), 0, AndroidUtilities.dp(10));
+        card.addView(downloadProgressSubtitle, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        downloadProgressView = new LineProgressView(context);
+        downloadProgressView.setBackColor(Theme.multAlpha(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText), 0.16f));
+        downloadProgressView.setProgressColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
+        card.addView(downloadProgressView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 6));
+        updateDownloadProgressViews();
+    }
+
+    private void updateDownloadProgressViews() {
+        if (downloadProgressTitle == null || downloadProgressSubtitle == null || downloadProgressView == null) {
+            return;
+        }
+        downloadProgressTitle.setText(downloadProgressTitleValue());
+        downloadProgressSubtitle.setText(downloadStatusValue());
+        downloadProgressView.setProgress(downloadProgress(), true);
+    }
+
+    private String downloadProgressTitleValue() {
+        if (downloadComplete) {
+            return LocaleController.getString(R.string.SingGramOtaDownloadComplete);
+        }
+        if (downloading) {
+            return LocaleController.getString(R.string.SingGramOtaDownloading);
+        }
+        return LocaleController.getString(R.string.SingGramOtaDownloadReady);
+    }
+
+    private String downloadStatusValue() {
+        if (downloadComplete) {
+            return LocaleController.getString(R.string.SingGramOtaInstallDownloadedInfo);
+        }
+        long total = downloadTotalBytes > 0 ? downloadTotalBytes : updateInfo == null ? 0 : updateInfo.apkSizeBytes;
+        String percent = total > 0 ? String.format(Locale.US, "%.1f%%", Math.min(100.0f, downloadedBytes * 100.0f / total)) : "-";
+        String size = total > 0
+                ? AndroidUtilities.formatFileSize(downloadedBytes) + " / " + AndroidUtilities.formatFileSize(total)
+                : AndroidUtilities.formatFileSize(downloadedBytes);
+        String speed = formatMbps(downloadSpeedBytesPerSecond);
+        if (downloading) {
+            return LocaleController.formatString(R.string.SingGramOtaDownloadProgressValue, percent, size, speed);
+        }
+        return LocaleController.getString(R.string.SingGramOtaDownloadReadyInfo);
+    }
+
+    private float downloadProgress() {
+        long total = downloadTotalBytes > 0 ? downloadTotalBytes : updateInfo == null ? 0 : updateInfo.apkSizeBytes;
+        if (downloadComplete) {
+            return 1.0f;
+        }
+        if (total <= 0) {
+            return downloading ? 0.08f : 0.0f;
+        }
+        return Math.max(0.0f, Math.min(1.0f, downloadedBytes / (float) total));
+    }
+
+    private String formatMbps(long bytesPerSecond) {
+        if (bytesPerSecond <= 0) {
+            return "0 Mbps";
+        }
+        return String.format(Locale.US, "%.2f Mbps", bytesPerSecond * 8.0 / 1000.0 / 1000.0);
     }
 
     private void addInfoBlock(Context context, LinearLayout container, String text) {

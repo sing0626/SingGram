@@ -11110,6 +11110,16 @@
     <string name="SingGramOtaBuildsNewerInstalled">Installed is %1$d builds newer</string>
     <string name="SingGramOtaOpenLatest">Open latest APK</string>
     <string name="SingGramOtaOpenLatestInfo">Open the release APK in browser for Android to install.</string>
+    <string name="SingGramOtaDownloadApk">Download APK</string>
+    <string name="SingGramOtaDownloadApkInfo">Download inside SingGram (%1$s).</string>
+    <string name="SingGramOtaDownloadApkInfoUnknown">Download inside SingGram and show progress here.</string>
+    <string name="SingGramOtaDownloading">Downloading APK</string>
+    <string name="SingGramOtaDownloadReady">Ready to download</string>
+    <string name="SingGramOtaDownloadReadyInfo">Download progress, size and Mbps will appear here.</string>
+    <string name="SingGramOtaDownloadProgressValue">%1$s / %2$s / %3$s</string>
+    <string name="SingGramOtaDownloadComplete">APK downloaded</string>
+    <string name="SingGramOtaInstallDownloaded">Install downloaded APK</string>
+    <string name="SingGramOtaInstallDownloadedInfo">Open Android installer for the downloaded APK.</string>
     <string name="SingGramOtaReleaseManifest">Release manifest</string>
     <string name="SingGramOtaInfo">OTA data comes from SingGram Release update.json. Install and permissions remain controlled by Android.</string>
     <string name="SingGramChatNotesAll">All chat notes</string>

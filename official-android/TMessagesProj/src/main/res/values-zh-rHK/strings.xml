@@ -634,6 +634,16 @@
     <string name="SingGramOtaBuildsNewerInstalled">已安裝版本新 %1$d 個 build</string>
     <string name="SingGramOtaOpenLatest">開啟最新 APK</string>
     <string name="SingGramOtaOpenLatestInfo">喺瀏覽器開啟 release APK，由 Android 處理安裝。</string>
+    <string name="SingGramOtaDownloadApk">下載 APK</string>
+    <string name="SingGramOtaDownloadApkInfo">喺 SingGram 入面下載（%1$s）。</string>
+    <string name="SingGramOtaDownloadApkInfoUnknown">喺 SingGram 入面下載，並喺呢度顯示進度。</string>
+    <string name="SingGramOtaDownloading">下載緊 APK</string>
+    <string name="SingGramOtaDownloadReady">準備下載</string>
+    <string name="SingGramOtaDownloadReadyInfo">下載進度、大小同 Mbps 會顯示喺呢度。</string>
+    <string name="SingGramOtaDownloadProgressValue">%1$s / %2$s / %3$s</string>
+    <string name="SingGramOtaDownloadComplete">APK 已下載</string>
+    <string name="SingGramOtaInstallDownloaded">安裝已下載 APK</string>
+    <string name="SingGramOtaInstallDownloadedInfo">開啟 Android 安裝器安裝已下載 APK。</string>
     <string name="SingGramOtaReleaseManifest">Release manifest</string>
     <string name="SingGramOtaInfo">OTA 資料來自 SingGram Release update.json。安裝同權限仍由 Android 控制。</string>
     <string name="SingGramChatNotesAll">所有聊天備註</string>
