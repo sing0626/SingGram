@@ -91,6 +91,10 @@ public class SingGramUpdateActivity extends BaseFragment {
         addActionCell(context, actionSection, LocaleController.getString(R.string.SingGramOtaOpenLatest), apkValue(), updateInfo != null && !TextUtils.isEmpty(updateInfo.apkUrl), v -> openApk());
         addDivider(context, actionSection);
         addActionCell(context, actionSection, LocaleController.getString(R.string.SingGramUpdateCopyApk), LocaleController.getString(R.string.SingGramUpdateCopyApkInfo), updateInfo != null && !TextUtils.isEmpty(updateInfo.apkUrl), v -> copyApkUrl());
+        addDivider(context, actionSection);
+        addActionCell(context, actionSection, LocaleController.getString(R.string.SingGramUpdateOpenRelease), LocaleController.getString(R.string.SingGramUpdateOpenReleaseInfo), true, v -> openReleasePage());
+        addDivider(context, actionSection);
+        addActionCell(context, actionSection, LocaleController.getString(R.string.SingGramUpdateCopyRelease), SingGramUpdateClient.DEFAULT_RELEASE_URL, true, v -> copyReleaseUrl());
 
         addHeader(context, contentContainer, LocaleController.getString(R.string.SingGramOtaReleaseManifest));
         LinearLayout manifestSection = addSection(context, contentContainer);
@@ -313,6 +317,15 @@ public class SingGramUpdateActivity extends BaseFragment {
         }
         AndroidUtilities.addToClipboard(updateInfo.apkUrl);
         Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramUpdateApkCopied), Toast.LENGTH_SHORT).show();
+    }
+
+    private void openReleasePage() {
+        Browser.openUrl(getParentActivity(), SingGramUpdateClient.DEFAULT_RELEASE_URL);
+    }
+
+    private void copyReleaseUrl() {
+        AndroidUtilities.addToClipboard(SingGramUpdateClient.DEFAULT_RELEASE_URL);
+        Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramUpdateReleaseCopied), Toast.LENGTH_SHORT).show();
     }
 
     private void copyNotes() {

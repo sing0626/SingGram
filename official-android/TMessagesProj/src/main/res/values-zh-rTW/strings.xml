@@ -618,5 +618,10 @@
     <string name="SingGramAIShortcutTools">AI 快捷工具</string>
     <string name="SingGramMaterialYouIcon">Material You icon</string>
     <string name="SingGramMaterialYouIconInfo">已加入 adaptive 與主題色 monochrome launcher icon。</string>
+    <string name="SingGramAIDraftTools">AI 草稿工具</string>
+    <string name="SingGramAIDraftEmpty">請先在輸入框輸入文字。</string>
+    <string name="SingGramChatPrivacyPanel">聊天隱私面板</string>
+    <string name="SingGramChatPrivacyPanelValue">全域 Ghost：%1$s\n此聊天 Ghost：%2$s\n已隱藏已讀：%3$s\n已隱藏輸入中：%4$s\n防刪訊息：%5$s\n防改訊息：%6$s</string>
+    <string name="SingGramCategoryNeedsSetup">需要設定</string>
     <string name="SingGramFeatureHubFootnote">此頁只列 SingGram fork 功能，點入去會開完整控制頁。</string>
 </resources>

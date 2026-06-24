@@ -49,6 +49,7 @@ public class SingGramConfig {
     private static final String KEY_LAST_UPDATE_VERSION_CODE = "last_update_version_code";
     private static final String KEY_LAST_UPDATE_VERSION_NAME = "last_update_version_name";
     private static final String KEY_LAST_UPDATE_CHECK_TIME = "last_update_check_time";
+    private static final String KEY_LAST_FEATURE_HUB_INTRO_BUILD = "last_feature_hub_intro_build";
 
     public static final String DEFAULT_AI_MODEL = "gpt-4o-mini";
     private static boolean crashHandlerInstalled;
@@ -650,6 +651,15 @@ public class SingGramConfig {
     public static long getLastUpdateCheckTime() {
         SharedPreferences preferences = prefs();
         return preferences == null ? 0 : preferences.getLong(KEY_LAST_UPDATE_CHECK_TIME, 0);
+    }
+
+    public static boolean shouldShowFeatureHubIntro() {
+        SharedPreferences preferences = prefs();
+        return preferences != null && preferences.getInt(KEY_LAST_FEATURE_HUB_INTRO_BUILD, 0) < SharedConfig.buildVersion();
+    }
+
+    public static void markFeatureHubIntroShown() {
+        setInt(KEY_LAST_FEATURE_HUB_INTRO_BUILD, SharedConfig.buildVersion());
     }
 
     public static boolean isCrashSafeModeEnabled() {

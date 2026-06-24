@@ -15,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 public class SingGramUpdateClient {
 
     public static final String DEFAULT_UPDATE_URL = "https://github.com/sing0626/SingGram/releases/latest/download/update.json";
+    public static final String DEFAULT_RELEASE_URL = "https://github.com/sing0626/SingGram/releases/latest";
 
     public interface Callback {
         void onResult(UpdateInfo info);

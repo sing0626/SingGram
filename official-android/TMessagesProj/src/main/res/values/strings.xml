@@ -11052,6 +11052,10 @@
     <string name="SingGramUpdateCopyNotes">Copy update notes</string>
     <string name="SingGramUpdateCopyNotesInfo">Copy the release notes shown in update.json.</string>
     <string name="SingGramUpdateNotesCopied">Update notes copied</string>
+    <string name="SingGramUpdateOpenRelease">Open GitHub Release</string>
+    <string name="SingGramUpdateOpenReleaseInfo">Open the latest SingGram release page with APK, update.json and changelog.</string>
+    <string name="SingGramUpdateCopyRelease">Copy Release link</string>
+    <string name="SingGramUpdateReleaseCopied">Release link copied</string>
     <string name="SingGramUpdateInfo">Updates are read from the public SingGram GitHub Release update.json. APK installation is still handled by Android/browser.</string>
     <string name="SingGramOtaCenter">OTA Update Center</string>
     <string name="SingGramOtaHeroTitle">SingGram OTA</string>
@@ -11080,6 +11084,9 @@
     <string name="SingGramChatNotesSearchHint">Search notes, tags or chat ID</string>
     <string name="SingGramChatNotesNoResults">No matching chat notes.</string>
     <string name="SingGramAISummarizeRecentChat">AI summarize recent chat</string>
+    <string name="SingGramFeatureIntroTitle">New in this SingGram build</string>
+    <string name="SingGramFeatureIntroMessage">Feature Hub now highlights the SingGram tools added in this build, including OTA, Liquid Glass, AI, privacy, downloads and diagnostics.</string>
+    <string name="SingGramFeatureIntroOpen">Open Feature Hub</string>
     <string name="SingGramFeatureHub">Feature hub</string>
     <string name="SingGramFeatureHubInfo">Overview of OTA, Liquid Glass, AI, privacy, downloads, push and icon polish.</string>
     <string name="SingGramFeatureHubTitle">SingGram feature hub</string>
@@ -11094,5 +11101,10 @@
     <string name="SingGramAIShortcutTools">AI shortcut tools</string>
     <string name="SingGramMaterialYouIcon">Material You icon</string>
     <string name="SingGramMaterialYouIconInfo">Adaptive and themed monochrome launcher icons are included.</string>
+    <string name="SingGramAIDraftTools">AI draft tools</string>
+    <string name="SingGramAIDraftEmpty">Type something in the message box first.</string>
+    <string name="SingGramChatPrivacyPanel">Chat privacy panel</string>
+    <string name="SingGramChatPrivacyPanelValue">Global Ghost: %1$s\nThis chat Ghost: %2$s\nRead receipts hidden: %3$s\nTyping hidden: %4$s\nAnti-delete: %5$s\nAnti-edit: %6$s</string>
+    <string name="SingGramCategoryNeedsSetup">Needs setup</string>
     <string name="SingGramFeatureHubFootnote">This page only lists SingGram fork features and links to their full controls.</string>
 </resources>

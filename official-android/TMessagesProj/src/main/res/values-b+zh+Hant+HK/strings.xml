@@ -343,6 +343,10 @@
     <string name="SingGramUpdateCopyNotes">複製更新日誌</string>
     <string name="SingGramUpdateCopyNotesInfo">複製 update.json 入面顯示的 release notes。</string>
     <string name="SingGramUpdateNotesCopied">更新日誌已複製</string>
+    <string name="SingGramUpdateOpenRelease">開啟 GitHub Release</string>
+    <string name="SingGramUpdateOpenReleaseInfo">打開最新 SingGram release 頁，入面有 APK、update.json 同更新日誌。</string>
+    <string name="SingGramUpdateCopyRelease">複製 Release 連結</string>
+    <string name="SingGramUpdateReleaseCopied">Release 連結已複製</string>
     <string name="SingGramUpdateInfo">更新資料來自公開 SingGram GitHub Release update.json。APK 安裝仍由 Android/瀏覽器處理。</string>
     <string name="SingGramOtaCenter">OTA 更新中心</string>
     <string name="SingGramOtaHeroTitle">SingGram OTA</string>
@@ -371,6 +375,9 @@
     <string name="SingGramChatNotesSearchHint">搜尋備註、標籤或聊天 ID</string>
     <string name="SingGramChatNotesNoResults">搵唔到符合嘅聊天備註。</string>
     <string name="SingGramAISummarizeRecentChat">AI 摘要最近聊天</string>
+    <string name="SingGramFeatureIntroTitle">今個 SingGram build 有新嘢</string>
+    <string name="SingGramFeatureIntroMessage">功能總覽會集中列出今次加落去嘅 SingGram 工具，包括 OTA、Liquid Glass、AI、私隱、下載同診斷。</string>
+    <string name="SingGramFeatureIntroOpen">打開功能總覽</string>
     <string name="SingGramFeatureHub">功能總覽</string>
     <string name="SingGramFeatureHubInfo">集中睇 OTA、Liquid Glass、AI、私隱、下載、推送同 icon 狀態。</string>
     <string name="SingGramFeatureHubTitle">SingGram 功能總覽</string>
@@ -385,5 +392,10 @@
     <string name="SingGramAIShortcutTools">AI 快捷工具</string>
     <string name="SingGramMaterialYouIcon">Material You icon</string>
     <string name="SingGramMaterialYouIconInfo">已加入 adaptive 同主題色 monochrome launcher icon。</string>
+    <string name="SingGramAIDraftTools">AI 草稿工具</string>
+    <string name="SingGramAIDraftEmpty">先喺輸入框打啲字。</string>
+    <string name="SingGramChatPrivacyPanel">聊天私隱面板</string>
+    <string name="SingGramChatPrivacyPanelValue">全域 Ghost：%1$s\n呢個聊天 Ghost：%2$s\n已隱藏已讀：%3$s\n已隱藏輸入中：%4$s\n防刪訊息：%5$s\n防改訊息：%6$s</string>
+    <string name="SingGramCategoryNeedsSetup">需要設定</string>
     <string name="SingGramFeatureHubFootnote">呢頁只列 SingGram fork 功能，撳入去會開完整控制頁。</string>
 </resources>

@@ -134,6 +134,7 @@ public class SingGramSettingsActivity extends BaseFragment {
         scrollView.addView(container, new ScrollView.LayoutParams(ScrollView.LayoutParams.MATCH_PARENT, ScrollView.LayoutParams.WRAP_CONTENT));
 
         buildContent(context, container);
+        maybeShowFeatureHubIntro();
         if (fragmentView != null) {
             return fragmentView;
         }
@@ -401,13 +402,36 @@ public class SingGramSettingsActivity extends BaseFragment {
 
         addHeader(context, container, LocaleController.getString(R.string.SingGramSettingsCategories));
         LinearLayout categoriesSection = addSection(context, container);
-        addIconActionCell(context, categoriesSection, LocaleController.getString(R.string.SingGramAccount), LocaleController.getString(R.string.SingGramAccountSummary), R.drawable.settings_account, 0xFF4EA5F6, 0xFF3577E5, true, v -> presentFragment(new SingGramSettingsActivity(MODE_ACCOUNTS)));
-        addIconActionCell(context, categoriesSection, LocaleController.getString(R.string.SingGramPrivacy), LocaleController.getString(R.string.SingGramPrivacySummary), R.drawable.settings_privacy, 0xFF55CA47, 0xFF27B434, true, v -> presentFragment(new SingGramSettingsActivity(MODE_PRIVACY)));
-        addIconActionCell(context, categoriesSection, LocaleController.getString(R.string.SingGramAI), LocaleController.getString(R.string.SingGramAiSummary), R.drawable.premium_ai_editor, 0xFF23B9C9, 0xFF2684E8, true, v -> presentFragment(new SingGramSettingsActivity(MODE_AI)));
-        addIconActionCell(context, categoriesSection, LocaleController.getString(R.string.SingGramDownload), LocaleController.getString(R.string.SingGramDownloadSummary), R.drawable.settings_data, 0xFF40B7FF, 0xFF168BDE, true, v -> presentFragment(new SingGramSettingsActivity(MODE_DOWNLOADS)));
-        addIconActionCell(context, categoriesSection, LocaleController.getString(R.string.SingGramAppearance), LocaleController.getString(R.string.SingGramAppearanceSummary), R.drawable.settings_chat, 0xFFB659FF, 0xFF617CFF, true, v -> presentFragment(new SingGramSettingsActivity(MODE_APPEARANCE)));
-        addIconActionCell(context, categoriesSection, LocaleController.getString(R.string.SingGramDiagnostics), LocaleController.getString(R.string.SingGramDiagnosticsSummary), R.drawable.settings_devices, 0xFF8A98A7, 0xFF5D6C7B, true, v -> presentFragment(new SingGramSettingsActivity(MODE_DIAGNOSTICS)));
+        addIconActionCell(context, categoriesSection, LocaleController.getString(R.string.SingGramAccount), categoryValue(LocaleController.getString(R.string.SingGramAccountSummary), accountBadgeValue()), R.drawable.settings_account, 0xFF4EA5F6, 0xFF3577E5, true, v -> presentFragment(new SingGramSettingsActivity(MODE_ACCOUNTS)));
+        addDivider(context, categoriesSection);
+        addIconActionCell(context, categoriesSection, LocaleController.getString(R.string.SingGramPrivacy), categoryValue(LocaleController.getString(R.string.SingGramPrivacySummary), privacyBadgeValue()), R.drawable.settings_privacy, 0xFF55CA47, 0xFF27B434, true, v -> presentFragment(new SingGramSettingsActivity(MODE_PRIVACY)));
+        addDivider(context, categoriesSection);
+        addIconActionCell(context, categoriesSection, LocaleController.getString(R.string.SingGramAI), categoryValue(LocaleController.getString(R.string.SingGramAiSummary), aiBadgeValue()), R.drawable.premium_ai_editor, 0xFF23B9C9, 0xFF2684E8, true, v -> presentFragment(new SingGramSettingsActivity(MODE_AI)));
+        addDivider(context, categoriesSection);
+        addIconActionCell(context, categoriesSection, LocaleController.getString(R.string.SingGramDownload), categoryValue(LocaleController.getString(R.string.SingGramDownloadSummary), downloadBadgeValue()), R.drawable.settings_data, 0xFF40B7FF, 0xFF168BDE, true, v -> presentFragment(new SingGramSettingsActivity(MODE_DOWNLOADS)));
+        addDivider(context, categoriesSection);
+        addIconActionCell(context, categoriesSection, LocaleController.getString(R.string.SingGramAppearance), categoryValue(LocaleController.getString(R.string.SingGramAppearanceSummary), appearanceBadgeValue()), R.drawable.settings_chat, 0xFFB659FF, 0xFF617CFF, true, v -> presentFragment(new SingGramSettingsActivity(MODE_APPEARANCE)));
+        addDivider(context, categoriesSection);
+        addIconActionCell(context, categoriesSection, LocaleController.getString(R.string.SingGramDiagnostics), categoryValue(LocaleController.getString(R.string.SingGramDiagnosticsSummary), diagnosticsBadgeValue()), R.drawable.settings_devices, 0xFF8A98A7, 0xFF5D6C7B, true, v -> presentFragment(new SingGramSettingsActivity(MODE_DIAGNOSTICS)));
         addInfo(context, container, LocaleController.getString(R.string.SingGramSettingsHomeInfo));
+    }
+
+    private void maybeShowFeatureHubIntro() {
+        if (mode != MODE_HOME || !SingGramConfig.shouldShowFeatureHubIntro()) {
+            return;
+        }
+        AndroidUtilities.runOnUIThread(() -> {
+            if (getParentActivity() == null || !SingGramConfig.shouldShowFeatureHubIntro()) {
+                return;
+            }
+            SingGramConfig.markFeatureHubIntroShown();
+            AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+            builder.setTitle(LocaleController.getString(R.string.SingGramFeatureIntroTitle));
+            builder.setMessage(LocaleController.getString(R.string.SingGramFeatureIntroMessage));
+            builder.setPositiveButton(LocaleController.getString(R.string.SingGramFeatureIntroOpen), (dialog, which) -> presentFragment(new SingGramFeatureHubActivity()));
+            builder.setNegativeButton(LocaleController.getString(R.string.OK), null);
+            showDialog(builder.create());
+        }, 450);
     }
 
     private void buildAccountsPage(Context context, LinearLayout container) {
@@ -818,6 +842,59 @@ public class SingGramSettingsActivity extends BaseFragment {
                 ? LocaleController.getString(R.string.SingGramUpdateAvailable)
                 : LocaleController.getString(R.string.SingGramUpdateCurrent);
         return version + " / " + state;
+    }
+
+    private String categoryValue(String summary, String badge) {
+        if (TextUtils.isEmpty(badge)) {
+            return summary;
+        }
+        if (TextUtils.isEmpty(summary)) {
+            return badge;
+        }
+        return summary + "\n" + badge;
+    }
+
+    private String accountBadgeValue() {
+        return LocaleController.formatString(R.string.SingGramMaxAccounts100Info, UserConfig.getActivatedAccountsCount(), UserConfig.MAX_ACCOUNT_COUNT);
+    }
+
+    private String privacyBadgeValue() {
+        return LocaleController.formatString(
+                R.string.SingGramFeatureHubPrivacyValue,
+                stateValue(SingGramConfig.isGhostModeEnabled()),
+                SingGramConfig.getGhostDialogCount(),
+                SingGramEventLog.getEventCount()
+        );
+    }
+
+    private String aiBadgeValue() {
+        String state = stateValue(SingGramConfig.isAiEnabled());
+        if (TextUtils.isEmpty(SingGramConfig.getAiBaseUrl()) || TextUtils.isEmpty(SingGramConfig.getAiApiKey())) {
+            return state + " / " + LocaleController.getString(R.string.SingGramCategoryNeedsSetup);
+        }
+        return state + " / " + SingGramConfig.getAiModel();
+    }
+
+    private String downloadBadgeValue() {
+        String state = stateValue(SingGramConfig.isDownloadBoostEnabled());
+        return state + " / " + downloadStatusValue();
+    }
+
+    private String appearanceBadgeValue() {
+        return liquidGlassStatusValue();
+    }
+
+    private String diagnosticsBadgeValue() {
+        SingGramPushDiagnostics.Snapshot snapshot = SingGramPushDiagnostics.getSnapshot();
+        String push = SingGramPushDiagnostics.summary(snapshot);
+        if (SingGramConfig.getLastCrashTime() > 0) {
+            return push + " / " + LocaleController.getString(R.string.SingGramCrashSafeMode);
+        }
+        return push;
+    }
+
+    private String stateValue(boolean enabled) {
+        return LocaleController.getString(enabled ? R.string.SingGramStateOn : R.string.SingGramStateOff);
     }
 
     private String singGramPresetStatusValue() {

@@ -1204,6 +1204,7 @@ public class ChatActivity extends BaseFragment implements
     public final static int OPTION_SINGGRAM_AI_TRANSLATE_YUE = 125;
     public final static int OPTION_SINGGRAM_CHAT_NOTES = 126;
     public final static int OPTION_SINGGRAM_AI_MENU = 127;
+    public final static int OPTION_SINGGRAM_AI_DRAFT_MENU = 128;
 
     private final static int[] allowedNotificationsDuringChatListAnimations = new int[]{
             NotificationCenter.messagesRead,
@@ -1634,6 +1635,8 @@ public class ChatActivity extends BaseFragment implements
     private final static int singgram_chat_notes = 76;
     private final static int singgram_toggle_ghost = 77;
     private final static int singgram_ai_recent_summary = 78;
+    private final static int singgram_ai_draft_tools = 79;
+    private final static int singgram_privacy_panel = 80;
 
     private final static int id_chat_compose_panel = 1000;
 
@@ -3911,6 +3914,10 @@ public class ChatActivity extends BaseFragment implements
                     toggleSingGramGhostForCurrentChat();
                 } else if (id == singgram_ai_recent_summary) {
                     runSingGramAiForRecentChat();
+                } else if (id == singgram_ai_draft_tools) {
+                    showSingGramAiDraftMenu();
+                } else if (id == singgram_privacy_panel) {
+                    showSingGramPrivacyPanel();
                 } else if (id == search) {
                     openSearchWithText(isSupportedTags() ? "" : null);
                 } else if (id == translate) {
@@ -4331,7 +4338,9 @@ public class ChatActivity extends BaseFragment implements
             }
             if (chatMode == MODE_DEFAULT && dialog_id != 0 && !isInsideContainer && !isInPreviewMode()) {
                 headerItem.lazilyAddSubItem(singgram_settings, R.drawable.premium_ai_editor, LocaleController.getString(R.string.SingGramSettingsTitle));
+                headerItem.lazilyAddSubItem(singgram_ai_draft_tools, R.drawable.msg_edit, LocaleController.getString(R.string.SingGramAIDraftTools));
                 headerItem.lazilyAddSubItem(singgram_ai_recent_summary, R.drawable.premium_ai_editor, LocaleController.getString(R.string.SingGramAISummarizeRecentChat));
+                headerItem.lazilyAddSubItem(singgram_privacy_panel, R.drawable.msg_info, LocaleController.getString(R.string.SingGramChatPrivacyPanel));
                 headerItem.lazilyAddSubItem(singgram_chat_notes, R.drawable.msg_addbio, LocaleController.getString(SingGramChatNotesStore.hasNotes(dialog_id) ? R.string.SingGramChatNotesView : R.string.SingGramChatNotes));
                 if (dialog_id != getUserConfig().getClientUserId() && currentEncryptedChat == null) {
                     headerItem.lazilyAddSubItem(singgram_toggle_ghost, R.drawable.msg_secret, LocaleController.getString(SingGramConfig.isGhostModeForDialog(dialog_id) ? R.string.SingGramUnghostThisChat : R.string.SingGramGhostThisChat));
@@ -32709,6 +32718,109 @@ public class ChatActivity extends BaseFragment implements
         });
     }
 
+    private void showSingGramAiDraftMenu() {
+        if (getParentActivity() == null) {
+            return;
+        }
+        ArrayList<CharSequence> items = new ArrayList<>();
+        ArrayList<Integer> icons = new ArrayList<>();
+        ArrayList<Integer> actions = new ArrayList<>();
+        items.add(LocaleController.getString(R.string.SingGramAIRewriteCantonese));
+        icons.add(R.drawable.msg_edit);
+        actions.add(SingGramAiClient.ACTION_REWRITE_YUE);
+        items.add(LocaleController.getString(R.string.SingGramAITranslateCantonese));
+        icons.add(R.drawable.msg_language);
+        actions.add(SingGramAiClient.ACTION_TRANSLATE_YUE);
+        items.add(LocaleController.getString(R.string.SingGramAIShorten));
+        icons.add(R.drawable.msg_copy);
+        actions.add(SingGramAiClient.ACTION_SHORTEN);
+        items.add(LocaleController.getString(R.string.SingGramAIReplyIdeas));
+        icons.add(R.drawable.menu_reply);
+        actions.add(SingGramAiClient.ACTION_REPLY_SUGGESTIONS);
+        items.add(LocaleController.getString(R.string.SingGramAISummarizeRecentChat));
+        icons.add(R.drawable.premium_ai_editor);
+        actions.add(0);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+        builder.setTitle(LocaleController.getString(R.string.SingGramAIDraftTools));
+        builder.setItems(items.toArray(new CharSequence[0]), AndroidUtilities.toIntArray(icons), (dialog, which) -> {
+            if (which < 0 || which >= actions.size()) {
+                return;
+            }
+            int action = actions.get(which);
+            if (action == 0) {
+                runSingGramAiForRecentChat();
+            } else {
+                runSingGramAiForDraft(action);
+            }
+        });
+        showDialog(builder.create());
+    }
+
+    private void runSingGramAiForDraft(int action) {
+        if (getParentActivity() == null) {
+            return;
+        }
+        CharSequence input = chatActivityEnterView == null ? null : chatActivityEnterView.getFieldText();
+        if (TextUtils.isEmpty(input)) {
+            BulletinFactory.of(this).createErrorBulletin(LocaleController.getString(R.string.SingGramAIDraftEmpty), themeDelegate).show();
+            return;
+        }
+        AlertDialog progressDialog = new AlertDialog(getParentActivity(), AlertDialog.ALERT_TYPE_SPINNER);
+        progressDialog.setCanCancel(false);
+        progressDialog.show();
+        SingGramAiClient.runTextAction(action, input.toString(), new SingGramAiClient.Callback() {
+            @Override
+            public void onResult(String text) {
+                try {
+                    progressDialog.dismiss();
+                } catch (Exception ignore) {
+
+                }
+                showSingGramAiResult(action, 0, text);
+            }
+
+            @Override
+            public void onError(String error) {
+                try {
+                    progressDialog.dismiss();
+                } catch (Exception ignore) {
+
+                }
+                BulletinFactory.of(ChatActivity.this).createErrorBulletin(error, themeDelegate).show();
+            }
+        });
+    }
+
+    private void showSingGramPrivacyPanel() {
+        if (getParentActivity() == null) {
+            return;
+        }
+        long did = getDialogId();
+        String message = LocaleController.formatString(
+                R.string.SingGramChatPrivacyPanelValue,
+                stateValue(SingGramConfig.isGhostModeEnabled()),
+                stateValue(did != 0 && SingGramConfig.isGhostModeForDialog(did)),
+                stateValue(did != 0 && SingGramConfig.shouldDisableReadReceipts(did)),
+                stateValue(did != 0 && SingGramConfig.shouldHideTypingStatus(did)),
+                stateValue(SingGramConfig.shouldKeepDeletedMessages()),
+                stateValue(SingGramConfig.shouldKeepOriginalEdits())
+        );
+        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+        builder.setTitle(LocaleController.getString(R.string.SingGramChatPrivacyPanel));
+        builder.setMessage(message);
+        if (did != 0 && did != getUserConfig().getClientUserId() && currentEncryptedChat == null) {
+            builder.setPositiveButton(LocaleController.getString(SingGramConfig.isGhostModeForDialog(did) ? R.string.SingGramUnghostThisChat : R.string.SingGramGhostThisChat), (dialog, which) -> toggleSingGramGhostForCurrentChat());
+        }
+        builder.setNegativeButton(LocaleController.getString(R.string.SingGramPrivacy), (dialog, which) -> presentFragment(SingGramSettingsActivity.privacyPage()));
+        builder.setNeutralButton(LocaleController.getString(R.string.OK), null);
+        showDialog(builder.create());
+    }
+
+    private String stateValue(boolean enabled) {
+        return LocaleController.getString(enabled ? R.string.SingGramStateOn : R.string.SingGramStateOff);
+    }
+
     private String buildSingGramRecentChatInput() {
         StringBuilder builder = new StringBuilder();
         builder.append("Summarize these recent chat messages in Traditional Chinese or Cantonese. Use exactly these sections when useful: 重點, 待辦, 日期, 金額, 決定, 建議回覆. Keep it concise and practical.\n\n");
@@ -32772,6 +32884,10 @@ public class ChatActivity extends BaseFragment implements
         switch (option) {
             case OPTION_SINGGRAM_AI_MENU: {
                 showSingGramAiActionMenu();
+                break;
+            }
+            case OPTION_SINGGRAM_AI_DRAFT_MENU: {
+                showSingGramAiDraftMenu();
                 break;
             }
             case OPTION_SINGGRAM_AI_SUMMARIZE: {
