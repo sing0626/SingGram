@@ -398,7 +398,13 @@ public class SingGramSettingsActivity extends BaseFragment {
         addDivider(context, toolsSection);
         addIconActionCell(context, toolsSection, LocaleController.getString(R.string.SingGramChatNotesAll), LocaleController.formatString(R.string.SingGramChatNotesAllCount, SingGramChatNotesStore.getNotesCount()), R.drawable.msg_addbio, 0xFF55CA47, 0xFF27B434, true, v -> presentFragment(new SingGramChatNotesListActivity()));
         addDivider(context, toolsSection);
+        addIconActionCell(context, toolsSection, LocaleController.getString(R.string.SingGramDownloadCenter), downloadStatusValue(), R.drawable.settings_data, 0xFF40B7FF, 0xFF168BDE, true, v -> presentFragment(new SingGramDownloadStatusActivity()));
+        addDivider(context, toolsSection);
         addIconActionCell(context, toolsSection, LocaleController.getString(R.string.SingGramUpdates), updateSummaryValue(), R.drawable.settings_features, 0xFF4EA5F6, 0xFF3577E5, true, v -> presentFragment(new SingGramUpdateActivity()));
+        addDivider(context, toolsSection);
+        addIconActionCell(context, toolsSection, LocaleController.getString(R.string.SingGramAIBrowser), browserEngineValue(), R.drawable.settings_language, 0xFF23B9C9, 0xFF617CFF, true, v -> presentFragment(SingGramSettingsActivity.aiPage()));
+        addDivider(context, toolsSection);
+        addIconActionCell(context, toolsSection, LocaleController.getString(R.string.SingGramCrashRecovery), crashSafeModeValue(), R.drawable.settings_power, 0xFFFF8B3D, 0xFFE45644, true, v -> applyCrashRecovery());
         addDivider(context, toolsSection);
         addIconActionCell(context, toolsSection, LocaleController.getString(R.string.SingGramDoctor), LocaleController.getString(R.string.SingGramDoctorInfo), R.drawable.settings_power, 0xFFFF8B3D, 0xFFE45644, true, v -> presentFragment(new SingGramDoctorActivity()));
 
@@ -612,6 +618,8 @@ public class SingGramSettingsActivity extends BaseFragment {
                 SingGramConfig.clearLastCrash();
             }
         }, false);
+        addDivider(context, diagnosticsSection);
+        addActionCell(context, diagnosticsSection, LocaleController.getString(R.string.SingGramCrashRecovery), LocaleController.getString(R.string.SingGramCrashRecoveryInfo), true, v -> applyCrashRecovery());
         addDivider(context, diagnosticsSection);
         addSwitchSetting(context, diagnosticsSection, LocaleController.getString(R.string.SingGramDiagnosticsVisible), LocaleController.getString(R.string.SingGramDiagnosticsVisibleInfo), SingGramConfig.isDiagnosticsEnabled(), SingGramConfig::setDiagnosticsEnabled, false);
         if (SingGramConfig.isDiagnosticsEnabled()) {

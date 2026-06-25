@@ -1,12 +1,14 @@
 package org.telegram.ui;
 
 import android.content.Context;
+import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -27,7 +29,6 @@ import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.ActionBar.ThemeDescription;
-import org.telegram.ui.Cells.TextCheckCell;
 import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.LineProgressView;
@@ -109,19 +110,19 @@ public class SingGramUpdateActivity extends BaseFragment {
 
         addHeader(context, contentContainer, LocaleController.getString(R.string.SingGramUpdateActions));
         LinearLayout actionSection = addSection(context, contentContainer);
-        addPrimaryButton(context, actionSection, checking ? LocaleController.getString(R.string.SingGramOtaChecking) : LocaleController.getString(R.string.SingGramUpdateCheck), LocaleController.getString(R.string.SingGramUpdateCheckInfo), true, v -> checkForUpdates());
-        addDivider(context, actionSection);
-        addPrimaryButton(context, actionSection, downloadButtonTitle(), downloadButtonSubtitle(), updateInfo != null && !TextUtils.isEmpty(updateInfo.apkUrl) && !downloading, v -> downloadLatestApk());
-        addDivider(context, actionSection);
+        addActionRow(context, actionSection, checking ? LocaleController.getString(R.string.SingGramOtaChecking) : LocaleController.getString(R.string.SingGramUpdateCheck), LocaleController.getString(R.string.SingGramUpdateCheckInfo), R.drawable.settings_features, 0xFF4EA5F6, 0xFF3577E5, true, v -> checkForUpdates());
+        addActionDivider(context, actionSection);
+        addActionRow(context, actionSection, downloadButtonTitle(), downloadButtonSubtitle(), R.drawable.menu_download_round, 0xFF40B7FF, 0xFF168BDE, updateInfo != null && !TextUtils.isEmpty(updateInfo.apkUrl) && !downloading, v -> downloadLatestApk());
+        addActionDivider(context, actionSection);
         addDownloadProgressCard(context, actionSection);
         addDivider(context, actionSection);
-        addActionCell(context, actionSection, LocaleController.getString(R.string.SingGramOtaOpenLatest), apkValue(), updateInfo != null && !TextUtils.isEmpty(updateInfo.apkUrl), v -> openApk());
-        addDivider(context, actionSection);
-        addActionCell(context, actionSection, LocaleController.getString(R.string.SingGramUpdateCopyApk), LocaleController.getString(R.string.SingGramUpdateCopyApkInfo), updateInfo != null && !TextUtils.isEmpty(updateInfo.apkUrl), v -> copyApkUrl());
-        addDivider(context, actionSection);
-        addActionCell(context, actionSection, LocaleController.getString(R.string.SingGramUpdateOpenRelease), LocaleController.getString(R.string.SingGramUpdateOpenReleaseInfo), true, v -> openReleasePage());
-        addDivider(context, actionSection);
-        addActionCell(context, actionSection, LocaleController.getString(R.string.SingGramUpdateCopyRelease), SingGramUpdateClient.DEFAULT_RELEASE_URL, true, v -> copyReleaseUrl());
+        addActionRow(context, actionSection, LocaleController.getString(R.string.SingGramOtaOpenLatest), apkValue(), R.drawable.msg_openin, 0xFF8A98A7, 0xFF5D6C7B, updateInfo != null && !TextUtils.isEmpty(updateInfo.apkUrl), v -> openApk());
+        addActionDivider(context, actionSection);
+        addActionRow(context, actionSection, LocaleController.getString(R.string.SingGramUpdateCopyApk), LocaleController.getString(R.string.SingGramUpdateCopyApkInfo), R.drawable.msg_copy, 0xFF23B9C9, 0xFF2684E8, updateInfo != null && !TextUtils.isEmpty(updateInfo.apkUrl), v -> copyApkUrl());
+        addActionDivider(context, actionSection);
+        addActionRow(context, actionSection, LocaleController.getString(R.string.SingGramUpdateOpenRelease), LocaleController.getString(R.string.SingGramUpdateOpenReleaseInfo), R.drawable.settings_channel, 0xFF55CA47, 0xFF27B434, true, v -> openReleasePage());
+        addActionDivider(context, actionSection);
+        addActionRow(context, actionSection, LocaleController.getString(R.string.SingGramUpdateCopyRelease), SingGramUpdateClient.DEFAULT_RELEASE_URL, R.drawable.menu_copy_s, 0xFFFF8B3D, 0xFFE45644, true, v -> copyReleaseUrl());
 
         addHeader(context, contentContainer, LocaleController.getString(R.string.SingGramOtaReleaseManifest));
         LinearLayout manifestSection = addSection(context, contentContainer);
@@ -136,7 +137,8 @@ public class SingGramUpdateActivity extends BaseFragment {
         addHeader(context, contentContainer, LocaleController.getString(R.string.SingGramUpdateNotes));
         LinearLayout notesSection = addSection(context, contentContainer);
         addInfoBlock(context, notesSection, notesValue());
-        addActionCell(context, notesSection, LocaleController.getString(R.string.SingGramUpdateCopyNotes), LocaleController.getString(R.string.SingGramUpdateCopyNotesInfo), updateInfo != null && !TextUtils.isEmpty(updateInfo.notes), v -> copyNotes());
+        addDivider(context, notesSection);
+        addActionRow(context, notesSection, LocaleController.getString(R.string.SingGramUpdateCopyNotes), LocaleController.getString(R.string.SingGramUpdateCopyNotesInfo), R.drawable.msg_copy, 0xFF23B9C9, 0xFF2684E8, updateInfo != null && !TextUtils.isEmpty(updateInfo.notes), v -> copyNotes());
         addInfo(context, contentContainer, LocaleController.getString(R.string.SingGramOtaInfo));
 
         if (animated) {
@@ -552,35 +554,108 @@ public class SingGramUpdateActivity extends BaseFragment {
     }
 
     private void addInfoCell(Context context, LinearLayout container, String text, String value) {
-        addActionCell(context, container, text, value, false, null);
+        addPlainInfoRow(context, container, text, value);
     }
 
-    private void addActionCell(Context context, LinearLayout container, String text, String value, boolean enabled, View.OnClickListener listener) {
-        TextCheckCell cell = new TextCheckCell(context, 16);
-        cell.setTextAndValue(text, value, true, false);
-        cell.setEnabled(enabled);
-        cell.setAlpha(enabled ? 1.0f : 0.58f);
-        if (listener != null) {
+    private void addPlainInfoRow(Context context, LinearLayout container, String text, String value) {
+        LinearLayout cell = new LinearLayout(context);
+        cell.setOrientation(LinearLayout.VERTICAL);
+        cell.setGravity(Gravity.CENTER_VERTICAL);
+        cell.setMinimumHeight(AndroidUtilities.dp(60));
+        cell.setPadding(AndroidUtilities.dp(18), AndroidUtilities.dp(10), AndroidUtilities.dp(18), AndroidUtilities.dp(10));
+
+        TextView titleView = new TextView(context);
+        titleView.setText(text);
+        titleView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        titleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+        titleView.setIncludeFontPadding(false);
+        titleView.setSingleLine(true);
+        titleView.setEllipsize(TextUtils.TruncateAt.END);
+        titleView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        cell.addView(titleView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        TextView valueView = new TextView(context);
+        valueView.setText(value);
+        valueView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
+        valueView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
+        valueView.setSingleLine(false);
+        valueView.setMaxLines(2);
+        valueView.setEllipsize(TextUtils.TruncateAt.END);
+        valueView.setIncludeFontPadding(false);
+        valueView.setLineSpacing(AndroidUtilities.dp(2), 1.0f);
+        valueView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        cell.addView(valueView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 5, 0, 0));
+
+        container.addView(cell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+    }
+
+    private void addActionRow(Context context, LinearLayout container, String text, String value, int icon, int colorTop, int colorBottom, boolean enabled, View.OnClickListener listener) {
+        LinearLayout cell = new LinearLayout(context);
+        cell.setOrientation(LinearLayout.HORIZONTAL);
+        cell.setGravity(Gravity.CENTER_VERTICAL);
+        cell.setMinimumHeight(AndroidUtilities.dp(70));
+        cell.setPadding(AndroidUtilities.dp(18), AndroidUtilities.dp(11), AndroidUtilities.dp(18), AndroidUtilities.dp(11));
+        cell.setAlpha(enabled ? 1.0f : 0.48f);
+
+        FrameLayout iconLayout = new FrameLayout(context);
+        GradientDrawable iconBackground = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[] { colorTop, colorBottom });
+        iconBackground.setCornerRadius(AndroidUtilities.dp(11));
+        iconLayout.setBackground(iconBackground);
+
+        ImageView iconView = new ImageView(context);
+        iconView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        iconView.setImageResource(icon);
+        iconView.setColorFilter(Color.WHITE);
+        iconLayout.addView(iconView, LayoutHelper.createFrame(23, 23, Gravity.CENTER));
+
+        LinearLayout textLayout = new LinearLayout(context);
+        textLayout.setOrientation(LinearLayout.VERTICAL);
+        textLayout.setGravity(Gravity.CENTER_VERTICAL);
+
+        TextView titleView = new TextView(context);
+        titleView.setText(text);
+        titleView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        titleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
+        titleView.setTypeface(AndroidUtilities.bold());
+        titleView.setSingleLine(true);
+        titleView.setEllipsize(TextUtils.TruncateAt.END);
+        titleView.setIncludeFontPadding(false);
+        titleView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        textLayout.addView(titleView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        TextView subtitleView = new TextView(context);
+        subtitleView.setText(value);
+        subtitleView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText));
+        subtitleView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
+        subtitleView.setSingleLine(false);
+        subtitleView.setMaxLines(2);
+        subtitleView.setEllipsize(TextUtils.TruncateAt.END);
+        subtitleView.setIncludeFontPadding(false);
+        subtitleView.setLineSpacing(AndroidUtilities.dp(2), 1.0f);
+        subtitleView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        textLayout.addView(subtitleView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 5, 0, 0));
+
+        ImageView arrowView = new ImageView(context);
+        arrowView.setImageResource(R.drawable.msg_arrowright);
+        arrowView.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteGrayIcon));
+        arrowView.setAlpha(enabled && listener != null ? 0.62f : 0.0f);
+        arrowView.setRotation(LocaleController.isRTL ? 180 : 0);
+
+        if (LocaleController.isRTL) {
+            cell.addView(arrowView, LayoutHelper.createLinear(24, 24, Gravity.CENTER_VERTICAL | Gravity.LEFT));
+            cell.addView(textLayout, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1, Gravity.CENTER_VERTICAL | Gravity.FILL_HORIZONTAL, 0, 0, 14, 0));
+            cell.addView(iconLayout, LayoutHelper.createLinear(34, 34, Gravity.CENTER_VERTICAL | Gravity.RIGHT, 0, 0, 0, 0));
+        } else {
+            cell.addView(iconLayout, LayoutHelper.createLinear(34, 34, Gravity.CENTER_VERTICAL | Gravity.LEFT, 0, 0, 0, 0));
+            cell.addView(textLayout, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1, Gravity.CENTER_VERTICAL | Gravity.FILL_HORIZONTAL, 14, 0, 0, 0));
+            cell.addView(arrowView, LayoutHelper.createLinear(24, 24, Gravity.CENTER_VERTICAL | Gravity.RIGHT));
+        }
+
+        if (enabled && listener != null) {
             cell.setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector), Theme.RIPPLE_MASK_ALL));
             cell.setOnClickListener(listener);
         }
         container.addView(cell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-    }
-
-    private void addPrimaryButton(Context context, LinearLayout container, String text, String value, boolean enabled, View.OnClickListener listener) {
-        TextView button = new TextView(context);
-        button.setText(text + "\n" + value);
-        button.setTextColor(Theme.getColor(Theme.key_featuredStickers_buttonText));
-        button.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
-        button.setTypeface(AndroidUtilities.bold());
-        button.setGravity(Gravity.CENTER);
-        button.setEnabled(enabled);
-        button.setAlpha(enabled ? 1.0f : 0.58f);
-        button.setLineSpacing(AndroidUtilities.dp(2), 1.0f);
-        button.setPadding(AndroidUtilities.dp(14), AndroidUtilities.dp(12), AndroidUtilities.dp(14), AndroidUtilities.dp(12));
-        button.setBackground(Theme.createRadSelectorDrawable(Theme.getColor(Theme.key_featuredStickers_addButton), Theme.getColor(Theme.key_featuredStickers_addButtonPressed), 8, 8));
-        button.setOnClickListener(listener);
-        container.addView(button, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 12, 12, 12, 12));
     }
 
     private void addDownloadProgressCard(Context context, LinearLayout container) {
@@ -681,6 +756,12 @@ public class SingGramUpdateActivity extends BaseFragment {
         View divider = new View(context);
         divider.setBackgroundColor(Theme.getColor(Theme.key_divider));
         container.addView(divider, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 1, 16, 0, 16, 0));
+    }
+
+    private void addActionDivider(Context context, LinearLayout container) {
+        View divider = new View(context);
+        divider.setBackgroundColor(Theme.getColor(Theme.key_divider));
+        container.addView(divider, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 1, 68, 0, 16, 0));
     }
 
     private void addInfo(Context context, LinearLayout container, String text) {
