@@ -1,6 +1,14 @@
 import org.gradle.nativeplatform.platform.internal.DefaultNativePlatform
+import java.util.jar.JarEntry
+import java.util.jar.JarInputStream
+import java.util.jar.JarOutputStream
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
 
 apply plugin: 'com.android.library'
+
+def SINGGRAM_GECKOVIEW_VERSION = '140.0.20250707120347'
 
 repositories {
     mavenCentral()
@@ -12,11 +20,86 @@ repositories {
 
 configurations {
     compile.exclude module: 'support-v4'
+    singgramGeckoViewRaw {
+        canBeConsumed = false
+        canBeResolved = true
+        transitive = false
+    }
 }
 
 configurations.all {
     exclude group: 'com.google.firebase', module: 'firebase-core'
     exclude group: 'androidx.recyclerview', module: 'recyclerview'
+}
+
+def singGramStrippedGeckoViewAarPath = "$buildDir/intermediates/singgram/geckoview/geckoview-${SINGGRAM_GECKOVIEW_VERSION}-no-webrtc.aar"
+def stripSingGramGeckoViewWebRtc = tasks.register("stripSingGramGeckoViewWebRtc") {
+    inputs.files(configurations.singgramGeckoViewRaw)
+    outputs.file(singGramStrippedGeckoViewAarPath)
+
+    doLast {
+        def inputAar = configurations.singgramGeckoViewRaw.singleFile
+        def outputAar = file(singGramStrippedGeckoViewAarPath)
+        outputAar.parentFile.mkdirs()
+
+        def copyStream = { InputStream input, OutputStream output ->
+            byte[] buffer = new byte[8192]
+            int read
+            while ((read = input.read(buffer)) != -1) {
+                output.write(buffer, 0, read)
+            }
+        }
+
+        def readBytes = { InputStream input ->
+            def bytes = new ByteArrayOutputStream()
+            copyStream(input, bytes)
+            bytes.toByteArray()
+        }
+
+        def stripJar = { InputStream input ->
+            def bytes = new ByteArrayOutputStream()
+            new JarOutputStream(bytes).withCloseable { jarOut ->
+                new JarInputStream(input).withCloseable { jarIn ->
+                    JarEntry jarEntry
+                    while ((jarEntry = jarIn.nextJarEntry) != null) {
+                        if (jarEntry.name.startsWith("org/webrtc/")) {
+                            jarIn.closeEntry()
+                            continue
+                        }
+                        def copiedEntry = new JarEntry(jarEntry.name)
+                        copiedEntry.time = jarEntry.time
+                        jarOut.putNextEntry(copiedEntry)
+                        if (!jarEntry.directory) {
+                            copyStream(jarIn, jarOut)
+                        }
+                        jarOut.closeEntry()
+                        jarIn.closeEntry()
+                    }
+                }
+            }
+            bytes.toByteArray()
+        }
+
+        new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(outputAar))).withCloseable { zipOut ->
+            new ZipInputStream(new BufferedInputStream(new FileInputStream(inputAar))).withCloseable { zipIn ->
+                ZipEntry entry
+                while ((entry = zipIn.nextEntry) != null) {
+                    def copiedEntry = new ZipEntry(entry.name)
+                    copiedEntry.time = entry.time
+                    zipOut.putNextEntry(copiedEntry)
+                    if (!entry.directory) {
+                        if (entry.name == "classes.jar") {
+                            zipOut.write(stripJar(new ByteArrayInputStream(readBytes(zipIn))))
+                        } else {
+                            copyStream(zipIn, zipOut)
+                        }
+                    }
+                    zipOut.closeEntry()
+                    zipIn.closeEntry()
+                }
+            }
+        }
+    }
 }
 
 dependencies {
@@ -52,7 +135,15 @@ dependencies {
     implementation 'com.google.guava:guava:31.1-android'
     implementation 'com.google.android.play:integrity:1.3.0'
     implementation 'com.google.android.gms:play-services-safetynet:18.0.1'
-    implementation 'org.mozilla.geckoview:geckoview:152.0.20260621191700'
+    singgramGeckoViewRaw "org.mozilla.geckoview:geckoview:${SINGGRAM_GECKOVIEW_VERSION}@aar"
+    implementation files(singGramStrippedGeckoViewAarPath) {
+        builtBy(stripSingGramGeckoViewWebRtc)
+    }
+    implementation "org.mozilla.geckoview:geckoview-exoplayer2:${SINGGRAM_GECKOVIEW_VERSION}"
+    implementation 'androidx.collection:collection:1.5.0'
+    implementation 'androidx.lifecycle:lifecycle-common:2.9.0'
+    implementation 'androidx.lifecycle:lifecycle-process:2.9.0'
+    implementation 'org.yaml:snakeyaml:2.2'
 
     implementation 'com.google.android.gms:play-services-mlkit-subject-segmentation:16.0.0-beta1'
     implementation 'com.google.android.gms:play-services-mlkit-image-labeling:16.0.8'

@@ -103,6 +103,10 @@
 # Don't warn about checkerframework and Kotlin annotations
 -dontwarn org.checkerframework.**
 -dontwarn javax.annotation.**
+-dontwarn java.beans.**
+-dontwarn org.mozilla.geckoview.WebExtension$ContextFlags
+-dontwarn org.mozilla.geckoview.WebExtension$DownloadRequest$ConflictActionFlags
+-dontwarn org.mozilla.geckoview.WebExtension$MenuItem$Type
 
 -keep class io.nano.tex.** {*;}
 
