@@ -118,7 +118,7 @@ jobs:
             --label upstream-update \
             --body-file /tmp/upstream-update.md
 
-      - name: Create tracking branch and PR
+      - name: Create tracking branch
         if: ${{ steps.upstream.outputs.changed == 'true' }}
         shell: bash
         env:
@@ -148,6 +148,20 @@ jobs:
             git push origin "$BRANCH"
           fi
 
+      - name: Try to open tracking PR
+        if: ${{ steps.upstream.outputs.changed == 'true' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          IMPORTED_COMMIT: ${{ steps.upstream.outputs.imported_commit }}
+          IMPORTED_VERSION: ${{ steps.upstream.outputs.imported_version }}
+          LATEST_COMMIT: ${{ steps.upstream.outputs.latest_commit }}
+          LATEST_SHORT: ${{ steps.upstream.outputs.latest_short }}
+        run: |
+          set -euo pipefail
+
+          BRANCH="upstream/${LATEST_SHORT}"
+
           if ! gh pr list \
             --repo "$GITHUB_REPOSITORY" \
             --state open \
@@ -164,12 +178,18 @@ jobs:
           This PR is a tracking marker, not an automatic source merge. Use it to start the manual upstream sync branch and record conflict/test notes.
           EOF
 
-            gh pr create \
+            if ! gh pr create \
               --repo "$GITHUB_REPOSITORY" \
               --base "$GITHUB_REF_NAME" \
               --head "$BRANCH" \
               --title "Track Telegram upstream $LATEST_SHORT" \
-              --body-file /tmp/upstream-pr.md
+              --body-file /tmp/upstream-pr.md; then
+              {
+                echo "::warning::Could not create the tracking PR. GitHub may have disabled PR creation by GitHub Actions tokens."
+                echo "::notice::Tracking branch is ready: $BRANCH"
+                echo "::notice::Open the PR manually if needed: https://github.com/$GITHUB_REPOSITORY/compare/$GITHUB_REF_NAME...$BRANCH?quick_pull=1"
+              }
+            fi
           fi
 
       - name: Dispatch build workflow
@@ -182,11 +202,12 @@ jobs:
         run: |
           set -euo pipefail
 
-          gh workflow run main.yml \
+          gh workflow run official-android-build.yml \
             --repo "$GITHUB_REPOSITORY" \
             --ref "$GITHUB_REF_NAME" \
             -f gradle_task=':TMessagesProj_App:assembleArm64Release' \
             -f upload_name='SingGram-arm64-release' \
             -f publish_release=true \
+            -f auto_bump_version=true \
             -f prerelease=false \
             -f release_notes="SingGram rebuild triggered after Telegram upstream update check.\n\n- Upstream latest: $LATEST_COMMIT"
