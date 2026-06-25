@@ -590,23 +590,34 @@ public class SingGramUpdateActivity extends BaseFragment {
     }
 
     private void addActionRow(Context context, LinearLayout container, String text, String value, int icon, int colorTop, int colorBottom, boolean enabled, View.OnClickListener listener) {
-        LinearLayout cell = new LinearLayout(context);
-        cell.setOrientation(LinearLayout.HORIZONTAL);
-        cell.setGravity(Gravity.CENTER_VERTICAL);
-        cell.setMinimumHeight(AndroidUtilities.dp(70));
-        cell.setPadding(AndroidUtilities.dp(18), AndroidUtilities.dp(11), AndroidUtilities.dp(18), AndroidUtilities.dp(11));
-        cell.setAlpha(enabled ? 1.0f : 0.48f);
+        boolean isPrimary = listener != null && enabled && icon == R.drawable.menu_download_round;
+
+        FrameLayout cell = new FrameLayout(context);
+        cell.setAlpha(enabled ? 1.0f : 0.52f);
+        cell.setPadding(0, 0, 0, 0);
+
+        LinearLayout surface = new LinearLayout(context);
+        surface.setOrientation(LinearLayout.HORIZONTAL);
+        surface.setGravity(Gravity.CENTER_VERTICAL);
+        surface.setMinimumHeight(AndroidUtilities.dp(isPrimary ? 82 : 72));
+        surface.setPadding(AndroidUtilities.dp(isPrimary ? 18 : 16), AndroidUtilities.dp(12), AndroidUtilities.dp(isPrimary ? 18 : 16), AndroidUtilities.dp(12));
+        surface.setBackground(actionRowBackground(colorTop, colorBottom, enabled, isPrimary));
+
+        View accent = new View(context);
+        GradientDrawable accentDrawable = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{ colorTop, colorBottom });
+        accentDrawable.setCornerRadius(AndroidUtilities.dp(5));
+        accent.setBackground(accentDrawable);
 
         FrameLayout iconLayout = new FrameLayout(context);
-        GradientDrawable iconBackground = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[] { colorTop, colorBottom });
-        iconBackground.setCornerRadius(AndroidUtilities.dp(11));
+        GradientDrawable iconBackground = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[]{ colorTop, colorBottom });
+        iconBackground.setCornerRadius(AndroidUtilities.dp(13));
         iconLayout.setBackground(iconBackground);
 
         ImageView iconView = new ImageView(context);
         iconView.setScaleType(ImageView.ScaleType.FIT_CENTER);
         iconView.setImageResource(icon);
         iconView.setColorFilter(Color.WHITE);
-        iconLayout.addView(iconView, LayoutHelper.createFrame(23, 23, Gravity.CENTER));
+        iconLayout.addView(iconView, LayoutHelper.createFrame(isPrimary ? 26 : 22, isPrimary ? 26 : 22, Gravity.CENTER));
 
         LinearLayout textLayout = new LinearLayout(context);
         textLayout.setOrientation(LinearLayout.VERTICAL);
@@ -638,31 +649,57 @@ public class SingGramUpdateActivity extends BaseFragment {
         ImageView arrowView = new ImageView(context);
         arrowView.setImageResource(R.drawable.msg_arrowright);
         arrowView.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteGrayIcon));
-        arrowView.setAlpha(enabled && listener != null ? 0.62f : 0.0f);
+        arrowView.setAlpha(enabled && listener != null ? 0.76f : 0.0f);
         arrowView.setRotation(LocaleController.isRTL ? 180 : 0);
 
-        if (LocaleController.isRTL) {
-            cell.addView(arrowView, LayoutHelper.createLinear(24, 24, Gravity.CENTER_VERTICAL | Gravity.LEFT));
-            cell.addView(textLayout, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1, Gravity.CENTER_VERTICAL | Gravity.FILL_HORIZONTAL, 0, 0, 14, 0));
-            cell.addView(iconLayout, LayoutHelper.createLinear(34, 34, Gravity.CENTER_VERTICAL | Gravity.RIGHT, 0, 0, 0, 0));
-        } else {
-            cell.addView(iconLayout, LayoutHelper.createLinear(34, 34, Gravity.CENTER_VERTICAL | Gravity.LEFT, 0, 0, 0, 0));
-            cell.addView(textLayout, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1, Gravity.CENTER_VERTICAL | Gravity.FILL_HORIZONTAL, 14, 0, 0, 0));
-            cell.addView(arrowView, LayoutHelper.createLinear(24, 24, Gravity.CENTER_VERTICAL | Gravity.RIGHT));
+        TextView badge = null;
+        if (isPrimary) {
+            badge = new TextView(context);
+            badge.setText(LocaleController.getString(R.string.SingGramOtaDownloadReady));
+            badge.setTextColor(Color.WHITE);
+            badge.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 11);
+            badge.setTypeface(AndroidUtilities.bold());
+            badge.setIncludeFontPadding(false);
+            badge.setSingleLine(true);
+            badge.setPadding(AndroidUtilities.dp(10), AndroidUtilities.dp(5), AndroidUtilities.dp(10), AndroidUtilities.dp(5));
+            GradientDrawable badgeBg = new GradientDrawable();
+            badgeBg.setColor(Theme.multAlpha(Color.WHITE, 0.18f));
+            badgeBg.setCornerRadius(AndroidUtilities.dp(999));
+            badge.setBackground(badgeBg);
         }
+
+        if (LocaleController.isRTL) {
+            surface.addView(arrowView, LayoutHelper.createLinear(24, 24, Gravity.CENTER_VERTICAL | Gravity.LEFT));
+            if (badge != null) {
+                surface.addView(badge, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_VERTICAL | Gravity.LEFT, 0, 0, 12, 0));
+            }
+            surface.addView(textLayout, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1, Gravity.CENTER_VERTICAL | Gravity.FILL_HORIZONTAL, 0, 0, 14, 0));
+            surface.addView(iconLayout, LayoutHelper.createLinear(isPrimary ? 40 : 36, isPrimary ? 40 : 36, Gravity.CENTER_VERTICAL | Gravity.RIGHT, 0, 0, 0, 0));
+            surface.addView(accent, LayoutHelper.createLinear(3, LayoutHelper.MATCH_PARENT, Gravity.CENTER_VERTICAL | Gravity.RIGHT, 0, 0, 0, 0));
+        } else {
+            surface.addView(accent, LayoutHelper.createLinear(3, LayoutHelper.MATCH_PARENT, Gravity.CENTER_VERTICAL | Gravity.LEFT, 0, 0, 0, 0));
+            surface.addView(iconLayout, LayoutHelper.createLinear(isPrimary ? 40 : 36, isPrimary ? 40 : 36, Gravity.CENTER_VERTICAL | Gravity.LEFT, 12, 0, 0, 0));
+            surface.addView(textLayout, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1, Gravity.CENTER_VERTICAL | Gravity.FILL_HORIZONTAL, 14, 0, 0, 0));
+            if (badge != null) {
+                surface.addView(badge, LayoutHelper.createLinear(LayoutHelper.WRAP_CONTENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_VERTICAL | Gravity.RIGHT, 0, 0, 12, 0));
+            }
+            surface.addView(arrowView, LayoutHelper.createLinear(24, 24, Gravity.CENTER_VERTICAL | Gravity.RIGHT));
+        }
+
+        cell.addView(surface, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
         if (enabled && listener != null) {
             cell.setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector), Theme.RIPPLE_MASK_ALL));
             cell.setOnClickListener(listener);
         }
-        container.addView(cell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        container.addView(cell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 12, 0, 12, 0));
     }
 
     private void addDownloadProgressCard(Context context, LinearLayout container) {
         LinearLayout card = new LinearLayout(context);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(14), AndroidUtilities.dp(16), AndroidUtilities.dp(14));
-        card.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(8), Theme.multAlpha(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText), 0.08f)));
+        card.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(15), AndroidUtilities.dp(16), AndroidUtilities.dp(15));
+        card.setBackground(downloadProgressBackground());
         container.addView(card, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 12, 12, 12, 12));
 
         downloadProgressTitle = new TextView(context);
@@ -682,9 +719,9 @@ public class SingGramUpdateActivity extends BaseFragment {
         card.addView(downloadProgressSubtitle, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
 
         downloadProgressView = new LineProgressView(context);
-        downloadProgressView.setBackColor(Theme.multAlpha(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText), 0.16f));
+        downloadProgressView.setBackColor(Theme.multAlpha(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText), 0.18f));
         downloadProgressView.setProgressColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
-        card.addView(downloadProgressView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 6));
+        card.addView(downloadProgressView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 7));
         updateDownloadProgressViews();
     }
 
@@ -759,9 +796,32 @@ public class SingGramUpdateActivity extends BaseFragment {
     }
 
     private void addActionDivider(Context context, LinearLayout container) {
-        View divider = new View(context);
-        divider.setBackgroundColor(Theme.getColor(Theme.key_divider));
-        container.addView(divider, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 1, 68, 0, 16, 0));
+        View spacer = new View(context);
+        container.addView(spacer, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 8));
+    }
+
+    private GradientDrawable actionRowBackground(int colorTop, int colorBottom, boolean enabled, boolean primary) {
+        int baseColor = Theme.multAlpha(Theme.getColor(Theme.key_windowBackgroundWhite), primary ? 0.92f : 0.86f);
+        GradientDrawable drawable = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[] {
+                Theme.multAlpha(colorTop, primary ? 0.10f : 0.06f),
+                baseColor,
+                Theme.multAlpha(colorBottom, primary ? 0.14f : 0.08f)
+        });
+        drawable.setCornerRadius(AndroidUtilities.dp(primary ? 18 : 16));
+        drawable.setStroke(AndroidUtilities.dp(1), Theme.multAlpha(colorTop, enabled ? (primary ? 0.22f : 0.12f) : 0.08f));
+        return drawable;
+    }
+
+    private GradientDrawable downloadProgressBackground() {
+        int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
+        GradientDrawable drawable = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[] {
+                Theme.multAlpha(accent, 0.20f),
+                Theme.multAlpha(Theme.getColor(Theme.key_windowBackgroundWhite), 0.92f),
+                Theme.multAlpha(accent, 0.10f)
+        });
+        drawable.setCornerRadius(AndroidUtilities.dp(18));
+        drawable.setStroke(AndroidUtilities.dp(1), Theme.multAlpha(accent, 0.16f));
+        return drawable;
     }
 
     private void addInfo(Context context, LinearLayout container, String text) {
