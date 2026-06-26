@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.text.TextUtils;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -16,6 +17,8 @@ public class SingGramConfig {
     private static final String KEY_AI_API_KEY = "ai_api_key";
     private static final String KEY_AI_MODEL = "ai_model";
     private static final String KEY_AI_SYSTEM_PROMPT = "ai_system_prompt";
+    private static final String KEY_AI_PROVIDERS = "ai_providers";
+    private static final String KEY_AI_ACTIVE_PROVIDER = "ai_active_provider";
     private static final String KEY_LIQUID_GLASS = "liquid_glass";
     private static final String KEY_HIDE_PHONE_IN_SETTINGS = "hide_phone_in_settings";
     private static final String KEY_AI_CONTEXT_MENU = "ai_context_menu";
@@ -59,6 +62,20 @@ public class SingGramConfig {
     public static final int BROWSER_ENGINE_GECKOVIEW = 1;
     private static boolean crashHandlerInstalled;
 
+    public static class AiProvider {
+        public final String name;
+        public final String baseUrl;
+        public final String apiKey;
+        public final String model;
+
+        public AiProvider(String name, String baseUrl, String apiKey, String model) {
+            this.name = name;
+            this.baseUrl = baseUrl;
+            this.apiKey = apiKey;
+            this.model = model;
+        }
+    }
+
     private static SharedPreferences prefs() {
         if (ApplicationLoader.applicationContext == null) {
             return null;
@@ -86,7 +103,7 @@ public class SingGramConfig {
     public static void setAiBaseUrl(String value) {
         SharedPreferences preferences = prefs();
         if (preferences != null) {
-            preferences.edit().putString(KEY_AI_BASE_URL, value == null ? "" : value.trim()).apply();
+            preferences.edit().putString(KEY_AI_BASE_URL, normalizeAiBaseUrl(value)).apply();
         }
     }
 
@@ -133,6 +150,141 @@ public class SingGramConfig {
 
     public static boolean isAiConfigured() {
         return !TextUtils.isEmpty(getAiBaseUrl());
+    }
+
+    public static ArrayList<AiProvider> getAiProviders() {
+        ArrayList<AiProvider> providers = new ArrayList<>();
+        String value = getString(KEY_AI_PROVIDERS, "");
+        if (TextUtils.isEmpty(value)) {
+            return providers;
+        }
+        for (String line : value.split("\\n")) {
+            String[] parts = line.split("\\|", -1);
+            if (parts.length < 4) {
+                continue;
+            }
+            String name = unescapeProfilePart(parts[0]);
+            String baseUrl = normalizeAiBaseUrl(unescapeProfilePart(parts[1]));
+            String apiKey = unescapeProfilePart(parts[2]);
+            String model = unescapeProfilePart(parts[3]);
+            if (!TextUtils.isEmpty(name) && !TextUtils.isEmpty(baseUrl)) {
+                providers.add(new AiProvider(name, baseUrl, apiKey, TextUtils.isEmpty(model) ? DEFAULT_AI_MODEL : model));
+            }
+        }
+        return providers;
+    }
+
+    public static boolean saveCurrentAiProvider() {
+        String baseUrl = normalizeAiBaseUrl(getAiBaseUrl());
+        if (TextUtils.isEmpty(baseUrl)) {
+            return false;
+        }
+        String name = providerNameForBaseUrl(baseUrl);
+        ArrayList<AiProvider> providers = getAiProviders();
+        AiProvider current = new AiProvider(name, baseUrl, getAiApiKey(), getAiModel());
+        boolean replaced = false;
+        for (int i = 0; i < providers.size(); i++) {
+            AiProvider provider = providers.get(i);
+            if (TextUtils.equals(provider.name, name) || TextUtils.equals(provider.baseUrl, baseUrl)) {
+                providers.set(i, current);
+                replaced = true;
+                break;
+            }
+        }
+        if (!replaced) {
+            providers.add(current);
+        }
+        saveAiProviders(providers);
+        setString(KEY_AI_ACTIVE_PROVIDER, name);
+        return true;
+    }
+
+    public static void applyAiProvider(AiProvider provider) {
+        if (provider == null) {
+            return;
+        }
+        SharedPreferences preferences = prefs();
+        if (preferences != null) {
+            preferences.edit()
+                    .putString(KEY_AI_BASE_URL, normalizeAiBaseUrl(provider.baseUrl))
+                    .putString(KEY_AI_API_KEY, provider.apiKey == null ? "" : provider.apiKey.trim())
+                    .putString(KEY_AI_MODEL, TextUtils.isEmpty(provider.model) ? DEFAULT_AI_MODEL : provider.model.trim())
+                    .putString(KEY_AI_ACTIVE_PROVIDER, provider.name == null ? "" : provider.name.trim())
+                    .apply();
+        }
+    }
+
+    public static String getActiveAiProviderName() {
+        return getString(KEY_AI_ACTIVE_PROVIDER, "");
+    }
+
+    public static String getAiProviderSummary() {
+        String active = getActiveAiProviderName();
+        if (!TextUtils.isEmpty(active)) {
+            return active;
+        }
+        String baseUrl = getAiBaseUrl();
+        return TextUtils.isEmpty(baseUrl) ? "" : providerNameForBaseUrl(baseUrl);
+    }
+
+    private static void saveAiProviders(ArrayList<AiProvider> providers) {
+        StringBuilder builder = new StringBuilder();
+        for (AiProvider provider : providers) {
+            if (provider == null || TextUtils.isEmpty(provider.name) || TextUtils.isEmpty(provider.baseUrl)) {
+                continue;
+            }
+            if (builder.length() > 0) {
+                builder.append('\n');
+            }
+            builder.append(escapeProfilePart(provider.name))
+                    .append('|')
+                    .append(escapeProfilePart(normalizeAiBaseUrl(provider.baseUrl)))
+                    .append('|')
+                    .append(escapeProfilePart(provider.apiKey))
+                    .append('|')
+                    .append(escapeProfilePart(provider.model));
+        }
+        setString(KEY_AI_PROVIDERS, builder.toString());
+    }
+
+    public static String normalizeAiBaseUrl(String value) {
+        String url = value == null ? "" : value.trim();
+        while (url.endsWith("/")) {
+            url = url.substring(0, url.length() - 1);
+        }
+        String lower = url.toLowerCase();
+        String[] suffixes = new String[] {
+                "/v1/chat/completions",
+                "/v1/responses",
+                "/v1/models",
+                "/chat/completions",
+                "/responses",
+                "/models",
+                "/v1"
+        };
+        for (String suffix : suffixes) {
+            if (lower.endsWith(suffix)) {
+                url = url.substring(0, url.length() - suffix.length());
+                break;
+            }
+        }
+        while (url.endsWith("/")) {
+            url = url.substring(0, url.length() - 1);
+        }
+        return url;
+    }
+
+    private static String providerNameForBaseUrl(String baseUrl) {
+        String value = normalizeAiBaseUrl(baseUrl);
+        if (TextUtils.isEmpty(value)) {
+            return "NewAPI";
+        }
+        String host = value.replace("https://", "").replace("http://", "");
+        int slash = host.indexOf('/');
+        if (slash >= 0) {
+            host = host.substring(0, slash);
+        }
+        return TextUtils.isEmpty(host) ? "NewAPI" : host;
     }
 
     public static int getBrowserEngine() {

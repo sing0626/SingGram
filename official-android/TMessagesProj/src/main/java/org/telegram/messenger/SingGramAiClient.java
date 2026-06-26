@@ -12,6 +12,7 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 
 public class SingGramAiClient {
 
@@ -29,6 +30,11 @@ public class SingGramAiClient {
 
     public interface Callback {
         void onResult(String text);
+        void onError(String error);
+    }
+
+    public interface ModelsCallback {
+        void onResult(ArrayList<String> models);
         void onError(String error);
     }
 
@@ -63,6 +69,50 @@ public class SingGramAiClient {
 
     public static void testConnection(Callback callback) {
         runTextAction(ACTION_TEST_CONNECTION, "Reply with OK only.", callback);
+    }
+
+    public static void fetchModels(ModelsCallback callback) {
+        if (callback == null) {
+            return;
+        }
+        if (!SingGramConfig.isAiEnabled()) {
+            callback.onError(LocaleController.getString(R.string.SingGramAIDisabledError));
+            return;
+        }
+        if (!SingGramConfig.isAiConfigured()) {
+            callback.onError(LocaleController.getString(R.string.SingGramAIConfigureError));
+            return;
+        }
+        Utilities.globalQueue.postRunnable(() -> {
+            try {
+                HttpURLConnection connection = (HttpURLConnection) new URL(buildModelsEndpoint(SingGramConfig.getAiBaseUrl())).openConnection();
+                connection.setRequestMethod("GET");
+                connection.setConnectTimeout(15000);
+                connection.setReadTimeout(30000);
+                connection.setRequestProperty("Accept", "application/json");
+                String apiKey = SingGramConfig.getAiApiKey();
+                if (!TextUtils.isEmpty(apiKey)) {
+                    connection.setRequestProperty("Authorization", "Bearer " + apiKey);
+                }
+                int responseCode = connection.getResponseCode();
+                InputStream stream = responseCode >= 200 && responseCode < 300 ? connection.getInputStream() : connection.getErrorStream();
+                String response = readStream(stream);
+                if (responseCode < 200 || responseCode >= 300) {
+                    String error = parseError(response);
+                    callbackOnError(callback, TextUtils.isEmpty(error) ? "HTTP " + responseCode : error);
+                    return;
+                }
+                ArrayList<String> models = parseModels(response);
+                if (models.isEmpty()) {
+                    callbackOnError(callback, LocaleController.getString(R.string.SingGramAIModelsEmpty));
+                } else {
+                    callbackOnResult(callback, models);
+                }
+            } catch (Exception e) {
+                FileLog.e(e);
+                callbackOnError(callback, e.getMessage());
+            }
+        });
     }
 
     public static void runTextAction(int action, String input, Callback callback) {
@@ -188,6 +238,20 @@ public class SingGramAiClient {
         return url + "/v1/chat/completions";
     }
 
+    private static String buildModelsEndpoint(String baseUrl) {
+        String url = baseUrl == null ? "" : baseUrl.trim();
+        while (url.endsWith("/")) {
+            url = url.substring(0, url.length() - 1);
+        }
+        if (url.endsWith("/v1/models") || url.endsWith("/models")) {
+            return url;
+        }
+        if (url.endsWith("/v1")) {
+            return url + "/models";
+        }
+        return url + "/v1/models";
+    }
+
     private static String readStream(InputStream stream) throws Exception {
         if (stream == null) {
             return "";
@@ -260,11 +324,39 @@ public class SingGramAiClient {
         return "";
     }
 
+    private static ArrayList<String> parseModels(String response) throws Exception {
+        ArrayList<String> models = new ArrayList<>();
+        JSONObject object = new JSONObject(response);
+        JSONArray data = object.optJSONArray("data");
+        if (data == null) {
+            return models;
+        }
+        for (int i = 0; i < data.length(); i++) {
+            JSONObject model = data.optJSONObject(i);
+            if (model == null) {
+                continue;
+            }
+            String id = model.optString("id", "");
+            if (!TextUtils.isEmpty(id) && !models.contains(id)) {
+                models.add(id);
+            }
+        }
+        return models;
+    }
+
     private static void callbackOnResult(Callback callback, String text) {
         AndroidUtilities.runOnUIThread(() -> callback.onResult(text));
     }
 
     private static void callbackOnError(Callback callback, String error) {
+        AndroidUtilities.runOnUIThread(() -> callback.onError(TextUtils.isEmpty(error) ? LocaleController.getString(R.string.ErrorOccurred) : error));
+    }
+
+    private static void callbackOnResult(ModelsCallback callback, ArrayList<String> models) {
+        AndroidUtilities.runOnUIThread(() -> callback.onResult(models));
+    }
+
+    private static void callbackOnError(ModelsCallback callback, String error) {
         AndroidUtilities.runOnUIThread(() -> callback.onError(TextUtils.isEmpty(error) ? LocaleController.getString(R.string.ErrorOccurred) : error));
     }
 }

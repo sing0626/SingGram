@@ -66,6 +66,7 @@ public class SingGramSettingsActivity extends BaseFragment {
     private TextView resultView;
     private TextCheckCell aiEnabledCell;
     private TextCheckCell liquidGlassCell;
+    private LinearLayout contentContainer;
 
     private interface BooleanSetter {
         void set(boolean enabled);
@@ -132,6 +133,7 @@ public class SingGramSettingsActivity extends BaseFragment {
         container.setOrientation(LinearLayout.VERTICAL);
         container.setPadding(0, AndroidUtilities.dp(10), 0, AndroidUtilities.dp(28));
         scrollView.addView(container, new ScrollView.LayoutParams(ScrollView.LayoutParams.MATCH_PARENT, ScrollView.LayoutParams.WRAP_CONTENT));
+        contentContainer = container;
 
         buildContent(context, container);
         maybeShowFeatureHubIntro();
@@ -213,24 +215,35 @@ public class SingGramSettingsActivity extends BaseFragment {
             boolean enabled = !aiEnabledCell.isChecked();
             aiEnabledCell.setChecked(enabled);
             SingGramConfig.setAiEnabled(enabled);
+            rebuildSettingsPage();
         });
-        addDivider(context, aiSection);
-        addSwitchSetting(context, aiSection, LocaleController.getString(R.string.SingGramAIPreferCantonese), LocaleController.getString(R.string.SingGramAIPreferCantoneseInfo), SingGramConfig.shouldAiPreferCantonese(), SingGramConfig::setAiPreferCantonese, false);
-        addDivider(context, aiSection);
-
-        baseUrlField = addField(context, aiSection, LocaleController.getString(R.string.SingGramAIBaseUrl), "https://your-newapi.example.com", SingGramConfig.getAiBaseUrl(), false);
-        addDivider(context, aiSection);
-        apiKeyField = addField(context, aiSection, LocaleController.getString(R.string.SingGramAIApiKey), "sk-...", SingGramConfig.getAiApiKey(), false);
-        addDivider(context, aiSection);
-        modelField = addField(context, aiSection, LocaleController.getString(R.string.SingGramAIModel), SingGramConfig.DEFAULT_AI_MODEL, SingGramConfig.getAiModel(), false);
-        addDivider(context, aiSection);
-        systemPromptField = addField(context, aiSection, LocaleController.getString(R.string.SingGramAISystemPrompt), LocaleController.getString(R.string.SingGramAISystemPromptHint), SingGramConfig.getAiSystemPrompt(), true);
-
-        addButton(context, aiSection, LocaleController.getString(R.string.SingGramSaveButton), true, v -> {
-            saveSettings();
-            Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramSettingsSaved), Toast.LENGTH_SHORT).show();
-        });
-        addButton(context, aiSection, LocaleController.getString(R.string.SingGramAITestConnection), false, v -> testNewApiConnection());
+        if (!SingGramConfig.isAiEnabled()) {
+            addDivider(context, aiSection);
+            addActionCell(context, aiSection, LocaleController.getString(R.string.SingGramAISettingsCollapsed), LocaleController.getString(R.string.SingGramAISettingsCollapsedInfo), false, null);
+        } else {
+            addDivider(context, aiSection);
+            addSwitchSetting(context, aiSection, LocaleController.getString(R.string.SingGramAIPreferCantonese), LocaleController.getString(R.string.SingGramAIPreferCantoneseInfo), SingGramConfig.shouldAiPreferCantonese(), SingGramConfig::setAiPreferCantonese, false);
+            addDivider(context, aiSection);
+            addActionCell(context, aiSection, LocaleController.getString(R.string.SingGramAIProvider), aiProviderValue(), true, v -> showAiProviderDialog());
+            addDivider(context, aiSection);
+            baseUrlField = addField(context, aiSection, LocaleController.getString(R.string.SingGramAIBaseUrl), LocaleController.getString(R.string.SingGramAIBaseUrlHint), SingGramConfig.getAiBaseUrl(), false);
+            addDivider(context, aiSection);
+            apiKeyField = addField(context, aiSection, LocaleController.getString(R.string.SingGramAIApiKey), "sk-...", SingGramConfig.getAiApiKey(), false, true);
+            addDivider(context, aiSection);
+            modelField = addField(context, aiSection, LocaleController.getString(R.string.SingGramAIModel), SingGramConfig.DEFAULT_AI_MODEL, SingGramConfig.getAiModel(), false);
+            addDivider(context, aiSection);
+            addActionCell(context, aiSection, LocaleController.getString(R.string.SingGramAIChooseModel), LocaleController.getString(R.string.SingGramAIChooseModelInfo), true, v -> fetchAndChooseModel());
+            addDivider(context, aiSection);
+            systemPromptField = addField(context, aiSection, LocaleController.getString(R.string.SingGramAISystemPrompt), LocaleController.getString(R.string.SingGramAISystemPromptHint), SingGramConfig.getAiSystemPrompt(), true);
+            addIconActionCell(context, aiSection, LocaleController.getString(R.string.SingGramSaveButton), LocaleController.getString(R.string.SingGramAIBaseUrlAutoV1Info), R.drawable.msg_copy, 0xFF36A7F2, 0xFF2D7FE6, true, v -> {
+                saveSettings();
+                Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramSettingsSaved), Toast.LENGTH_SHORT).show();
+            });
+            addDivider(context, aiSection);
+            addIconActionCell(context, aiSection, LocaleController.getString(R.string.SingGramAISaveProvider), LocaleController.getString(R.string.SingGramAISaveProviderInfo), R.drawable.menu_browser_bookmarks, 0xFF8A7CFF, 0xFF5267E8, true, v -> saveCurrentAiProvider());
+            addDivider(context, aiSection);
+            addIconActionCell(context, aiSection, LocaleController.getString(R.string.SingGramAITestConnection), LocaleController.getString(R.string.SingGramAITestConnectionInfo), R.drawable.settings_features, 0xFF35C46A, 0xFF168DDF, true, v -> testNewApiConnection());
+        }
 
         addInfo(context, container, LocaleController.getString(R.string.SingGramAIInfo));
 
@@ -253,44 +266,27 @@ public class SingGramSettingsActivity extends BaseFragment {
         addActionCell(context, appearanceSection, LocaleController.getString(R.string.SingGramLiquidGlassStudio), liquidGlassStudioValue(), true, v -> presentFragment(new SingGramLiquidGlassStudioActivity()));
         addInfo(context, container, LocaleController.getString(R.string.SingGramLiquidGlassInfo));
 
-        addHeader(context, container, LocaleController.getString(R.string.SingGramAITestLab));
-        LinearLayout testSection = addSection(context, container);
-        inputField = addField(context, testSection, LocaleController.getString(R.string.SingGramAIInput), LocaleController.getString(R.string.SingGramAIInputHint), "", true);
-        addDivider(context, testSection);
+        if (SingGramConfig.isAiEnabled()) {
+            addHeader(context, container, LocaleController.getString(R.string.SingGramAITestLab));
+            LinearLayout testSection = addSection(context, container);
+            inputField = addField(context, testSection, LocaleController.getString(R.string.SingGramAIInput), LocaleController.getString(R.string.SingGramAIInputHint), "", true);
+            addDivider(context, testSection);
+            addAiTestActionGrid(context, testSection);
 
-        LinearLayout buttonRow1 = addButtonRow(context, testSection);
-        addSmallButton(context, buttonRow1, LocaleController.getString(R.string.SingGramAISummarize), v -> runAction(SingGramAiClient.ACTION_SUMMARIZE));
-        addSmallButton(context, buttonRow1, LocaleController.getString(R.string.SingGramAITranslate), v -> runAction(SingGramAiClient.ACTION_TRANSLATE_ZH_HANT));
+            resultView = new TextView(context);
+            resultView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+            resultView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+            resultView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+            resultView.setPadding(AndroidUtilities.dp(14), AndroidUtilities.dp(12), AndroidUtilities.dp(14), AndroidUtilities.dp(12));
+            resultView.setMinHeight(AndroidUtilities.dp(96));
+            resultView.setText(LocaleController.getString(R.string.SingGramAIResultPlaceholder));
+            resultView.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(8), Theme.multAlpha(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText), 0.10f)));
+            testSection.addView(resultView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 12, 12, 12, 4));
 
-        LinearLayout buttonRow2 = addButtonRow(context, testSection);
-        addSmallButton(context, buttonRow2, LocaleController.getString(R.string.SingGramAIRewriteCantonese), v -> runAction(SingGramAiClient.ACTION_REWRITE_YUE));
-        addSmallButton(context, buttonRow2, LocaleController.getString(R.string.SingGramAIReplyIdeas), v -> runAction(SingGramAiClient.ACTION_REPLY_SUGGESTIONS));
-
-        LinearLayout buttonRow3 = addButtonRow(context, testSection);
-        addSmallButton(context, buttonRow3, LocaleController.getString(R.string.SingGramAIShorten), v -> runAction(SingGramAiClient.ACTION_SHORTEN));
-        addSmallButton(context, buttonRow3, LocaleController.getString(R.string.SingGramAIExplain), v -> runAction(SingGramAiClient.ACTION_EXPLAIN));
-
-        LinearLayout buttonRow4 = addButtonRow(context, testSection);
-        addSmallButton(context, buttonRow4, LocaleController.getString(R.string.SingGramAICleanCopy), v -> runAction(SingGramAiClient.ACTION_CLEAN_COPY));
-        addSmallButton(context, buttonRow4, LocaleController.getString(R.string.SingGramAIExtractTasks), v -> runAction(SingGramAiClient.ACTION_EXTRACT_TASKS));
-
-        LinearLayout buttonRow5 = addButtonRow(context, testSection);
-        addSmallButton(context, buttonRow5, LocaleController.getString(R.string.SingGramAITranslateCantonese), v -> runAction(SingGramAiClient.ACTION_TRANSLATE_YUE));
-        addSmallButton(context, buttonRow5, LocaleController.getString(R.string.SingGramAIPasteClipboard), v -> pasteClipboard());
-
-        resultView = new TextView(context);
-        resultView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
-        resultView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
-        resultView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
-        resultView.setPadding(AndroidUtilities.dp(14), AndroidUtilities.dp(12), AndroidUtilities.dp(14), AndroidUtilities.dp(12));
-        resultView.setMinHeight(AndroidUtilities.dp(96));
-        resultView.setText(LocaleController.getString(R.string.SingGramAIResultPlaceholder));
-        resultView.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(8), Theme.multAlpha(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText), 0.10f)));
-        testSection.addView(resultView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 12, 12, 12, 4));
-
-        LinearLayout resultRow = addButtonRow(context, testSection);
-        addSmallButton(context, resultRow, LocaleController.getString(R.string.SingGramCopyButton), v -> copyResult());
-        addSmallButton(context, resultRow, LocaleController.getString(R.string.SingGramClearButton), v -> resultView.setText(LocaleController.getString(R.string.SingGramAIResultPlaceholder)));
+            LinearLayout resultRow = addButtonRow(context, testSection);
+            addSmallButton(context, resultRow, LocaleController.getString(R.string.SingGramCopyButton), v -> copyResult());
+            addSmallButton(context, resultRow, LocaleController.getString(R.string.SingGramClearButton), v -> resultView.setText(LocaleController.getString(R.string.SingGramAIResultPlaceholder)));
+        }
 
         addHeader(context, container, LocaleController.getString(R.string.SingGramDiagnostics));
         LinearLayout diagnosticsSection = addSection(context, container);
@@ -495,22 +491,36 @@ public class SingGramSettingsActivity extends BaseFragment {
             boolean enabled = !aiEnabledCell.isChecked();
             aiEnabledCell.setChecked(enabled);
             SingGramConfig.setAiEnabled(enabled);
+            rebuildSettingsPage();
         });
+        if (!SingGramConfig.isAiEnabled()) {
+            addDivider(context, aiSection);
+            addActionCell(context, aiSection, LocaleController.getString(R.string.SingGramAISettingsCollapsed), LocaleController.getString(R.string.SingGramAISettingsCollapsedInfo), false, null);
+            addInfo(context, container, LocaleController.getString(R.string.SingGramAIInfo));
+            return;
+        }
         addDivider(context, aiSection);
         addSwitchSetting(context, aiSection, LocaleController.getString(R.string.SingGramAIPreferCantonese), LocaleController.getString(R.string.SingGramAIPreferCantoneseInfo), SingGramConfig.shouldAiPreferCantonese(), SingGramConfig::setAiPreferCantonese, false);
         addDivider(context, aiSection);
-        baseUrlField = addField(context, aiSection, LocaleController.getString(R.string.SingGramAIBaseUrl), "https://your-newapi.example.com", SingGramConfig.getAiBaseUrl(), false);
+        addActionCell(context, aiSection, LocaleController.getString(R.string.SingGramAIProvider), aiProviderValue(), true, v -> showAiProviderDialog());
         addDivider(context, aiSection);
-        apiKeyField = addField(context, aiSection, LocaleController.getString(R.string.SingGramAIApiKey), "sk-...", SingGramConfig.getAiApiKey(), false);
+        baseUrlField = addField(context, aiSection, LocaleController.getString(R.string.SingGramAIBaseUrl), LocaleController.getString(R.string.SingGramAIBaseUrlHint), SingGramConfig.getAiBaseUrl(), false);
+        addDivider(context, aiSection);
+        apiKeyField = addField(context, aiSection, LocaleController.getString(R.string.SingGramAIApiKey), "sk-...", SingGramConfig.getAiApiKey(), false, true);
         addDivider(context, aiSection);
         modelField = addField(context, aiSection, LocaleController.getString(R.string.SingGramAIModel), SingGramConfig.DEFAULT_AI_MODEL, SingGramConfig.getAiModel(), false);
         addDivider(context, aiSection);
+        addActionCell(context, aiSection, LocaleController.getString(R.string.SingGramAIChooseModel), LocaleController.getString(R.string.SingGramAIChooseModelInfo), true, v -> fetchAndChooseModel());
+        addDivider(context, aiSection);
         systemPromptField = addField(context, aiSection, LocaleController.getString(R.string.SingGramAISystemPrompt), LocaleController.getString(R.string.SingGramAISystemPromptHint), SingGramConfig.getAiSystemPrompt(), true);
-        addButton(context, aiSection, LocaleController.getString(R.string.SingGramSaveButton), true, v -> {
+        addIconActionCell(context, aiSection, LocaleController.getString(R.string.SingGramSaveButton), LocaleController.getString(R.string.SingGramAIBaseUrlAutoV1Info), R.drawable.msg_copy, 0xFF36A7F2, 0xFF2D7FE6, true, v -> {
             saveSettings();
             Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramSettingsSaved), Toast.LENGTH_SHORT).show();
         });
-        addButton(context, aiSection, LocaleController.getString(R.string.SingGramAITestConnection), false, v -> testNewApiConnection());
+        addDivider(context, aiSection);
+        addIconActionCell(context, aiSection, LocaleController.getString(R.string.SingGramAISaveProvider), LocaleController.getString(R.string.SingGramAISaveProviderInfo), R.drawable.menu_browser_bookmarks, 0xFF8A7CFF, 0xFF5267E8, true, v -> saveCurrentAiProvider());
+        addDivider(context, aiSection);
+        addIconActionCell(context, aiSection, LocaleController.getString(R.string.SingGramAITestConnection), LocaleController.getString(R.string.SingGramAITestConnectionInfo), R.drawable.settings_features, 0xFF35C46A, 0xFF168DDF, true, v -> testNewApiConnection());
         addInfo(context, container, LocaleController.getString(R.string.SingGramAIInfo));
 
         addHeader(context, container, LocaleController.getString(R.string.SingGramChatTools));
@@ -534,26 +544,7 @@ public class SingGramSettingsActivity extends BaseFragment {
         LinearLayout testSection = addSection(context, container);
         inputField = addField(context, testSection, LocaleController.getString(R.string.SingGramAIInput), LocaleController.getString(R.string.SingGramAIInputHint), "", true);
         addDivider(context, testSection);
-
-        LinearLayout buttonRow1 = addButtonRow(context, testSection);
-        addSmallButton(context, buttonRow1, LocaleController.getString(R.string.SingGramAISummarize), v -> runAction(SingGramAiClient.ACTION_SUMMARIZE));
-        addSmallButton(context, buttonRow1, LocaleController.getString(R.string.SingGramAITranslate), v -> runAction(SingGramAiClient.ACTION_TRANSLATE_ZH_HANT));
-
-        LinearLayout buttonRow2 = addButtonRow(context, testSection);
-        addSmallButton(context, buttonRow2, LocaleController.getString(R.string.SingGramAIRewriteCantonese), v -> runAction(SingGramAiClient.ACTION_REWRITE_YUE));
-        addSmallButton(context, buttonRow2, LocaleController.getString(R.string.SingGramAIReplyIdeas), v -> runAction(SingGramAiClient.ACTION_REPLY_SUGGESTIONS));
-
-        LinearLayout buttonRow3 = addButtonRow(context, testSection);
-        addSmallButton(context, buttonRow3, LocaleController.getString(R.string.SingGramAIShorten), v -> runAction(SingGramAiClient.ACTION_SHORTEN));
-        addSmallButton(context, buttonRow3, LocaleController.getString(R.string.SingGramAIExplain), v -> runAction(SingGramAiClient.ACTION_EXPLAIN));
-
-        LinearLayout buttonRow4 = addButtonRow(context, testSection);
-        addSmallButton(context, buttonRow4, LocaleController.getString(R.string.SingGramAICleanCopy), v -> runAction(SingGramAiClient.ACTION_CLEAN_COPY));
-        addSmallButton(context, buttonRow4, LocaleController.getString(R.string.SingGramAIExtractTasks), v -> runAction(SingGramAiClient.ACTION_EXTRACT_TASKS));
-
-        LinearLayout buttonRow5 = addButtonRow(context, testSection);
-        addSmallButton(context, buttonRow5, LocaleController.getString(R.string.SingGramAITranslateCantonese), v -> runAction(SingGramAiClient.ACTION_TRANSLATE_YUE));
-        addSmallButton(context, buttonRow5, LocaleController.getString(R.string.SingGramAIPasteClipboard), v -> pasteClipboard());
+        addAiTestActionGrid(context, testSection);
 
         resultView = new TextView(context);
         resultView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
@@ -638,6 +629,7 @@ public class SingGramSettingsActivity extends BaseFragment {
     private void saveSettings() {
         if (baseUrlField != null) {
             SingGramConfig.setAiBaseUrl(baseUrlField.getText().toString());
+            baseUrlField.setText(SingGramConfig.getAiBaseUrl());
         }
         if (apiKeyField != null) {
             SingGramConfig.setAiApiKey(apiKeyField.getText().toString());
@@ -648,6 +640,103 @@ public class SingGramSettingsActivity extends BaseFragment {
         if (systemPromptField != null) {
             SingGramConfig.setAiSystemPrompt(systemPromptField.getText().toString());
         }
+    }
+
+    private void rebuildSettingsPage() {
+        if (contentContainer == null || getParentActivity() == null) {
+            return;
+        }
+        contentContainer.removeAllViews();
+        buildContent(getParentActivity(), contentContainer);
+    }
+
+    private String aiProviderValue() {
+        String provider = SingGramConfig.getAiProviderSummary();
+        if (TextUtils.isEmpty(provider)) {
+            return LocaleController.getString(R.string.SingGramAIProviderNone);
+        }
+        return provider;
+    }
+
+    private void saveCurrentAiProvider() {
+        saveSettings();
+        if (SingGramConfig.saveCurrentAiProvider()) {
+            Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramAIProviderSaved), Toast.LENGTH_SHORT).show();
+            rebuildSettingsPage();
+        } else {
+            Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramAIConfigureError), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void showAiProviderDialog() {
+        ArrayList<SingGramConfig.AiProvider> providers = SingGramConfig.getAiProviders();
+        if (providers.isEmpty()) {
+            Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramAIProviderEmpty), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        CharSequence[] items = new CharSequence[providers.size()];
+        for (int i = 0; i < providers.size(); i++) {
+            SingGramConfig.AiProvider provider = providers.get(i);
+            items[i] = provider.name + "  ·  " + provider.model;
+        }
+        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+        builder.setTitle(LocaleController.getString(R.string.SingGramAIProvider));
+        builder.setItems(items, (dialog, which) -> {
+            SingGramConfig.applyAiProvider(providers.get(which));
+            Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramAIProviderApplied), Toast.LENGTH_SHORT).show();
+            rebuildSettingsPage();
+        });
+        showDialog(builder.create());
+    }
+
+    private void fetchAndChooseModel() {
+        saveSettings();
+        AlertDialog progressDialog = new AlertDialog(getParentActivity(), AlertDialog.ALERT_TYPE_SPINNER);
+        progressDialog.setCanCancel(false);
+        progressDialog.show();
+        SingGramAiClient.fetchModels(new SingGramAiClient.ModelsCallback() {
+            @Override
+            public void onResult(ArrayList<String> models) {
+                try {
+                    progressDialog.dismiss();
+                } catch (Exception ignore) {
+
+                }
+                showModelDialog(models);
+            }
+
+            @Override
+            public void onError(String error) {
+                try {
+                    progressDialog.dismiss();
+                } catch (Exception ignore) {
+
+                }
+                Toast.makeText(getParentActivity(), error, Toast.LENGTH_LONG).show();
+            }
+        });
+    }
+
+    private void showModelDialog(ArrayList<String> models) {
+        if (models == null || models.isEmpty()) {
+            Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramAIModelsEmpty), Toast.LENGTH_SHORT).show();
+            return;
+        }
+        CharSequence[] items = new CharSequence[models.size()];
+        for (int i = 0; i < models.size(); i++) {
+            items[i] = models.get(i);
+        }
+        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+        builder.setTitle(LocaleController.getString(R.string.SingGramAIChooseModel));
+        builder.setItems(items, (dialog, which) -> {
+            String model = models.get(which);
+            SingGramConfig.setAiModel(model);
+            if (modelField != null) {
+                modelField.setText(model);
+            }
+            Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramAIModelSelected), Toast.LENGTH_SHORT).show();
+        });
+        showDialog(builder.create());
     }
 
     private void runAction(int action) {
@@ -1373,6 +1462,10 @@ public class SingGramSettingsActivity extends BaseFragment {
     }
 
     private EditTextBoldCursor addField(Context context, LinearLayout container, String label, String hint, String value, boolean multiline) {
+        return addField(context, container, label, hint, value, multiline, false);
+    }
+
+    private EditTextBoldCursor addField(Context context, LinearLayout container, String label, String hint, String value, boolean multiline, boolean password) {
         LinearLayout fieldContainer = new LinearLayout(context);
         fieldContainer.setOrientation(LinearLayout.VERTICAL);
         fieldContainer.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(10), AndroidUtilities.dp(16), AndroidUtilities.dp(multiline ? 12 : 9));
@@ -1406,7 +1499,9 @@ public class SingGramSettingsActivity extends BaseFragment {
             fieldContainer.addView(editText, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 96));
         } else {
             editText.setSingleLine(true);
-            editText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+            editText.setInputType(password
+                    ? InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS
+                    : InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
             fieldContainer.addView(editText, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 34));
         }
         return editText;
@@ -1424,6 +1519,58 @@ public class SingGramSettingsActivity extends BaseFragment {
         row.setPadding(AndroidUtilities.dp(10), AndroidUtilities.dp(8), AndroidUtilities.dp(10), 0);
         container.addView(row, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
         return row;
+    }
+
+    private void addAiTestActionGrid(Context context, LinearLayout container) {
+        LinearLayout row1 = addButtonRow(context, container);
+        addAiTestActionCard(context, row1, LocaleController.getString(R.string.SingGramAISummarize), R.drawable.msg_message_s, v -> runAction(SingGramAiClient.ACTION_SUMMARIZE));
+        addAiTestActionCard(context, row1, LocaleController.getString(R.string.SingGramAITranslate), R.drawable.msg_translate, v -> runAction(SingGramAiClient.ACTION_TRANSLATE_ZH_HANT));
+
+        LinearLayout row2 = addButtonRow(context, container);
+        addAiTestActionCard(context, row2, LocaleController.getString(R.string.SingGramAIRewriteCantonese), R.drawable.msg_language, v -> runAction(SingGramAiClient.ACTION_REWRITE_YUE));
+        addAiTestActionCard(context, row2, LocaleController.getString(R.string.SingGramAIReplyIdeas), R.drawable.msg_discussion, v -> runAction(SingGramAiClient.ACTION_REPLY_SUGGESTIONS));
+
+        LinearLayout row3 = addButtonRow(context, container);
+        addAiTestActionCard(context, row3, LocaleController.getString(R.string.SingGramAIShorten), R.drawable.menu_feature_simple, v -> runAction(SingGramAiClient.ACTION_SHORTEN));
+        addAiTestActionCard(context, row3, LocaleController.getString(R.string.SingGramAIExplain), R.drawable.msg_info, v -> runAction(SingGramAiClient.ACTION_EXPLAIN));
+
+        LinearLayout row4 = addButtonRow(context, container);
+        addAiTestActionCard(context, row4, LocaleController.getString(R.string.SingGramAICleanCopy), R.drawable.msg_copy, v -> runAction(SingGramAiClient.ACTION_CLEAN_COPY));
+        addAiTestActionCard(context, row4, LocaleController.getString(R.string.SingGramAIExtractTasks), R.drawable.msg_work, v -> runAction(SingGramAiClient.ACTION_EXTRACT_TASKS));
+
+        LinearLayout row5 = addButtonRow(context, container);
+        addAiTestActionCard(context, row5, LocaleController.getString(R.string.SingGramAITranslateCantonese), R.drawable.menu_feature_translate, v -> runAction(SingGramAiClient.ACTION_TRANSLATE_YUE));
+        addAiTestActionCard(context, row5, LocaleController.getString(R.string.SingGramAIPasteClipboard), R.drawable.input_keyboard, v -> pasteClipboard());
+    }
+
+    private void addAiTestActionCard(Context context, LinearLayout row, String text, int icon, View.OnClickListener listener) {
+        LinearLayout card = new LinearLayout(context);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setMinHeight(AndroidUtilities.dp(52));
+        card.setPadding(AndroidUtilities.dp(10), AndroidUtilities.dp(8), AndroidUtilities.dp(10), AndroidUtilities.dp(8));
+        card.setBackground(Theme.createRadSelectorDrawable(Theme.multAlpha(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText), 0.08f), Theme.getColor(Theme.key_listSelector), 8, 8));
+        card.setOnClickListener(listener);
+
+        ImageView iconView = new ImageView(context);
+        iconView.setImageResource(icon);
+        iconView.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText));
+        iconView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        card.addView(iconView, LayoutHelper.createLinear(22, 22, Gravity.CENTER_VERTICAL));
+
+        TextView textView = new TextView(context);
+        textView.setText(text);
+        textView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
+        textView.setTypeface(AndroidUtilities.bold());
+        textView.setSingleLine(false);
+        textView.setMaxLines(2);
+        textView.setEllipsize(TextUtils.TruncateAt.END);
+        textView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        textView.setIncludeFontPadding(false);
+        card.addView(textView, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f, Gravity.CENTER_VERTICAL, 8, 0, 0, 0));
+
+        row.addView(card, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1f, 4, 0, 4, 0));
     }
 
     private void addSmallButton(Context context, LinearLayout row, String text, View.OnClickListener listener) {
