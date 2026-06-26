@@ -1664,7 +1664,7 @@ public class SingGramSettingsActivity extends BaseFragment {
         LinearLayout card = new LinearLayout(context);
         card.setOrientation(LinearLayout.HORIZONTAL);
         card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setMinHeight(AndroidUtilities.dp(52));
+        card.setMinimumHeight(AndroidUtilities.dp(52));
         card.setPadding(AndroidUtilities.dp(10), AndroidUtilities.dp(8), AndroidUtilities.dp(10), AndroidUtilities.dp(8));
         card.setBackground(Theme.createRadSelectorDrawable(Theme.multAlpha(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText), 0.08f), Theme.getColor(Theme.key_listSelector), 8, 8));
         card.setOnClickListener(listener);
