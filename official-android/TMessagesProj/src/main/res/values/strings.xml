@@ -11120,6 +11120,10 @@
     <string name="SingGramOtaDownloadComplete">APK downloaded</string>
     <string name="SingGramOtaInstallDownloaded">Install downloaded APK</string>
     <string name="SingGramOtaInstallDownloadedInfo">Open Android installer for the downloaded APK.</string>
+    <string name="SingGramOtaInstallPermissionRequired">Allow SingGram to install unknown apps, then return here to continue installing.</string>
+    <string name="SingGramOtaInstallPermissionMissing">Install permission was not granted. The APK is still saved in OTA Update Center.</string>
+    <string name="SingGramOtaDownloadedApkMissing">The downloaded APK is no longer available. Please download it again.</string>
+    <string name="SingGramOtaInstallOpenFailed">Could not open Android installer. The APK remains saved in OTA Update Center.</string>
     <string name="SingGramOtaUpdatePromptTitle">SingGram update available</string>
     <string name="SingGramOtaUpdatePromptMessage">Version %1$s is ready. Open OTA Update Center to download and install it.</string>
     <string name="SingGramOtaUpdatePromptOpen">Update now</string>

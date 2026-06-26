@@ -49,6 +49,8 @@ public class SingGramConfig {
     private static final String KEY_LAST_UPDATE_VERSION_CODE = "last_update_version_code";
     private static final String KEY_LAST_UPDATE_VERSION_NAME = "last_update_version_name";
     private static final String KEY_LAST_UPDATE_CHECK_TIME = "last_update_check_time";
+    private static final String KEY_LAST_UPDATE_APK_PATH = "last_update_apk_path";
+    private static final String KEY_PENDING_UPDATE_INSTALL = "pending_update_install";
     private static final String KEY_LAST_FEATURE_HUB_INTRO_BUILD = "last_feature_hub_intro_build";
     private static final String KEY_BROWSER_ENGINE = "browser_engine";
 
@@ -667,6 +669,26 @@ public class SingGramConfig {
     public static long getLastUpdateCheckTime() {
         SharedPreferences preferences = prefs();
         return preferences == null ? 0 : preferences.getLong(KEY_LAST_UPDATE_CHECK_TIME, 0);
+    }
+
+    public static void setLastUpdateApkPath(String path) {
+        setString(KEY_LAST_UPDATE_APK_PATH, path);
+    }
+
+    public static String getLastUpdateApkPath() {
+        return getString(KEY_LAST_UPDATE_APK_PATH, "");
+    }
+
+    public static void clearLastUpdateApkPath() {
+        setString(KEY_LAST_UPDATE_APK_PATH, "");
+    }
+
+    public static void setPendingUpdateInstall(boolean pending) {
+        setBoolean(KEY_PENDING_UPDATE_INSTALL, pending);
+    }
+
+    public static boolean hasPendingUpdateInstall() {
+        return getBoolean(KEY_PENDING_UPDATE_INSTALL, false);
     }
 
     public static boolean shouldShowFeatureHubIntro() {

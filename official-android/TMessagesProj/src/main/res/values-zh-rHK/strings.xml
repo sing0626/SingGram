@@ -644,6 +644,10 @@
     <string name="SingGramOtaDownloadComplete">APK 已下載</string>
     <string name="SingGramOtaInstallDownloaded">安裝已下載 APK</string>
     <string name="SingGramOtaInstallDownloadedInfo">開啟 Android 安裝器安裝已下載 APK。</string>
+    <string name="SingGramOtaInstallPermissionRequired">請允許 SingGram 安裝未知應用程式，然後返嚟呢度繼續安裝。</string>
+    <string name="SingGramOtaInstallPermissionMissing">未授權安裝。APK 仍然保存在 OTA 更新中心。</string>
+    <string name="SingGramOtaDownloadedApkMissing">已下載嘅 APK 唔見咗，請重新下載。</string>
+    <string name="SingGramOtaInstallOpenFailed">無法開啟 Android 安裝器。APK 仍然保存在 OTA 更新中心。</string>
     <string name="SingGramOtaUpdatePromptTitle">SingGram 有新版本</string>
     <string name="SingGramOtaUpdatePromptMessage">版本 %1$s 已經準備好。打開 OTA 更新中心就可以下載同安裝。</string>
     <string name="SingGramOtaUpdatePromptOpen">立即更新</string>

@@ -1,8 +1,13 @@
 package org.telegram.ui;
 
+import android.content.ActivityNotFoundException;
 import android.content.Context;
+import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.GradientDrawable;
+import android.net.Uri;
+import android.os.Build;
+import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
@@ -33,6 +38,8 @@ import org.telegram.ui.Components.CubicBezierInterpolator;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.LineProgressView;
 
+import androidx.core.content.FileProvider;
+
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
@@ -42,6 +49,9 @@ import java.util.ArrayList;
 import java.util.Locale;
 
 public class SingGramUpdateActivity extends BaseFragment {
+
+    private static final int REQUEST_INSTALL_UNKNOWN_APPS = 7601;
+    private static final int REQUEST_INSTALL_APK = 7602;
 
     private LinearLayout contentContainer;
     private SingGramUpdateClient.UpdateInfo updateInfo;
@@ -53,6 +63,7 @@ public class SingGramUpdateActivity extends BaseFragment {
     private long downloadSpeedBytesPerSecond;
     private File downloadedApkFile;
     private String lastError;
+    private boolean waitingForInstallPermission;
     private LineProgressView downloadProgressView;
     private TextView downloadProgressTitle;
     private TextView downloadProgressSubtitle;
@@ -83,9 +94,46 @@ public class SingGramUpdateActivity extends BaseFragment {
         contentContainer.setPadding(0, AndroidUtilities.dp(12), 0, AndroidUtilities.dp(28));
         scrollView.addView(contentContainer, new ScrollView.LayoutParams(ScrollView.LayoutParams.MATCH_PARENT, ScrollView.LayoutParams.WRAP_CONTENT));
 
+        restoreDownloadedApkState();
         buildContent(context, false);
         checkForUpdates();
         return fragmentView;
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        restoreDownloadedApkState();
+        if (SingGramConfig.hasPendingUpdateInstall() && canInstallPackages()) {
+            SingGramConfig.setPendingUpdateInstall(false);
+            waitingForInstallPermission = false;
+            installDownloadedApk();
+        } else if (waitingForInstallPermission && SingGramConfig.hasPendingUpdateInstall()) {
+            SingGramConfig.setPendingUpdateInstall(false);
+            waitingForInstallPermission = false;
+            showToast(LocaleController.getString(R.string.SingGramOtaInstallPermissionMissing), Toast.LENGTH_LONG);
+        }
+        if (contentContainer != null) {
+            buildContent(getParentActivity(), false);
+        }
+    }
+
+    @Override
+    public void onActivityResultFragment(int requestCode, int resultCode, Intent data) {
+        super.onActivityResultFragment(requestCode, resultCode, data);
+        if (requestCode == REQUEST_INSTALL_UNKNOWN_APPS) {
+            if (!SingGramConfig.hasPendingUpdateInstall()) {
+                return;
+            }
+            waitingForInstallPermission = false;
+            if (canInstallPackages()) {
+                SingGramConfig.setPendingUpdateInstall(false);
+                installDownloadedApk();
+            } else {
+                SingGramConfig.setPendingUpdateInstall(false);
+                showToast(LocaleController.getString(R.string.SingGramOtaInstallPermissionMissing), Toast.LENGTH_LONG);
+            }
+        }
     }
 
     private void buildContent(Context context, boolean animated) {
@@ -390,6 +438,8 @@ public class SingGramUpdateActivity extends BaseFragment {
         downloadTotalBytes = updateInfo.apkSizeBytes;
         downloadSpeedBytesPerSecond = 0;
         downloadedApkFile = null;
+        SingGramConfig.clearLastUpdateApkPath();
+        SingGramConfig.setPendingUpdateInstall(false);
         updateDownloadProgressViews();
         buildContent(getParentActivity(), true);
         final String apkUrl = updateInfo.apkUrl;
@@ -403,11 +453,12 @@ public class SingGramUpdateActivity extends BaseFragment {
         InputStream inputStream = null;
         FileOutputStream outputStream = null;
         try {
-            File dir = new File(ApplicationLoader.applicationContext.getCacheDir(), "updates");
+            File dir = new File(ApplicationLoader.applicationContext.getFilesDir(), "updates");
             if (!dir.exists()) {
                 dir.mkdirs();
             }
             File file = new File(dir, "SingGram-" + (TextUtils.isEmpty(versionName) ? "latest" : versionName.replaceAll("[^A-Za-z0-9._-]", "_")) + ".apk");
+            File partFile = new File(file.getAbsolutePath() + ".part");
             connection = (HttpURLConnection) new URL(apkUrl).openConnection();
             connection.setRequestMethod("GET");
             connection.setConnectTimeout(15000);
@@ -422,7 +473,7 @@ public class SingGramUpdateActivity extends BaseFragment {
                 total = manifestSize;
             }
             inputStream = connection.getInputStream();
-            outputStream = new FileOutputStream(file);
+            outputStream = new FileOutputStream(partFile);
             byte[] buffer = new byte[64 * 1024];
             long startTime = System.currentTimeMillis();
             long lastUiTime = startTime;
@@ -444,6 +495,14 @@ public class SingGramUpdateActivity extends BaseFragment {
                 }
             }
             outputStream.flush();
+            outputStream.close();
+            outputStream = null;
+            if (file.exists() && !file.delete()) {
+                throw new Exception("Cannot replace old APK file");
+            }
+            if (!partFile.renameTo(file)) {
+                throw new Exception("Cannot save downloaded APK file");
+            }
             long elapsed = Math.max(1, System.currentTimeMillis() - startTime);
             long averageSpeed = current * 1000L / elapsed;
             postDownloadProgress(current, total, averageSpeed, true, file, null);
@@ -490,6 +549,9 @@ public class SingGramUpdateActivity extends BaseFragment {
                 downloading = false;
                 downloadComplete = true;
                 downloadedApkFile = file;
+                if (file != null) {
+                    SingGramConfig.setLastUpdateApkPath(file.getAbsolutePath());
+                }
                 if (getParentActivity() != null) {
                     Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramOtaDownloadComplete), Toast.LENGTH_SHORT).show();
                 }
@@ -502,10 +564,92 @@ public class SingGramUpdateActivity extends BaseFragment {
     }
 
     private void installDownloadedApk() {
-        if (downloadedApkFile == null || !downloadedApkFile.exists() || getParentActivity() == null) {
+        restoreDownloadedApkState();
+        if (downloadedApkFile == null || !downloadedApkFile.exists()) {
+            showToast(LocaleController.getString(R.string.SingGramOtaDownloadedApkMissing), Toast.LENGTH_LONG);
+            SingGramConfig.clearLastUpdateApkPath();
+            downloadComplete = false;
+            buildContent(getParentActivity(), true);
             return;
         }
-        AndroidUtilities.openForView(downloadedApkFile, downloadedApkFile.getName(), "application/vnd.android.package-archive", getParentActivity(), getResourceProvider(), false);
+        if (getParentActivity() == null) {
+            return;
+        }
+        if (!canInstallPackages()) {
+            openInstallPermissionSettings();
+            return;
+        }
+        try {
+            Intent intent = new Intent(Intent.ACTION_INSTALL_PACKAGE);
+            intent.setDataAndType(apkUri(downloadedApkFile), "application/vnd.android.package-archive");
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            intent.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
+            intent.putExtra(Intent.EXTRA_RETURN_RESULT, true);
+            startActivityForResult(intent, REQUEST_INSTALL_APK);
+        } catch (Exception e) {
+            FileLog.e(e);
+            showToast(LocaleController.getString(R.string.SingGramOtaInstallOpenFailed), Toast.LENGTH_LONG);
+        }
+    }
+
+    private void restoreDownloadedApkState() {
+        if (downloadedApkFile != null && downloadedApkFile.exists()) {
+            downloadComplete = true;
+            return;
+        }
+        String path = SingGramConfig.getLastUpdateApkPath();
+        if (TextUtils.isEmpty(path)) {
+            return;
+        }
+        File file = new File(path);
+        if (file.exists()) {
+            downloadedApkFile = file;
+            downloadComplete = true;
+            downloadedBytes = Math.max(downloadedBytes, file.length());
+            if (downloadTotalBytes <= 0) {
+                downloadTotalBytes = file.length();
+            }
+        } else {
+            SingGramConfig.clearLastUpdateApkPath();
+        }
+    }
+
+    private boolean canInstallPackages() {
+        return Build.VERSION.SDK_INT < Build.VERSION_CODES.O || ApplicationLoader.applicationContext.getPackageManager().canRequestPackageInstalls();
+    }
+
+    private Uri apkUri(File file) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+            return FileProvider.getUriForFile(getParentActivity(), ApplicationLoader.getApplicationId() + ".provider", file);
+        }
+        return Uri.fromFile(file);
+    }
+
+    private void openInstallPermissionSettings() {
+        SingGramConfig.setPendingUpdateInstall(true);
+        waitingForInstallPermission = true;
+        showToast(LocaleController.getString(R.string.SingGramOtaInstallPermissionRequired), Toast.LENGTH_LONG);
+        try {
+            Intent intent = new Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES, Uri.parse("package:" + getParentActivity().getPackageName()));
+            startActivityForResult(intent, REQUEST_INSTALL_UNKNOWN_APPS);
+        } catch (ActivityNotFoundException e) {
+            FileLog.e(e);
+            try {
+                startActivityForResult(new Intent(Settings.ACTION_SECURITY_SETTINGS), REQUEST_INSTALL_UNKNOWN_APPS);
+            } catch (Exception inner) {
+                FileLog.e(inner);
+                SingGramConfig.setPendingUpdateInstall(false);
+                waitingForInstallPermission = false;
+                showToast(LocaleController.getString(R.string.SingGramOtaInstallOpenFailed), Toast.LENGTH_LONG);
+            }
+        }
+    }
+
+    private void showToast(String text, int duration) {
+        Context context = getParentActivity() != null ? getParentActivity() : ApplicationLoader.applicationContext;
+        if (context != null) {
+            Toast.makeText(context, text, duration).show();
+        }
     }
 
     private void copyApkUrl() {
