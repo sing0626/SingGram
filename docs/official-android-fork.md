@@ -77,11 +77,15 @@ Keep SingGram changes as a normal fork branch, then merge new Telegram Android r
 
 The workflow at `.github/workflows/check-telegram-upstream.yml` checks
 `https://github.com/DrKLO/Telegram.git` every six hours and can also be started
-manually. It compares the upstream ref with `.github/singgram-upstream.json`;
-when a newer upstream commit exists, it opens an `upstream-update` issue with the
-latest commit. It does not auto-merge upstream into SingGram, because upstream
-changes can conflict with branding, settings, Liquid Glass, diagnostics,
-notifications, and update logic.
+manually. It compares the upstream ref and app version with
+`.github/singgram-upstream.json`; when a newer upstream version is detected, it
+commits the new tracker metadata and `APP_VERSION_NAME` to
+`android-official-fork`, then dispatches the public SingGram release build.
+
+It still does not blindly merge upstream source code into SingGram, because
+upstream changes can conflict with branding, settings, Liquid Glass, diagnostics,
+notifications, and update logic. Source merges should go through the review
+branch flow below.
 
 ```bash
 scripts/sync_official_android_upstream.sh master

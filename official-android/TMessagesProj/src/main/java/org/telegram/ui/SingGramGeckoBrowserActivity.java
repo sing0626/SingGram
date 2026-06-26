@@ -47,6 +47,7 @@ public class SingGramGeckoBrowserActivity extends BasePermissionsActivity {
     private GeckoView geckoView;
     private TextView titleView;
     private TextView urlView;
+    private TextView errorView;
     private ProgressBar progressBar;
     private ImageView backButton;
     private ImageView forwardButton;
@@ -138,14 +139,21 @@ public class SingGramGeckoBrowserActivity extends BasePermissionsActivity {
         urlView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 12);
         urlView.setSingleLine(true);
         urlView.setEllipsize(TextUtils.TruncateAt.END);
+        urlView.setOnLongClickListener(v -> {
+            copyCurrentUrl();
+            return true;
+        });
         titles.addView(urlView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 0, 2, 0, 0));
         bar.addView(titles, LayoutHelper.createLinear(0, LayoutHelper.MATCH_PARENT, 1, Gravity.CENTER_VERTICAL, 4, 0, 4, 0));
 
         addIconButton(bar, R.drawable.msg_reset, v -> {
             if (session != null) {
+                hidePageError();
                 session.reload();
             }
         });
+        addIconButton(bar, R.drawable.msg_copy, v -> copyCurrentUrl());
+        addIconButton(bar, R.drawable.premium_ai_editor, v -> openInTelegramAiBrowser());
         addIconButton(bar, R.drawable.msg_share, v -> shareCurrentUrl());
         addIconButton(bar, R.drawable.msg_openin, v -> Browser.openInExternalBrowser(this, currentUrl, true));
 
@@ -157,6 +165,16 @@ public class SingGramGeckoBrowserActivity extends BasePermissionsActivity {
         FrameLayout content = new FrameLayout(this);
         geckoView = new GeckoView(this);
         content.addView(geckoView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
+
+        errorView = new TextView(this);
+        errorView.setText(LocaleController.getString(R.string.SingGramBrowserPageError));
+        errorView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        errorView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+        errorView.setGravity(Gravity.CENTER);
+        errorView.setPadding(dp(18), dp(14), dp(18), dp(14));
+        errorView.setVisibility(View.GONE);
+        errorView.setBackground(Theme.createRoundRectDrawable(dp(14), Theme.getColor(Theme.key_windowBackgroundWhite)));
+        content.addView(errorView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, Gravity.CENTER, 24, 0, 24, 0));
         root.addView(content, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 0, 1));
 
         LinearLayout nav = new LinearLayout(this);
@@ -202,6 +220,7 @@ public class SingGramGeckoBrowserActivity extends BasePermissionsActivity {
                 @Override
                 public void onCrash(GeckoSession session) {
                     Toast.makeText(SingGramGeckoBrowserActivity.this, LocaleController.getString(R.string.SingGramBrowserEngineFallback), Toast.LENGTH_LONG).show();
+                    openInTelegramAiBrowser();
                     finish();
                 }
             });
@@ -240,12 +259,14 @@ public class SingGramGeckoBrowserActivity extends BasePermissionsActivity {
 
                 @Override
                 public GeckoResult<String> onLoadError(GeckoSession session, String uri, WebRequestError error) {
+                    showPageError(uri);
                     return GeckoResult.fromValue(null);
                 }
             });
             session.setProgressDelegate(new GeckoSession.ProgressDelegate() {
                 @Override
                 public void onPageStart(GeckoSession session, String url) {
+                    hidePageError();
                     progressBar.setVisibility(View.VISIBLE);
                     progressBar.setProgress(8);
                 }
@@ -259,6 +280,9 @@ public class SingGramGeckoBrowserActivity extends BasePermissionsActivity {
                 public void onPageStop(GeckoSession session, boolean success) {
                     progressBar.setProgress(100);
                     progressBar.setVisibility(View.GONE);
+                    if (!success) {
+                        showPageError(currentUrl);
+                    }
                 }
             });
             session.open(runtime);
@@ -267,8 +291,26 @@ public class SingGramGeckoBrowserActivity extends BasePermissionsActivity {
         } catch (Exception e) {
             FileLog.e(e);
             Toast.makeText(this, LocaleController.getString(R.string.SingGramBrowserEngineFallback), Toast.LENGTH_LONG).show();
-            Browser.openInTelegramBrowser(this, url, null);
+            Browser.openInTelegramBrowser(this, url, null, false);
             finish();
+        }
+    }
+
+    private void showPageError(String url) {
+        if (!TextUtils.isEmpty(url)) {
+            currentUrl = url;
+            if (urlView != null) {
+                urlView.setText(url);
+            }
+        }
+        if (errorView != null) {
+            errorView.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void hidePageError() {
+        if (errorView != null) {
+            errorView.setVisibility(View.GONE);
         }
     }
 
@@ -289,6 +331,21 @@ public class SingGramGeckoBrowserActivity extends BasePermissionsActivity {
         intent.setType("text/plain");
         intent.putExtra(Intent.EXTRA_TEXT, currentUrl);
         startActivity(Intent.createChooser(intent, LocaleController.getString(R.string.ShareFile)));
+    }
+
+    private void copyCurrentUrl() {
+        if (TextUtils.isEmpty(currentUrl)) {
+            return;
+        }
+        AndroidUtilities.addToClipboard(currentUrl);
+        Toast.makeText(this, LocaleController.getString(R.string.LinkCopied), Toast.LENGTH_SHORT).show();
+    }
+
+    private void openInTelegramAiBrowser() {
+        if (TextUtils.isEmpty(currentUrl)) {
+            return;
+        }
+        Browser.openInTelegramBrowser(this, currentUrl, null, false);
     }
 
     @Override

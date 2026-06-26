@@ -488,7 +488,11 @@ public class Browser {
     }
 
     public static boolean openInTelegramBrowser(Context context, String url, Browser.Progress progress) {
-        if (SingGramGeckoBrowserActivity.openIfEnabled(context, url)) {
+        return openInTelegramBrowser(context, url, progress, true);
+    }
+
+    public static boolean openInTelegramBrowser(Context context, String url, Browser.Progress progress, boolean allowSingGramGecko) {
+        if (allowSingGramGecko && SingGramGeckoBrowserActivity.openIfEnabled(context, url)) {
             if (progress != null) {
                 progress.end(true);
             }

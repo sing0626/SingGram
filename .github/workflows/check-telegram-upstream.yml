@@ -7,11 +7,20 @@ on:
         description: Telegram upstream ref to check
         required: true
         default: master
+      target_branch:
+        description: SingGram branch to update and build
+        required: true
+        default: android-official-fork
+      auto_commit_to_branch:
+        description: Commit detected upstream version metadata to the target branch
+        required: true
+        type: boolean
+        default: true
       dispatch_build:
         description: Also start the SingGram build workflow
         required: true
         type: boolean
-        default: false
+        default: true
   schedule:
     - cron: "17 */6 * * *"
 
@@ -32,10 +41,13 @@ jobs:
     env:
       UPSTREAM_URL: https://github.com/DrKLO/Telegram.git
       UPSTREAM_REF: ${{ github.event.inputs.upstream_ref || 'master' }}
+      TARGET_BRANCH: ${{ github.event.inputs.target_branch || 'android-official-fork' }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.target_branch || 'android-official-fork' }}
 
       - name: Check upstream ref
         id: upstream
@@ -43,8 +55,9 @@ jobs:
         run: |
           set -euo pipefail
 
-          imported_commit="$(jq -r '.importedCommit' .github/singgram-upstream.json)"
-          imported_version="$(jq -r '.importedVersion' .github/singgram-upstream.json)"
+          imported_commit="$(jq -r '.importedCommit // ""' .github/singgram-upstream.json)"
+          imported_version="$(jq -r '.importedVersion // ""' .github/singgram-upstream.json)"
+          imported_version_code="$(jq -r '.importedVersionCode // ""' .github/singgram-upstream.json)"
           latest_line="$(git ls-remote "$UPSTREAM_URL" "refs/heads/$UPSTREAM_REF" | head -n 1)"
 
           if [[ -z "$latest_line" ]]; then
@@ -55,21 +68,49 @@ jobs:
           latest_commit="$(awk '{print $1}' <<< "$latest_line")"
           latest_short="${latest_commit:0:8}"
 
+          tmpdir="$(mktemp -d)"
+          git -c protocol.version=2 clone --depth 1 --filter=blob:none --no-checkout "$UPSTREAM_URL" "$tmpdir/upstream"
+          git -C "$tmpdir/upstream" fetch --depth 1 origin "$latest_commit"
+          git -C "$tmpdir/upstream" checkout --detach "$latest_commit"
+
+          upstream_props=""
+          for candidate in gradle.properties TMessagesProj/gradle.properties; do
+            if [[ -f "$tmpdir/upstream/$candidate" ]]; then
+              upstream_props="$tmpdir/upstream/$candidate"
+              break
+            fi
+          done
+
+          if [[ -z "$upstream_props" ]]; then
+            echo "Cannot find upstream gradle.properties at $latest_short" >&2
+            exit 1
+          fi
+
+          latest_version="$(sed -n 's/^APP_VERSION_NAME=//p' "$upstream_props" | head -n 1)"
+          latest_version_code="$(sed -n 's/^APP_VERSION_CODE=//p' "$upstream_props" | head -n 1)"
+          if [[ -z "$latest_version" || -z "$latest_version_code" ]]; then
+            echo "Cannot parse upstream app version from $upstream_props" >&2
+            exit 1
+          fi
+
           {
             echo "imported_commit=$imported_commit"
             echo "imported_version=$imported_version"
+            echo "imported_version_code=$imported_version_code"
             echo "latest_commit=$latest_commit"
             echo "latest_short=$latest_short"
+            echo "latest_version=$latest_version"
+            echo "latest_version_code=$latest_version_code"
           } >> "$GITHUB_OUTPUT"
 
-          if [[ "$latest_commit" == "$imported_commit"* || "$imported_commit" == "$latest_short" ]]; then
+          if [[ ("$latest_commit" == "$imported_commit"* || "$imported_commit" == "$latest_short") && "$latest_version" == "$imported_version" && "$latest_version_code" == "$imported_version_code" ]]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: Open update issue
-        if: ${{ steps.upstream.outputs.changed == 'true' }}
+      - name: Commit upstream version metadata
+        if: ${{ steps.upstream.outputs.changed == 'true' && (github.event_name == 'schedule' || inputs.auto_commit_to_branch) }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -77,137 +118,61 @@ jobs:
           IMPORTED_VERSION: ${{ steps.upstream.outputs.imported_version }}
           LATEST_COMMIT: ${{ steps.upstream.outputs.latest_commit }}
           LATEST_SHORT: ${{ steps.upstream.outputs.latest_short }}
+          LATEST_VERSION: ${{ steps.upstream.outputs.latest_version }}
+          LATEST_VERSION_CODE: ${{ steps.upstream.outputs.latest_version_code }}
         run: |
           set -euo pipefail
 
-          gh label create upstream-update \
-            --repo "$GITHUB_REPOSITORY" \
-            --color 0969da \
-            --description "Telegram upstream update detected" >/dev/null 2>&1 || true
+          git fetch origin "$TARGET_BRANCH"
+          git switch "$TARGET_BRANCH" || git switch -c "$TARGET_BRANCH" "origin/$TARGET_BRANCH"
+          git pull --ff-only origin "$TARGET_BRANCH"
 
-          if gh issue list \
-            --repo "$GITHUB_REPOSITORY" \
-            --state open \
-            --label upstream-update \
-            --search "$LATEST_COMMIT in:body" \
-            --json number \
-            --jq 'length > 0' | grep -q true; then
-            echo "An upstream update issue already exists for $LATEST_COMMIT."
-            exit 0
-          fi
+          jq \
+            --arg upstream "$UPSTREAM_URL" \
+            --arg ref "$UPSTREAM_REF" \
+            --arg commit "$LATEST_COMMIT" \
+            --arg version "$LATEST_VERSION" \
+            --arg versionCode "$LATEST_VERSION_CODE" \
+            '.upstream = $upstream
+             | .ref = $ref
+             | .importedCommit = $commit
+             | .importedVersion = $version
+             | .importedVersionCode = $versionCode
+             | .lastCheckedAt = now
+             | .lastCheckedCommit = $commit' \
+            .github/singgram-upstream.json > /tmp/singgram-upstream.json
+          mv /tmp/singgram-upstream.json .github/singgram-upstream.json
 
-          cat > /tmp/upstream-update.md <<EOF
-          Telegram Android upstream has a newer commit on \`$UPSTREAM_REF\`.
+          perl -0pi -e "s/APP_VERSION_NAME=.*/APP_VERSION_NAME=$LATEST_VERSION/" official-android/gradle.properties
 
-          - Current SingGram import: \`$IMPORTED_VERSION\` / \`$IMPORTED_COMMIT\`
-          - Latest upstream commit: \`$LATEST_COMMIT\`
-          - Upstream compare: https://github.com/DrKLO/Telegram/commits/$UPSTREAM_REF
-
-          Suggested flow:
-
-          1. Sync upstream into SingGram in a review branch.
-          2. Resolve conflicts around SingGram-owned files, branding, update checker, Liquid Glass, notifications, and diagnostics.
-          3. Build \`:TMessagesProj_App:assembleArm64Release\`.
-          4. Test login, chat open/back navigation, notifications, downloads, SingGram settings, and Liquid Glass on a phone.
-          5. Publish a release after the APK is usable.
-          EOF
-
-          gh issue create \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "Telegram Android upstream update available: $LATEST_SHORT" \
-            --label upstream-update \
-            --body-file /tmp/upstream-update.md
-
-      - name: Create tracking branch
-        if: ${{ steps.upstream.outputs.changed == 'true' }}
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          IMPORTED_COMMIT: ${{ steps.upstream.outputs.imported_commit }}
-          IMPORTED_VERSION: ${{ steps.upstream.outputs.imported_version }}
-          LATEST_COMMIT: ${{ steps.upstream.outputs.latest_commit }}
-          LATEST_SHORT: ${{ steps.upstream.outputs.latest_short }}
-        run: |
-          set -euo pipefail
-
-          BRANCH="upstream/${LATEST_SHORT}"
-          if git ls-remote --exit-code --heads origin "$BRANCH" >/dev/null 2>&1; then
-            echo "Tracking branch already exists: $BRANCH"
+          if git diff --quiet -- .github/singgram-upstream.json official-android/gradle.properties; then
+            echo "No metadata changes to commit."
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git switch -c "$BRANCH"
-            jq \
-              --arg commit "$LATEST_COMMIT" \
-              --arg version "$IMPORTED_VERSION" \
-              '.pendingCommit = $commit | .pendingVersion = $version | .lastCheckedAt = now | .lastCheckedCommit = $commit' \
-              .github/singgram-upstream.json > /tmp/singgram-upstream.json
-            mv /tmp/singgram-upstream.json .github/singgram-upstream.json
-            git add .github/singgram-upstream.json
-            git commit -m "Track Telegram upstream $LATEST_SHORT"
-            git push origin "$BRANCH"
-          fi
-
-      - name: Try to open tracking PR
-        if: ${{ steps.upstream.outputs.changed == 'true' }}
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-          IMPORTED_COMMIT: ${{ steps.upstream.outputs.imported_commit }}
-          IMPORTED_VERSION: ${{ steps.upstream.outputs.imported_version }}
-          LATEST_COMMIT: ${{ steps.upstream.outputs.latest_commit }}
-          LATEST_SHORT: ${{ steps.upstream.outputs.latest_short }}
-        run: |
-          set -euo pipefail
-
-          BRANCH="upstream/${LATEST_SHORT}"
-
-          if ! gh pr list \
-            --repo "$GITHUB_REPOSITORY" \
-            --state open \
-            --head "$BRANCH" \
-            --json number \
-            --jq 'length > 0' | grep -q true; then
-            cat > /tmp/upstream-pr.md <<EOF
-          Telegram Android upstream has a newer commit available.
-
-          - Current SingGram import: \`$IMPORTED_VERSION\` / \`$IMPORTED_COMMIT\`
-          - Latest upstream commit: \`$LATEST_COMMIT\`
-          - Upstream commits: https://github.com/DrKLO/Telegram/commits/$UPSTREAM_REF
-
-          This PR is a tracking marker, not an automatic source merge. Use it to start the manual upstream sync branch and record conflict/test notes.
-          EOF
-
-            if ! gh pr create \
-              --repo "$GITHUB_REPOSITORY" \
-              --base "$GITHUB_REF_NAME" \
-              --head "$BRANCH" \
-              --title "Track Telegram upstream $LATEST_SHORT" \
-              --body-file /tmp/upstream-pr.md; then
-              {
-                echo "::warning::Could not create the tracking PR. GitHub may have disabled PR creation by GitHub Actions tokens."
-                echo "::notice::Tracking branch is ready: $BRANCH"
-                echo "::notice::Open the PR manually if needed: https://github.com/$GITHUB_REPOSITORY/compare/$GITHUB_REF_NAME...$BRANCH?quick_pull=1"
-              }
-            fi
+            git add .github/singgram-upstream.json official-android/gradle.properties
+            git commit -m "Track Telegram Android $LATEST_VERSION"
+            git push origin "HEAD:$TARGET_BRANCH"
           fi
 
       - name: Dispatch build workflow
-        if: ${{ steps.upstream.outputs.changed == 'true' && github.event.inputs.dispatch_build == 'true' }}
+        if: ${{ steps.upstream.outputs.changed == 'true' && (github.event_name == 'schedule' || inputs.dispatch_build) }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
           LATEST_COMMIT: ${{ steps.upstream.outputs.latest_commit }}
           LATEST_SHORT: ${{ steps.upstream.outputs.latest_short }}
+          LATEST_VERSION: ${{ steps.upstream.outputs.latest_version }}
+          LATEST_VERSION_CODE: ${{ steps.upstream.outputs.latest_version_code }}
         run: |
           set -euo pipefail
 
           gh workflow run official-android-build.yml \
             --repo "$GITHUB_REPOSITORY" \
-            --ref "$GITHUB_REF_NAME" \
+            --ref "$TARGET_BRANCH" \
             -f gradle_task=':TMessagesProj_App:assembleArm64Release' \
             -f upload_name='SingGram-arm64-release' \
             -f publish_release=true \
             -f auto_bump_version=true \
             -f prerelease=false \
-            -f release_notes="SingGram rebuild triggered after Telegram upstream update check.\n\n- Upstream latest: $LATEST_COMMIT"
+            -f release_notes="SingGram rebuild triggered by Telegram Android upstream check.\n\n- Telegram Android: $LATEST_VERSION ($LATEST_VERSION_CODE)\n- Upstream commit: $LATEST_COMMIT\n- Branch: $TARGET_BRANCH"

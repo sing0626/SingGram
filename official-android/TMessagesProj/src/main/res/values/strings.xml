@@ -10794,6 +10794,7 @@
     <string name="SingGramBrowserEngineInfo">GeckoView uses a bundled Firefox engine for regular web pages on Android 8+. Telegram Web Apps still fall back to System WebView for compatibility.</string>
     <string name="SingGramBrowserEngineChanged">Browser engine updated. Reopen AI Browser to apply it.</string>
     <string name="SingGramBrowserEngineFallback">GeckoView could not open this page. Falling back to System WebView.</string>
+    <string name="SingGramBrowserPageError">This page could not be loaded. You can retry, copy the link, open it externally, or hand it back to Telegram AI Browser.</string>
     <string name="SingGramDiagnostics">Diagnostics</string>
     <string name="SingGramExportLogs">Export logs</string>
     <string name="SingGramExportLastLogs">Export recent logs</string>
