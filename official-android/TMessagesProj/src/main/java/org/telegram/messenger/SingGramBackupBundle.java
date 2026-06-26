@@ -33,6 +33,7 @@ public class SingGramBackupBundle {
         builder.append("sg.liquid_glass.intensity_permille: ").append(SingGramConfig.getLiquidGlassIntensityPermille()).append('\n');
         builder.append("sg.liquid_glass.index_permille: ").append(SingGramConfig.getLiquidGlassIndexPermille()).append('\n');
         builder.append("sg.download_boost.enabled: ").append(SingGramConfig.isDownloadBoostEnabled()).append('\n');
+        builder.append("sg.download_boost.auto: ").append(SingGramConfig.isDownloadBoostAutoEnabled()).append('\n');
         builder.append("sg.download_boost.level: ").append(SingGramConfig.getDownloadBoostLevel()).append('\n');
         for (int account = 0; account < UserConfig.MAX_ACCOUNT_COUNT; account++) {
             builder.append("sg.account_profile.").append(account).append(".label: ").append(SingGramConfig.getAccountProfileLabel(account)).append('\n');
@@ -90,6 +91,9 @@ public class SingGramBackupBundle {
                 imported |= importInt(value, SingGramConfig::setLiquidGlassIndexPermille);
             } else if ("sg.download_boost.enabled".equals(key)) {
                 SingGramConfig.setDownloadBoostEnabled(Boolean.parseBoolean(value));
+                imported = true;
+            } else if ("sg.download_boost.auto".equals(key)) {
+                SingGramConfig.setDownloadBoostAutoEnabled(Boolean.parseBoolean(value));
                 imported = true;
             } else if ("sg.download_boost.level".equals(key)) {
                 imported |= importInt(value, SingGramConfig::setDownloadBoostLevel);

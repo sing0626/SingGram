@@ -10770,6 +10770,7 @@
     <string name="SingGramLiquidGlassInfo">Liquid Glass is enabled by default on supported Android 13+ devices and can be disabled here if a device feels unstable.</string>
     <string name="SingGramLiquidGlassStatusValue">%1$s / %2$s</string>
     <string name="SingGramLiquidGlassStatusValueCustom">%1$s / %2$s / %3$s</string>
+    <string name="SingGramLiquidGlassMode">Glass mode</string>
     <string name="SingGramLiquidGlassStrong">Stronger glass effect</string>
     <string name="SingGramLiquidGlassStrongInfo">Use thicker blur and stronger refraction for newly opened glass surfaces.</string>
     <string name="SingGramAITestLab">AI test lab</string>
@@ -10980,6 +10981,16 @@
     <string name="SingGramDownloadBoostMaximumInfo">Highest local concurrency. May heat the phone or hit server waits.</string>
     <string name="SingGramDownloadBoostFootnote">Download Boost optimizes the app-side queue. It does not bypass account, Premium or server-side speed limits.</string>
     <string name="SingGramDownloadBoostChanged">Download Boost updated.</string>
+    <string name="SingGramDownloadBoostMode">Boost mode</string>
+    <string name="SingGramDownloadBoostOff">Off</string>
+    <string name="SingGramDownloadBoostAuto">Auto tune</string>
+    <string name="SingGramDownloadBoostAutoValue">%1$s / %2$s</string>
+    <string name="SingGramDownloadAutoThreads">Speed and threads</string>
+    <string name="SingGramDownloadThreadsDefault">Using Telegram defaults</string>
+    <string name="SingGramDownloadThreadsValue">Small queue %1$d / large queue %2$d / requests %3$d</string>
+    <string name="SingGramDownloadBoostReady">Download Boost is ready</string>
+    <string name="SingGramDownloadBoostIdle">Download Boost is off</string>
+    <string name="SingGramDownloadBoostHeroInfo">%1$s\n%2$s</string>
     <string name="SingGramDoctor">SingGram Doctor</string>
     <string name="SingGramDoctorInfo">Health check for build, crash, Ghost, download and Liquid Glass status.</string>
     <string name="SingGramDoctorSystem">System</string>

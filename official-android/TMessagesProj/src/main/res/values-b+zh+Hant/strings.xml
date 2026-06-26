@@ -69,6 +69,7 @@
     <string name="SingGramLiquidGlassInfo">支援的 Android 13+ 裝置會預設開啟；如果某部裝置不穩，可在此關閉。</string>
     <string name="SingGramLiquidGlassStatusValue">%1$s / %2$s</string>
     <string name="SingGramLiquidGlassStatusValueCustom">%1$s / %2$s / %3$s</string>
+    <string name="SingGramLiquidGlassMode">玻璃模式</string>
     <string name="SingGramLiquidGlassStrong">強化玻璃效果</string>
     <string name="SingGramLiquidGlassStrongInfo">新開頁面會使用更厚的模糊與更強折射。</string>
     <string name="SingGramAITestLab">AI 測試區</string>
@@ -271,6 +272,16 @@
     <string name="SingGramDownloadBoostMaximumInfo">最高本機並發，可能讓手機發熱或遇到 server wait。</string>
     <string name="SingGramDownloadBoostFootnote">下載加速是優化 app 本機隊列，不是繞過帳號、Premium 或伺服器限速。</string>
     <string name="SingGramDownloadBoostChanged">下載加速已更新。</string>
+    <string name="SingGramDownloadBoostMode">加速模式</string>
+    <string name="SingGramDownloadBoostOff">關閉</string>
+    <string name="SingGramDownloadBoostAuto">自動調整</string>
+    <string name="SingGramDownloadBoostAutoValue">%1$s / %2$s</string>
+    <string name="SingGramDownloadAutoThreads">速度與線程</string>
+    <string name="SingGramDownloadThreadsDefault">使用 Telegram 預設</string>
+    <string name="SingGramDownloadThreadsValue">小檔隊列 %1$d / 大檔隊列 %2$d / 請求 %3$d</string>
+    <string name="SingGramDownloadBoostReady">下載加速已準備好</string>
+    <string name="SingGramDownloadBoostIdle">下載加速已關閉</string>
+    <string name="SingGramDownloadBoostHeroInfo">%1$s\n%2$s</string>
     <string name="SingGramDoctor">SingGram Doctor</string>
     <string name="SingGramDoctorInfo">檢查版本、閃退、Ghost、下載與 Liquid Glass 狀態。</string>
     <string name="SingGramDoctorSystem">系統</string>

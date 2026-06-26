@@ -45,6 +45,7 @@ public class SingGramConfig {
     private static final String KEY_ACCOUNT_PROFILE_COLOR = "account_profile_color_";
     private static final String KEY_DOWNLOAD_BOOST = "download_boost";
     private static final String KEY_DOWNLOAD_BOOST_LEVEL = "download_boost_level";
+    private static final String KEY_DOWNLOAD_BOOST_AUTO = "download_boost_auto";
     private static final String KEY_CRASH_SAFE_MODE = "crash_safe_mode";
     private static final String KEY_LAST_CRASH_TIME = "last_crash_time";
     private static final String KEY_LAST_CRASH_REASON = "last_crash_reason";
@@ -687,6 +688,14 @@ public class SingGramConfig {
         setBoolean(KEY_DOWNLOAD_BOOST, enabled);
     }
 
+    public static boolean isDownloadBoostAutoEnabled() {
+        return isDownloadBoostEnabled() && getBoolean(KEY_DOWNLOAD_BOOST_AUTO, true);
+    }
+
+    public static void setDownloadBoostAutoEnabled(boolean enabled) {
+        setBoolean(KEY_DOWNLOAD_BOOST_AUTO, enabled);
+    }
+
     public static int getDownloadBoostLevel() {
         return Math.max(0, Math.min(getInt(KEY_DOWNLOAD_BOOST_LEVEL, 1), 2));
     }
@@ -695,11 +704,29 @@ public class SingGramConfig {
         setInt(KEY_DOWNLOAD_BOOST_LEVEL, Math.max(0, Math.min(level, 2)));
     }
 
+    public static int getEffectiveDownloadBoostLevel() {
+        if (!isDownloadBoostEnabled()) {
+            return 0;
+        }
+        if (!isDownloadBoostAutoEnabled()) {
+            return getDownloadBoostLevel();
+        }
+        SingGramDownloadStats.Snapshot snapshot = SingGramDownloadStats.getSnapshot();
+        if (snapshot.activeCount >= 3 || snapshot.speedBytesPerSecond >= 4L * 1024L * 1024L) {
+            return 2;
+        }
+        if (snapshot.activeCount >= 2 || snapshot.speedBytesPerSecond >= 1024L * 1024L) {
+            return 1;
+        }
+        return 0;
+    }
+
     public static int getBoostedSmallQueueMaxActiveOperations(int defaultValue) {
         if (!isDownloadBoostEnabled()) {
             return defaultValue;
         }
-        int target = getDownloadBoostLevel() == 0 ? 7 : getDownloadBoostLevel() == 1 ? 9 : 10;
+        int level = getEffectiveDownloadBoostLevel();
+        int target = level == 0 ? 7 : level == 1 ? 9 : 10;
         return Math.max(defaultValue, target);
     }
 
@@ -707,7 +734,8 @@ public class SingGramConfig {
         if (!isDownloadBoostEnabled()) {
             return defaultValue;
         }
-        int target = getDownloadBoostLevel() == 0 ? 3 : getDownloadBoostLevel() == 1 ? 4 : 5;
+        int level = getEffectiveDownloadBoostLevel();
+        int target = level == 0 ? 3 : level == 1 ? 4 : 5;
         return Math.max(defaultValue, target);
     }
 
@@ -715,7 +743,8 @@ public class SingGramConfig {
         if (!isDownloadBoostEnabled()) {
             return defaultValue;
         }
-        int target = getDownloadBoostLevel() == 0 ? 8 : getDownloadBoostLevel() == 1 ? 10 : 12;
+        int level = getEffectiveDownloadBoostLevel();
+        int target = level == 0 ? 8 : level == 1 ? 10 : 12;
         return Math.max(defaultValue, target);
     }
 

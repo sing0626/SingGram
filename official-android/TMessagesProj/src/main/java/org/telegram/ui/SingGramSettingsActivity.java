@@ -196,15 +196,11 @@ public class SingGramSettingsActivity extends BaseFragment {
 
         addHeader(context, container, LocaleController.getString(R.string.SingGramDownload));
         LinearLayout downloadSection = addSection(context, container);
-        addSwitchSetting(context, downloadSection, LocaleController.getString(R.string.SingGramDownloadBoost), LocaleController.getString(R.string.SingGramDownloadBoostInfo), SingGramConfig.isDownloadBoostEnabled(), SingGramConfig::setDownloadBoostEnabled, false);
+        addActionCell(context, downloadSection, LocaleController.getString(R.string.SingGramDownloadBoostMode), downloadBoostModeValue(), true, v -> showDownloadBoostModeDialog());
+        addDivider(context, downloadSection);
+        addActionCell(context, downloadSection, LocaleController.getString(R.string.SingGramDownloadAutoThreads), downloadThreadsValue(), false, null);
         addDivider(context, downloadSection);
         addActionCell(context, downloadSection, LocaleController.getString(R.string.SingGramDownloadStatus), downloadStatusValue(), true, v -> presentFragment(new SingGramDownloadStatusActivity()));
-        addDivider(context, downloadSection);
-        addDownloadBoostLevelCell(context, downloadSection, LocaleController.getString(R.string.SingGramDownloadBoostBalanced), LocaleController.getString(R.string.SingGramDownloadBoostBalancedInfo), 0);
-        addDivider(context, downloadSection);
-        addDownloadBoostLevelCell(context, downloadSection, LocaleController.getString(R.string.SingGramDownloadBoostAggressive), LocaleController.getString(R.string.SingGramDownloadBoostAggressiveInfo), 1);
-        addDivider(context, downloadSection);
-        addDownloadBoostLevelCell(context, downloadSection, LocaleController.getString(R.string.SingGramDownloadBoostMaximum), LocaleController.getString(R.string.SingGramDownloadBoostMaximumInfo), 2);
         addInfo(context, container, LocaleController.getString(R.string.SingGramDownloadBoostFootnote));
 
         addHeader(context, container, LocaleController.getString(R.string.SingGramAI));
@@ -257,11 +253,7 @@ public class SingGramSettingsActivity extends BaseFragment {
             Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramLiquidGlassChanged), Toast.LENGTH_SHORT).show();
         });
         addDivider(context, appearanceSection);
-        addLiquidGlassLevelCell(context, appearanceSection, LocaleController.getString(R.string.SingGramLiquidGlassSoft), LocaleController.getString(R.string.SingGramLiquidGlassSoftInfo), 0);
-        addDivider(context, appearanceSection);
-        addLiquidGlassLevelCell(context, appearanceSection, LocaleController.getString(R.string.SingGramLiquidGlassStandard), LocaleController.getString(R.string.SingGramLiquidGlassStandardInfo), 1);
-        addDivider(context, appearanceSection);
-        addLiquidGlassLevelCell(context, appearanceSection, LocaleController.getString(R.string.SingGramLiquidGlassStrong), LocaleController.getString(R.string.SingGramLiquidGlassStrongInfo), 2);
+        addActionCell(context, appearanceSection, LocaleController.getString(R.string.SingGramLiquidGlassMode), liquidGlassLevelName(SingGramConfig.getLiquidGlassLevel()), true, v -> showLiquidGlassModeDialog());
         addDivider(context, appearanceSection);
         addActionCell(context, appearanceSection, LocaleController.getString(R.string.SingGramLiquidGlassStudio), liquidGlassStudioValue(), true, v -> presentFragment(new SingGramLiquidGlassStudioActivity()));
         addInfo(context, container, LocaleController.getString(R.string.SingGramLiquidGlassInfo));
@@ -562,17 +554,14 @@ public class SingGramSettingsActivity extends BaseFragment {
     }
 
     private void buildDownloadsPage(Context context, LinearLayout container) {
+        addDownloadHeroCard(context, container);
         addHeader(context, container, LocaleController.getString(R.string.SingGramDownload));
         LinearLayout downloadSection = addSection(context, container);
-        addSwitchSetting(context, downloadSection, LocaleController.getString(R.string.SingGramDownloadBoost), LocaleController.getString(R.string.SingGramDownloadBoostInfo), SingGramConfig.isDownloadBoostEnabled(), SingGramConfig::setDownloadBoostEnabled, false);
+        addActionCell(context, downloadSection, LocaleController.getString(R.string.SingGramDownloadBoostMode), downloadBoostModeValue(), true, v -> showDownloadBoostModeDialog());
+        addDivider(context, downloadSection);
+        addActionCell(context, downloadSection, LocaleController.getString(R.string.SingGramDownloadAutoThreads), downloadThreadsValue(), false, null);
         addDivider(context, downloadSection);
         addActionCell(context, downloadSection, LocaleController.getString(R.string.SingGramDownloadStatus), downloadStatusValue(), true, v -> presentFragment(new SingGramDownloadStatusActivity()));
-        addDivider(context, downloadSection);
-        addDownloadBoostLevelCell(context, downloadSection, LocaleController.getString(R.string.SingGramDownloadBoostBalanced), LocaleController.getString(R.string.SingGramDownloadBoostBalancedInfo), 0);
-        addDivider(context, downloadSection);
-        addDownloadBoostLevelCell(context, downloadSection, LocaleController.getString(R.string.SingGramDownloadBoostAggressive), LocaleController.getString(R.string.SingGramDownloadBoostAggressiveInfo), 1);
-        addDivider(context, downloadSection);
-        addDownloadBoostLevelCell(context, downloadSection, LocaleController.getString(R.string.SingGramDownloadBoostMaximum), LocaleController.getString(R.string.SingGramDownloadBoostMaximumInfo), 2);
         addInfo(context, container, LocaleController.getString(R.string.SingGramDownloadBoostFootnote));
     }
 
@@ -584,15 +573,9 @@ public class SingGramSettingsActivity extends BaseFragment {
             Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramLiquidGlassChanged), Toast.LENGTH_SHORT).show();
         }, false);
         addDivider(context, appearanceSection);
-        addActionCell(context, appearanceSection, LocaleController.getString(R.string.SingGramLiquidGlass), liquidGlassStatusValue(), false, null);
+        addActionCell(context, appearanceSection, LocaleController.getString(R.string.SingGramLiquidGlassMode), liquidGlassLevelName(SingGramConfig.getLiquidGlassLevel()), true, v -> showLiquidGlassModeDialog());
         addDivider(context, appearanceSection);
         addActionCell(context, appearanceSection, LocaleController.getString(R.string.SingGramLiquidGlassStudio), liquidGlassStudioValue(), true, v -> presentFragment(new SingGramLiquidGlassStudioActivity()));
-        addDivider(context, appearanceSection);
-        addLiquidGlassLevelCell(context, appearanceSection, LocaleController.getString(R.string.SingGramLiquidGlassSoft), LocaleController.getString(R.string.SingGramLiquidGlassSoftInfo), 0);
-        addDivider(context, appearanceSection);
-        addLiquidGlassLevelCell(context, appearanceSection, LocaleController.getString(R.string.SingGramLiquidGlassStandard), LocaleController.getString(R.string.SingGramLiquidGlassStandardInfo), 1);
-        addDivider(context, appearanceSection);
-        addLiquidGlassLevelCell(context, appearanceSection, LocaleController.getString(R.string.SingGramLiquidGlassStrong), LocaleController.getString(R.string.SingGramLiquidGlassStrongInfo), 2);
         addInfo(context, container, LocaleController.getString(R.string.SingGramLiquidGlassInfo));
     }
 
@@ -1196,15 +1179,149 @@ public class SingGramSettingsActivity extends BaseFragment {
         showDialog(builder.create());
     }
 
+    private void showDownloadBoostModeDialog() {
+        String[] items = new String[] {
+                LocaleController.getString(R.string.SingGramDownloadBoostOff),
+                LocaleController.getString(R.string.SingGramDownloadBoostAuto),
+                LocaleController.getString(R.string.SingGramDownloadBoostBalanced),
+                LocaleController.getString(R.string.SingGramDownloadBoostAggressive),
+                LocaleController.getString(R.string.SingGramDownloadBoostMaximum)
+        };
+        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+        builder.setTitle(LocaleController.getString(R.string.SingGramDownloadBoostMode));
+        builder.setItems(items, (dialog, which) -> {
+            if (which == 0) {
+                SingGramConfig.setDownloadBoostEnabled(false);
+                SingGramConfig.setDownloadBoostAutoEnabled(false);
+            } else if (which == 1) {
+                SingGramConfig.setDownloadBoostEnabled(true);
+                SingGramConfig.setDownloadBoostAutoEnabled(true);
+            } else {
+                SingGramConfig.setDownloadBoostEnabled(true);
+                SingGramConfig.setDownloadBoostAutoEnabled(false);
+                SingGramConfig.setDownloadBoostLevel(which - 2);
+            }
+            Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramDownloadBoostChanged), Toast.LENGTH_SHORT).show();
+            rebuildSettingsPage();
+        });
+        showDialog(builder.create());
+    }
+
+    private void showLiquidGlassModeDialog() {
+        String[] items = new String[] {
+                LocaleController.getString(R.string.SingGramLiquidGlassSoft),
+                LocaleController.getString(R.string.SingGramLiquidGlassStandard),
+                LocaleController.getString(R.string.SingGramLiquidGlassStrong)
+        };
+        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+        builder.setTitle(LocaleController.getString(R.string.SingGramLiquidGlassMode));
+        builder.setItems(items, (dialog, which) -> {
+            SingGramConfig.setLiquidGlassEnabled(true);
+            SingGramConfig.setLiquidGlassLevel(which);
+            if (liquidGlassCell != null) {
+                liquidGlassCell.setChecked(true);
+            }
+            Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramLiquidGlassChanged), Toast.LENGTH_SHORT).show();
+            rebuildSettingsPage();
+        });
+        showDialog(builder.create());
+    }
+
     private String downloadStatusValue() {
         SingGramDownloadStats.Snapshot snapshot = SingGramDownloadStats.getSnapshot();
         return LocaleController.formatString(R.string.SingGramDownloadStatusActiveValue, snapshot.activeCount, AndroidUtilities.formatFileSize(snapshot.speedBytesPerSecond) + "/s");
+    }
+
+    private String downloadBoostModeValue() {
+        if (!SingGramConfig.isDownloadBoostEnabled()) {
+            return LocaleController.getString(R.string.SingGramDownloadBoostOff);
+        }
+        if (SingGramConfig.isDownloadBoostAutoEnabled()) {
+            return LocaleController.formatString(R.string.SingGramDownloadBoostAutoValue, LocaleController.getString(R.string.SingGramDownloadBoostAuto), downloadBoostLevelName(SingGramConfig.getEffectiveDownloadBoostLevel()));
+        }
+        return downloadBoostLevelName(SingGramConfig.getDownloadBoostLevel());
+    }
+
+    private String downloadBoostLevelName(int level) {
+        if (level <= 0) {
+            return LocaleController.getString(R.string.SingGramDownloadBoostBalanced);
+        } else if (level == 1) {
+            return LocaleController.getString(R.string.SingGramDownloadBoostAggressive);
+        }
+        return LocaleController.getString(R.string.SingGramDownloadBoostMaximum);
+    }
+
+    private String downloadThreadsValue() {
+        if (!SingGramConfig.isDownloadBoostEnabled()) {
+            return LocaleController.getString(R.string.SingGramDownloadThreadsDefault);
+        }
+        int small = SingGramConfig.getBoostedSmallQueueMaxActiveOperations(6);
+        int large = SingGramConfig.getBoostedLargeQueueMaxActiveOperations(2);
+        int requests = SingGramConfig.getBoostedDownloadRequestCount(8);
+        return LocaleController.formatString(R.string.SingGramDownloadThreadsValue, small, large, requests);
+    }
+
+    private void addDownloadHeroCard(Context context, LinearLayout container) {
+        LinearLayout card = new LinearLayout(context);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(AndroidUtilities.dp(18), AndroidUtilities.dp(18), AndroidUtilities.dp(18), AndroidUtilities.dp(16));
+        card.setBackground(downloadHeroBackground());
+        container.addView(card, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 12, 0, 12, 4));
+
+        TextView eyebrow = new TextView(context);
+        eyebrow.setText(LocaleController.getString(R.string.SingGramDownload));
+        eyebrow.setTextColor(Theme.multAlpha(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText), 0.90f));
+        eyebrow.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
+        eyebrow.setTypeface(AndroidUtilities.bold());
+        eyebrow.setGravity((LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
+        eyebrow.setIncludeFontPadding(false);
+        card.addView(eyebrow, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        TextView title = new TextView(context);
+        title.setText(SingGramConfig.isDownloadBoostEnabled() ? LocaleController.getString(R.string.SingGramDownloadBoostReady) : LocaleController.getString(R.string.SingGramDownloadBoostIdle));
+        title.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
+        title.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 24);
+        title.setTypeface(AndroidUtilities.bold());
+        title.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        title.setIncludeFontPadding(false);
+        title.setPadding(0, AndroidUtilities.dp(8), 0, 0);
+        card.addView(title, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        TextView subtitle = new TextView(context);
+        subtitle.setText(LocaleController.formatString(R.string.SingGramDownloadBoostHeroInfo, downloadBoostModeValue(), downloadThreadsValue()));
+        subtitle.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
+        subtitle.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
+        subtitle.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        subtitle.setLineSpacing(AndroidUtilities.dp(2), 1.0f);
+        subtitle.setPadding(0, AndroidUtilities.dp(8), 0, AndroidUtilities.dp(14));
+        card.addView(subtitle, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        LinearLayout row = new LinearLayout(context);
+        row.setOrientation(LinearLayout.HORIZONTAL);
+        card.addView(row, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        SingGramDownloadStats.Snapshot snapshot = SingGramDownloadStats.getSnapshot();
+        addAiHeroMetric(context, row, LocaleController.getString(R.string.SingGramDownloadCenterSpeed), AndroidUtilities.formatFileSize(snapshot.speedBytesPerSecond) + "/s");
+        addAiHeroMetric(context, row, LocaleController.getString(R.string.SingGramDownloadCenterTracked), String.valueOf(snapshot.activeCount));
+    }
+
+    private GradientDrawable downloadHeroBackground() {
+        int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
+        int white = Theme.getColor(Theme.key_windowBackgroundWhite);
+        GradientDrawable drawable = new GradientDrawable(GradientDrawable.Orientation.TL_BR, new int[] {
+                Theme.multAlpha(accent, 0.20f),
+                Theme.multAlpha(white, SingGramConfig.isLiquidGlassEnabled() ? 0.92f : 0.84f),
+                Theme.multAlpha(0xFF35C46A, 0.12f)
+        });
+        drawable.setCornerRadius(AndroidUtilities.dp(SingGramConfig.isLiquidGlassEnabled() ? 18 : 12));
+        drawable.setStroke(AndroidUtilities.dp(1), Theme.multAlpha(accent, 0.18f));
+        return drawable;
     }
 
     private void addDownloadBoostLevelCell(Context context, LinearLayout container, String text, String value, int level) {
         String displayValue = SingGramConfig.getDownloadBoostLevel() == level ? LocaleController.getString(R.string.SingGramCurrentSelection) : value;
         addActionCell(context, container, text, displayValue, true, v -> {
             SingGramConfig.setDownloadBoostEnabled(true);
+            SingGramConfig.setDownloadBoostAutoEnabled(false);
             SingGramConfig.setDownloadBoostLevel(level);
             Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramDownloadBoostChanged), Toast.LENGTH_SHORT).show();
         });
