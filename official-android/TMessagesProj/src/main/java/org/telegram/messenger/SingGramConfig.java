@@ -325,6 +325,17 @@ public class SingGramConfig {
         }
     }
 
+    private static void notifyPrivacySettingsChanged() {
+        AndroidUtilities.runOnUIThread(() -> {
+            for (int account = 0; account < UserConfig.MAX_ACCOUNT_COUNT; account++) {
+                if (UserConfig.getInstance(account).isClientActivated()) {
+                    NotificationCenter.getInstance(account).postNotificationName(NotificationCenter.updateInterfaces, MessagesController.UPDATE_MASK_ALL);
+                    NotificationCenter.getInstance(account).postNotificationName(NotificationCenter.mainUserInfoChanged);
+                }
+            }
+        });
+    }
+
     private static int getInt(String key, int defaultValue) {
         SharedPreferences preferences = prefs();
         return preferences == null ? defaultValue : preferences.getInt(key, defaultValue);
@@ -355,6 +366,7 @@ public class SingGramConfig {
 
     public static void setHidePhoneInSettings(boolean enabled) {
         setBoolean(KEY_HIDE_PHONE_IN_SETTINGS, enabled);
+        notifyPrivacySettingsChanged();
     }
 
     public static boolean isAiContextMenuEnabled() {
@@ -403,6 +415,7 @@ public class SingGramConfig {
 
     public static void setGhostModeEnabled(boolean enabled) {
         setBoolean(KEY_GHOST_MODE, enabled);
+        notifyPrivacySettingsChanged();
     }
 
     public static boolean isDisableReadReceiptsEnabled() {
@@ -419,6 +432,7 @@ public class SingGramConfig {
 
     public static void setDisableReadReceiptsEnabled(boolean enabled) {
         setBoolean(KEY_DISABLE_READ_RECEIPTS, enabled);
+        notifyPrivacySettingsChanged();
     }
 
     public static boolean isReadReceiptsAllowedForDialog(long dialogId) {
@@ -444,6 +458,7 @@ public class SingGramConfig {
             ids.remove(key);
         }
         preferences.edit().putStringSet(KEY_READ_RECEIPTS_ALLOWED_DIALOG_IDS, ids).apply();
+        notifyPrivacySettingsChanged();
     }
 
     public static int getReadReceiptsAllowedDialogCount() {
@@ -480,6 +495,7 @@ public class SingGramConfig {
             }
         }
         preferences.edit().putStringSet(KEY_READ_RECEIPTS_ALLOWED_DIALOG_IDS, ids).apply();
+        notifyPrivacySettingsChanged();
     }
 
     private static Set<String> getReadReceiptAllowedDialogIds() {
@@ -505,6 +521,7 @@ public class SingGramConfig {
 
     public static void setHideTypingStatusEnabled(boolean enabled) {
         setBoolean(KEY_HIDE_TYPING_STATUS, enabled);
+        notifyPrivacySettingsChanged();
     }
 
     public static boolean isGhostSelectedChatsOnly() {
@@ -513,6 +530,7 @@ public class SingGramConfig {
 
     public static void setGhostSelectedChatsOnly(boolean enabled) {
         setBoolean(KEY_GHOST_SELECTED_CHATS_ONLY, enabled);
+        notifyPrivacySettingsChanged();
     }
 
     public static boolean isGhostModeAllowedForDialog(long dialogId) {
@@ -542,6 +560,7 @@ public class SingGramConfig {
             ids.remove(key);
         }
         preferences.edit().putStringSet(KEY_GHOST_DIALOG_IDS, ids).apply();
+        notifyPrivacySettingsChanged();
     }
 
     public static int getGhostDialogCount() {
@@ -578,6 +597,7 @@ public class SingGramConfig {
             }
         }
         preferences.edit().putStringSet(KEY_GHOST_DIALOG_IDS, ids).apply();
+        notifyPrivacySettingsChanged();
     }
 
     private static Set<String> getGhostDialogIds() {
