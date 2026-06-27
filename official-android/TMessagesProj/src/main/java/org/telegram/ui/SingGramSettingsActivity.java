@@ -513,6 +513,8 @@ public class SingGramSettingsActivity extends BaseFragment {
         addIconActionCell(context, aiSection, LocaleController.getString(R.string.SingGramAISaveProvider), LocaleController.getString(R.string.SingGramAISaveProviderInfo), R.drawable.menu_browser_bookmarks, 0xFF8A7CFF, 0xFF5267E8, true, v -> saveCurrentAiProvider());
         addDivider(context, aiSection);
         addIconActionCell(context, aiSection, LocaleController.getString(R.string.SingGramAITestConnection), LocaleController.getString(R.string.SingGramAITestConnectionInfo), R.drawable.settings_features, 0xFF35C46A, 0xFF168DDF, true, v -> testNewApiConnection());
+        addDivider(context, aiSection);
+        addActionCell(context, aiSection, LocaleController.getString(R.string.SingGramAIHealthLast), aiHealthLastValue(), false, null);
         addInfo(context, container, LocaleController.getString(R.string.SingGramAIInfo));
 
         addHeader(context, container, LocaleController.getString(R.string.SingGramChatTools));
@@ -641,6 +643,15 @@ public class SingGramSettingsActivity extends BaseFragment {
         return provider;
     }
 
+    private String aiHealthLastValue() {
+        long time = SingGramConfig.getAiLastHealthTime();
+        String summary = SingGramConfig.getAiLastHealthSummary();
+        if (time <= 0 || TextUtils.isEmpty(summary)) {
+            return LocaleController.getString(R.string.SingGramAIHealthNever);
+        }
+        return LocaleController.formatDateTime(time / 1000, true) + "\n" + summary;
+    }
+
     private void saveCurrentAiProvider() {
         saveSettings();
         if (SingGramConfig.saveCurrentAiProvider()) {
@@ -665,8 +676,29 @@ public class SingGramSettingsActivity extends BaseFragment {
         AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
         builder.setTitle(LocaleController.getString(R.string.SingGramAIProvider));
         builder.setItems(items, (dialog, which) -> {
-            SingGramConfig.applyAiProvider(providers.get(which));
-            Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramAIProviderApplied), Toast.LENGTH_SHORT).show();
+            showAiProviderManageDialog(providers.get(which));
+        });
+        showDialog(builder.create());
+    }
+
+    private void showAiProviderManageDialog(SingGramConfig.AiProvider provider) {
+        if (provider == null) {
+            return;
+        }
+        CharSequence[] actions = new CharSequence[] {
+                LocaleController.getString(R.string.SingGramAIProviderApply),
+                LocaleController.getString(R.string.SingGramAIProviderDelete)
+        };
+        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+        builder.setTitle(provider.name);
+        builder.setItems(actions, (dialog, which) -> {
+            if (which == 0) {
+                SingGramConfig.applyAiProvider(provider);
+                Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramAIProviderApplied), Toast.LENGTH_SHORT).show();
+            } else {
+                SingGramConfig.deleteAiProvider(provider);
+                Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramAIProviderDeleted), Toast.LENGTH_SHORT).show();
+            }
             rebuildSettingsPage();
         });
         showDialog(builder.create());
@@ -886,37 +918,38 @@ public class SingGramSettingsActivity extends BaseFragment {
 
     private void testNewApiConnection() {
         saveSettings();
+        final long startedAt = System.currentTimeMillis();
         AlertDialog progressDialog = new AlertDialog(getParentActivity(), AlertDialog.ALERT_TYPE_SPINNER);
         progressDialog.setCanCancel(false);
         progressDialog.show();
         SingGramAiClient.fetchModels(new SingGramAiClient.ModelsCallback() {
             @Override
             public void onResult(ArrayList<String> models) {
-                runNewApiChatHealthCheck(progressDialog, models, null);
+                runNewApiChatHealthCheck(progressDialog, models, null, startedAt);
             }
 
             @Override
             public void onError(String error) {
-                runNewApiChatHealthCheck(progressDialog, null, error);
+                runNewApiChatHealthCheck(progressDialog, null, error, startedAt);
             }
         });
     }
 
-    private void runNewApiChatHealthCheck(AlertDialog progressDialog, ArrayList<String> models, String modelsError) {
+    private void runNewApiChatHealthCheck(AlertDialog progressDialog, ArrayList<String> models, String modelsError, long startedAt) {
         SingGramAiClient.testConnection(new SingGramAiClient.Callback() {
             @Override
             public void onResult(String text) {
-                finishNewApiHealthCheck(progressDialog, models, modelsError, text, null);
+                finishNewApiHealthCheck(progressDialog, models, modelsError, text, null, startedAt);
             }
 
             @Override
             public void onError(String error) {
-                finishNewApiHealthCheck(progressDialog, models, modelsError, null, error);
+                finishNewApiHealthCheck(progressDialog, models, modelsError, null, error, startedAt);
             }
         });
     }
 
-    private void finishNewApiHealthCheck(AlertDialog progressDialog, ArrayList<String> models, String modelsError, String chatResult, String chatError) {
+    private void finishNewApiHealthCheck(AlertDialog progressDialog, ArrayList<String> models, String modelsError, String chatResult, String chatError, long startedAt) {
         try {
             progressDialog.dismiss();
         } catch (Exception ignore) {
@@ -933,7 +966,9 @@ public class SingGramSettingsActivity extends BaseFragment {
         String chatState = TextUtils.isEmpty(chatError)
                 ? LocaleController.formatString(R.string.SingGramAIHealthChatOk, TextUtils.isEmpty(chatResult) ? "OK" : chatResult.trim())
                 : LocaleController.formatString(R.string.SingGramAIHealthChatFailed, chatError);
-        String report = LocaleController.formatString(R.string.SingGramAIHealthReport, aiProviderValue(), currentModel, modelState, chatState);
+        String latency = (System.currentTimeMillis() - startedAt) + " ms";
+        String report = LocaleController.formatString(R.string.SingGramAIHealthReport, aiProviderValue(), currentModel, modelState, chatState) + "\n" + LocaleController.formatString(R.string.SingGramAIHealthLatency, latency);
+        SingGramConfig.setAiLastHealth(report);
         if (resultView != null) {
             resultView.setText(report);
         }

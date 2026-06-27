@@ -51,6 +51,7 @@ import android.os.Bundle;
 import android.os.FileUtils;
 import android.os.Looper;
 import android.text.Editable;
+import android.text.InputType;
 import android.text.Layout;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
@@ -182,6 +183,7 @@ import org.telegram.ui.Components.CheckBoxBase;
 import org.telegram.ui.Components.CombinedDrawable;
 import org.telegram.ui.Components.ContextProgressView;
 import org.telegram.ui.Components.CubicBezierInterpolator;
+import org.telegram.ui.Components.EditTextBoldCursor;
 import org.telegram.ui.Components.ItemOptions;
 import org.telegram.ui.Components.LayoutHelper;
 import org.telegram.ui.Components.LinkPath;
@@ -4793,6 +4795,7 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
         singGramAiSideToolbar.setAlpha(0.92f);
         addSingGramAiSideButton(context, R.drawable.premium_ai_editor, LocaleController.getString(R.string.SingGramAIBrowserSummarize), () -> runSingGramAiBrowserAction(SingGramAiClient.ACTION_SUMMARIZE));
         addSingGramAiSideButton(context, R.drawable.msg_translate, LocaleController.getString(R.string.SingGramAIBrowserTranslate), () -> runSingGramAiBrowserAction(SingGramAiClient.ACTION_TRANSLATE_ZH_HANT));
+        addSingGramAiSideButton(context, R.drawable.msg_discussion, LocaleController.getString(R.string.SingGramAIBrowserAsk), this::showSingGramAiBrowserAskDialog);
         containerView.addView(singGramAiSideToolbar, LayoutHelper.createFrame(44, LayoutHelper.WRAP_CONTENT, Gravity.RIGHT | Gravity.CENTER_VERTICAL, 0, 0, 10, 0));
     }
 
@@ -4809,6 +4812,42 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
             }
         });
         singGramAiSideToolbar.addView(button, LayoutHelper.createLinear(36, 36, 0, 0, 0, 4));
+    }
+
+    private void showSingGramAiBrowserAskDialog() {
+        if (parentActivity == null) {
+            return;
+        }
+        FrameLayout container = new FrameLayout(parentActivity);
+        container.setPadding(dp(22), dp(4), dp(22), 0);
+        EditTextBoldCursor editText = new EditTextBoldCursor(parentActivity);
+        editText.setTextColor(getThemedColor(Theme.key_windowBackgroundWhiteBlackText));
+        editText.setHintTextColor(getThemedColor(Theme.key_windowBackgroundWhiteHintText));
+        editText.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
+        editText.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        editText.setSingleLine(false);
+        editText.setMinLines(3);
+        editText.setMaxLines(5);
+        editText.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_MULTI_LINE | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
+        editText.setHint(LocaleController.getString(R.string.SingGramAIBrowserAskHint));
+        container.addView(editText, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(parentActivity, getResourcesProvider());
+        builder.setTitle(LocaleController.getString(R.string.SingGramAIBrowserAsk));
+        builder.setView(container);
+        builder.setPositiveButton(LocaleController.getString(R.string.SingGramAIBrowserAskSend), (dialog, which) -> {
+            String question = editText.getText() == null ? "" : editText.getText().toString().trim();
+            if (TextUtils.isEmpty(question)) {
+                Toast.makeText(parentActivity, LocaleController.getString(R.string.SingGramAIEmptyInput), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            runSingGramAiBrowserAction(SingGramAiClient.ACTION_ASK_PAGE, question);
+        });
+        builder.setNegativeButton(LocaleController.getString(R.string.SingGramCancelButton), null);
+        AlertDialog dialog = builder.create();
+        showDialog(dialog);
+        editText.requestFocus();
+        AndroidUtilities.showKeyboard(editText);
     }
 
     private boolean showRestrictedToastOnResume;
@@ -4829,6 +4868,10 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
     }
 
     private void runSingGramAiBrowserAction(int action) {
+        runSingGramAiBrowserAction(action, null);
+    }
+
+    private void runSingGramAiBrowserAction(int action, String question) {
         if (parentActivity == null || pages == null || pages[0] == null) {
             return;
         }
@@ -4845,7 +4888,11 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
                 Toast.makeText(parentActivity, LocaleController.getString(R.string.SingGramAIBrowserNoPage), Toast.LENGTH_SHORT).show();
                 return;
             }
-            runSingGramAiBrowserRequest(action, input, progressDialog);
+            String finalInput = input;
+            if (!TextUtils.isEmpty(question)) {
+                finalInput += "\nQuestion:\n" + question.trim();
+            }
+            runSingGramAiBrowserRequest(action, finalInput, progressDialog);
         });
     }
 
@@ -4940,9 +4987,7 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
         }
         final String result = TextUtils.isEmpty(text) ? LocaleController.getString(R.string.SingGramAIEmptyResponse) : text;
         AlertDialog.Builder builder = new AlertDialog.Builder(parentActivity, getResourcesProvider());
-        builder.setTitle(action == SingGramAiClient.ACTION_TRANSLATE_ZH_HANT
-                ? LocaleController.getString(R.string.SingGramAIBrowserTranslate)
-                : LocaleController.getString(R.string.SingGramAIBrowserSummarize));
+        builder.setTitle(singGramAiBrowserActionTitle(action));
         builder.setMessage(result);
         builder.setPositiveButton(LocaleController.getString(R.string.SingGramCopyButton), (dialog, which) -> {
             AndroidUtilities.addToClipboard(result);
@@ -4950,6 +4995,16 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
         });
         builder.setNegativeButton(LocaleController.getString(R.string.OK), null);
         showDialog(builder.create());
+    }
+
+    private String singGramAiBrowserActionTitle(int action) {
+        if (action == SingGramAiClient.ACTION_TRANSLATE_ZH_HANT) {
+            return LocaleController.getString(R.string.SingGramAIBrowserTranslate);
+        }
+        if (action == SingGramAiClient.ACTION_ASK_PAGE) {
+            return LocaleController.getString(R.string.SingGramAIBrowserAsk);
+        }
+        return LocaleController.getString(R.string.SingGramAIBrowserSummarize);
     }
 
     public void openBookmark(String link) {

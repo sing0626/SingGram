@@ -41,10 +41,12 @@ import org.telegram.ui.Components.LineProgressView;
 import androidx.core.content.FileProvider;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Locale;
 
@@ -62,6 +64,7 @@ public class SingGramUpdateActivity extends BaseFragment {
     private long downloadTotalBytes;
     private long downloadSpeedBytesPerSecond;
     private File downloadedApkFile;
+    private String downloadedApkSha256;
     private String lastError;
     private boolean waitingForInstallPermission;
     private LineProgressView downloadProgressView;
@@ -160,6 +163,10 @@ public class SingGramUpdateActivity extends BaseFragment {
         addInfoCell(context, installSection, LocaleController.getString(R.string.SingGramOtaInstallPermission), installPermissionValue());
         addDivider(context, installSection);
         addInfoCell(context, installSection, LocaleController.getString(R.string.SingGramOtaDownloadedApk), downloadedApkValue());
+        if (downloadedApkFile != null && downloadedApkFile.exists()) {
+            addDivider(context, installSection);
+            addInfoCell(context, installSection, LocaleController.getString(R.string.SingGramOtaShaStatus), downloadedShaValue());
+        }
         if (downloadedApkFile != null && downloadedApkFile.exists() && !canInstallPackages()) {
             addDivider(context, installSection);
             addActionRow(context, installSection, LocaleController.getString(R.string.SingGramOtaGrantInstallPermission), LocaleController.getString(R.string.SingGramOtaGrantInstallPermissionInfo), R.drawable.msg_permissions, 0xFFFF8B3D, 0xFFE45644, true, v -> openInstallPermissionSettings());
@@ -172,6 +179,12 @@ public class SingGramUpdateActivity extends BaseFragment {
         addActionRow(context, actionSection, downloadButtonTitle(), downloadButtonSubtitle(), R.drawable.menu_download_round, 0xFF40B7FF, 0xFF168BDE, updateInfo != null && !TextUtils.isEmpty(updateInfo.apkUrl) && !downloading, v -> downloadLatestApk());
         addActionDivider(context, actionSection);
         addDownloadProgressCard(context, actionSection);
+        if (downloadedApkFile != null && downloadedApkFile.exists()) {
+            addDivider(context, actionSection);
+            addActionRow(context, actionSection, LocaleController.getString(R.string.SingGramOtaInstallDownloaded), LocaleController.getString(R.string.SingGramOtaInstallDownloadedInfo), R.drawable.msg_openin, 0xFF55CA47, 0xFF27B434, !downloading, v -> installDownloadedApk());
+            addActionDivider(context, actionSection);
+            addActionRow(context, actionSection, LocaleController.getString(R.string.SingGramOtaClearDownloadedApk), LocaleController.getString(R.string.SingGramOtaClearDownloadedApkInfo), R.drawable.msg_delete, 0xFFFF6B6B, 0xFFE45644, !downloading, v -> clearDownloadedApk());
+        }
         addDivider(context, actionSection);
         addActionRow(context, actionSection, LocaleController.getString(R.string.SingGramOtaOpenLatest), apkValue(), R.drawable.msg_openin, 0xFF8A98A7, 0xFF5D6C7B, updateInfo != null && !TextUtils.isEmpty(updateInfo.apkUrl), v -> openApk());
         addActionDivider(context, actionSection);
@@ -387,6 +400,22 @@ public class SingGramUpdateActivity extends BaseFragment {
         return downloadedApkFile.getName() + " / " + AndroidUtilities.formatFileSize(downloadedApkFile.length());
     }
 
+    private String downloadedShaValue() {
+        String expected = updateInfo == null ? "" : updateInfo.sha256;
+        if (TextUtils.isEmpty(expected) && TextUtils.isEmpty(downloadedApkSha256)) {
+            return LocaleController.getString(R.string.SingGramOtaShaNotProvided);
+        }
+        if (TextUtils.isEmpty(downloadedApkSha256)) {
+            return LocaleController.getString(R.string.SingGramOtaShaSavedUnchecked);
+        }
+        if (TextUtils.isEmpty(expected)) {
+            return LocaleController.formatString(R.string.SingGramOtaShaDownloaded, shortSha(downloadedApkSha256));
+        }
+        return TextUtils.equals(expected.trim().toLowerCase(Locale.US), downloadedApkSha256)
+                ? LocaleController.formatString(R.string.SingGramOtaShaVerified, shortSha(downloadedApkSha256))
+                : LocaleController.formatString(R.string.SingGramOtaShaMismatchValue, shortSha(downloadedApkSha256), shortSha(expected));
+    }
+
     private String notesValue() {
         if (updateInfo == null) {
             return LocaleController.getString(R.string.SingGramUpdateNotesEmpty);
@@ -459,6 +488,7 @@ public class SingGramUpdateActivity extends BaseFragment {
         downloadTotalBytes = updateInfo.apkSizeBytes;
         downloadSpeedBytesPerSecond = 0;
         downloadedApkFile = null;
+        downloadedApkSha256 = null;
         SingGramConfig.clearLastUpdateApkPath();
         SingGramConfig.setPendingUpdateInstall(false);
         updateDownloadProgressViews();
@@ -466,10 +496,11 @@ public class SingGramUpdateActivity extends BaseFragment {
         final String apkUrl = updateInfo.apkUrl;
         final long manifestSize = updateInfo.apkSizeBytes;
         final String versionName = updateInfo.versionName;
-        Utilities.globalQueue.postRunnable(() -> runApkDownload(apkUrl, versionName, manifestSize));
+        final String expectedSha256 = updateInfo.sha256;
+        Utilities.globalQueue.postRunnable(() -> runApkDownload(apkUrl, versionName, manifestSize, expectedSha256));
     }
 
-    private void runApkDownload(String apkUrl, String versionName, long manifestSize) {
+    private void runApkDownload(String apkUrl, String versionName, long manifestSize, String expectedSha256) {
         HttpURLConnection connection = null;
         InputStream inputStream = null;
         FileOutputStream outputStream = null;
@@ -500,7 +531,7 @@ public class SingGramUpdateActivity extends BaseFragment {
             long lastUiTime = startTime;
             long lastUiBytes = 0;
             long current = 0;
-            postDownloadProgress(current, total, 0, false, null, null);
+            postDownloadProgress(current, total, 0, false, null, null, null);
             int read;
             while ((read = inputStream.read(buffer)) != -1) {
                 outputStream.write(buffer, 0, read);
@@ -510,7 +541,7 @@ public class SingGramUpdateActivity extends BaseFragment {
                     long deltaBytes = current - lastUiBytes;
                     long deltaTime = Math.max(1, now - lastUiTime);
                     long speed = deltaBytes * 1000L / deltaTime;
-                    postDownloadProgress(current, total, speed, false, null, null);
+                    postDownloadProgress(current, total, speed, false, null, null, null);
                     lastUiTime = now;
                     lastUiBytes = current;
                 }
@@ -524,12 +555,19 @@ public class SingGramUpdateActivity extends BaseFragment {
             if (!partFile.renameTo(file)) {
                 throw new Exception("Cannot save downloaded APK file");
             }
+            String actualSha256 = calculateSha256(file);
+            if (!TextUtils.isEmpty(expectedSha256) && !TextUtils.equals(expectedSha256.trim().toLowerCase(Locale.US), actualSha256)) {
+                if (!file.delete()) {
+                    FileLog.d("SingGram OTA could not delete SHA-mismatched APK " + file);
+                }
+                throw new Exception(LocaleController.getString(R.string.SingGramOtaShaMismatch));
+            }
             long elapsed = Math.max(1, System.currentTimeMillis() - startTime);
             long averageSpeed = current * 1000L / elapsed;
-            postDownloadProgress(current, total, averageSpeed, true, file, null);
+            postDownloadProgress(current, total, averageSpeed, true, file, actualSha256, null);
         } catch (Exception e) {
             FileLog.e(e);
-            postDownloadProgress(downloadedBytes, downloadTotalBytes, 0, false, null, e.getMessage());
+            postDownloadProgress(downloadedBytes, downloadTotalBytes, 0, false, null, null, e.getMessage());
         } finally {
             try {
                 if (outputStream != null) {
@@ -551,7 +589,7 @@ public class SingGramUpdateActivity extends BaseFragment {
         }
     }
 
-    private void postDownloadProgress(long current, long total, long speed, boolean complete, File file, String error) {
+    private void postDownloadProgress(long current, long total, long speed, boolean complete, File file, String sha256, String error) {
         AndroidUtilities.runOnUIThread(() -> {
             if (!TextUtils.isEmpty(error)) {
                 downloading = false;
@@ -570,6 +608,7 @@ public class SingGramUpdateActivity extends BaseFragment {
                 downloading = false;
                 downloadComplete = true;
                 downloadedApkFile = file;
+                downloadedApkSha256 = sha256;
                 if (file != null) {
                     SingGramConfig.setLastUpdateApkPath(file.getAbsolutePath());
                 }
@@ -582,6 +621,31 @@ public class SingGramUpdateActivity extends BaseFragment {
                 updateDownloadProgressViews();
             }
         });
+    }
+
+    private String calculateSha256(File file) throws Exception {
+        MessageDigest digest = MessageDigest.getInstance("SHA-256");
+        byte[] buffer = new byte[128 * 1024];
+        int read;
+        try (FileInputStream inputStream = new FileInputStream(file)) {
+            while ((read = inputStream.read(buffer)) != -1) {
+                digest.update(buffer, 0, read);
+            }
+        }
+        byte[] hash = digest.digest();
+        StringBuilder builder = new StringBuilder(hash.length * 2);
+        for (byte b : hash) {
+            builder.append(String.format(Locale.US, "%02x", b & 0xff));
+        }
+        return builder.toString();
+    }
+
+    private String shortSha(String value) {
+        if (TextUtils.isEmpty(value)) {
+            return "-";
+        }
+        String trimmed = value.trim();
+        return trimmed.length() <= 16 ? trimmed : trimmed.substring(0, 16) + "...";
     }
 
     private void installDownloadedApk() {
@@ -633,6 +697,24 @@ public class SingGramUpdateActivity extends BaseFragment {
         } else {
             SingGramConfig.clearLastUpdateApkPath();
         }
+    }
+
+    private void clearDownloadedApk() {
+        restoreDownloadedApkState();
+        if (downloadedApkFile != null && downloadedApkFile.exists() && !downloadedApkFile.delete()) {
+            showToast(LocaleController.getString(R.string.SingGramOtaClearDownloadedApkFailed), Toast.LENGTH_LONG);
+            return;
+        }
+        downloadedApkFile = null;
+        downloadedApkSha256 = null;
+        downloadedBytes = 0;
+        downloadTotalBytes = updateInfo == null ? 0 : updateInfo.apkSizeBytes;
+        downloadSpeedBytesPerSecond = 0;
+        downloadComplete = false;
+        SingGramConfig.clearLastUpdateApkPath();
+        SingGramConfig.setPendingUpdateInstall(false);
+        showToast(LocaleController.getString(R.string.SingGramOtaClearDownloadedApkDone), Toast.LENGTH_SHORT);
+        buildContent(getParentActivity(), true);
     }
 
     private boolean canInstallPackages() {

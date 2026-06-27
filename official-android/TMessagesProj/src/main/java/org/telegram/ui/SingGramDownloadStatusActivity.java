@@ -72,6 +72,8 @@ public class SingGramDownloadStatusActivity extends BaseFragment {
         LinearLayout queueSection = addSection(context, container);
         addInfoCell(context, queueSection, LocaleController.getString(R.string.SingGramDownloadBoost), boostValue(snapshot));
         addDivider(context, queueSection);
+        addInfoCell(context, queueSection, LocaleController.getString(R.string.SingGramDownloadAutoReason), autoReasonValue(snapshot));
+        addDivider(context, queueSection);
         addInfoCell(context, queueSection, LocaleController.getString(R.string.SingGramDownloadStatusConcurrency), concurrencyValue());
         addDivider(context, queueSection);
         addInfoCell(context, queueSection, LocaleController.getString(R.string.SingGramDownloadCenterLimits), LocaleController.getString(R.string.SingGramDownloadBoostFootnote));
@@ -236,7 +238,7 @@ public class SingGramDownloadStatusActivity extends BaseFragment {
     }
 
     private String downloadLevelName() {
-        int level = SingGramConfig.getDownloadBoostLevel();
+        int level = SingGramConfig.getEffectiveDownloadBoostLevel();
         if (level <= 0) {
             return LocaleController.getString(R.string.SingGramDownloadBoostBalanced);
         }
@@ -244,6 +246,22 @@ public class SingGramDownloadStatusActivity extends BaseFragment {
             return LocaleController.getString(R.string.SingGramDownloadBoostMaximum);
         }
         return LocaleController.getString(R.string.SingGramDownloadBoostAggressive);
+    }
+
+    private String autoReasonValue(SingGramDownloadStats.Snapshot snapshot) {
+        if (!SingGramConfig.isDownloadBoostEnabled()) {
+            return LocaleController.getString(R.string.SingGramDownloadAutoReasonOff);
+        }
+        if (!SingGramConfig.isDownloadBoostAutoEnabled()) {
+            return LocaleController.formatString(R.string.SingGramDownloadAutoReasonManual, downloadLevelName());
+        }
+        if (snapshot.activeCount >= 3 || snapshot.speedBytesPerSecond >= 4L * 1024L * 1024L) {
+            return LocaleController.formatString(R.string.SingGramDownloadAutoReasonValue, downloadLevelName(), snapshot.activeCount, speedValue(snapshot.speedBytesPerSecond), LocaleController.getString(R.string.SingGramDownloadAutoReasonHigh));
+        }
+        if (snapshot.activeCount >= 2 || snapshot.speedBytesPerSecond >= 1024L * 1024L) {
+            return LocaleController.formatString(R.string.SingGramDownloadAutoReasonValue, downloadLevelName(), snapshot.activeCount, speedValue(snapshot.speedBytesPerSecond), LocaleController.getString(R.string.SingGramDownloadAutoReasonMedium));
+        }
+        return LocaleController.formatString(R.string.SingGramDownloadAutoReasonValue, downloadLevelName(), snapshot.activeCount, speedValue(snapshot.speedBytesPerSecond), LocaleController.getString(R.string.SingGramDownloadAutoReasonLow));
     }
 
     private void addBoostModeCell(Context context, LinearLayout container, String text, String value, int mode) {
@@ -290,7 +308,10 @@ public class SingGramDownloadStatusActivity extends BaseFragment {
         StringBuilder builder = new StringBuilder();
         builder.append("SingGram download status\n");
         builder.append("boost: ").append(SingGramConfig.isDownloadBoostEnabled()).append('\n');
+        builder.append("boost_auto: ").append(SingGramConfig.isDownloadBoostAutoEnabled()).append('\n');
         builder.append("boost_level: ").append(SingGramConfig.getDownloadBoostLevel()).append('\n');
+        builder.append("boost_effective_level: ").append(SingGramConfig.getEffectiveDownloadBoostLevel()).append('\n');
+        builder.append("boost_reason: ").append(autoReasonValue(snapshot)).append('\n');
         builder.append("active: ").append(snapshot.activeCount).append('\n');
         builder.append("speed_bps: ").append(snapshot.speedBytesPerSecond).append('\n');
         builder.append("small_queue: ").append(SingGramConfig.getBoostedSmallQueueMaxActiveOperations(5)).append('\n');

@@ -15,10 +15,14 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.core.app.NotificationCompat;
+import androidx.core.app.NotificationManagerCompat;
+
 import org.telegram.messenger.AndroidUtilities;
 import org.telegram.messenger.ApplicationLoader;
 import org.telegram.messenger.BuildVars;
 import org.telegram.messenger.LocaleController;
+import org.telegram.messenger.NotificationsController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SingGramConfig;
 import org.telegram.messenger.SingGramDownloadStats;
@@ -80,6 +84,8 @@ public class SingGramDoctorActivity extends BaseFragment {
         addActionCell(context, pushSection, LocaleController.getString(R.string.SingGramDoctorRepairPush), LocaleController.getString(R.string.SingGramDoctorRepairPushInfo), true, v -> repairPush());
         addDivider(context, pushSection);
         addActionCell(context, pushSection, LocaleController.getString(R.string.SingGramDoctorOpenNotificationSettings), LocaleController.getString(R.string.SingGramDoctorOpenNotificationSettingsInfo), true, v -> openNotificationSettings());
+        addDivider(context, pushSection);
+        addActionCell(context, pushSection, LocaleController.getString(R.string.SingGramPushTestNotification), LocaleController.getString(R.string.SingGramPushTestNotificationInfo), true, v -> sendTestNotification());
 
         addHeader(context, container, LocaleController.getString(R.string.SingGramDoctorFeatureHealth));
         LinearLayout featureSection = addSection(context, container);
@@ -262,6 +268,37 @@ public class SingGramDoctorActivity extends BaseFragment {
     private void resetPushChannels() {
         SingGramPushDiagnostics.resetNotificationChannels();
         Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramPushChannelsReset), Toast.LENGTH_SHORT).show();
+    }
+
+    private void sendTestNotification() {
+        Context context = ApplicationLoader.applicationContext;
+        if (context == null) {
+            return;
+        }
+        NotificationManagerCompat manager = NotificationManagerCompat.from(context);
+        if (!manager.areNotificationsEnabled()) {
+            Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramPushTestNotificationBlocked), Toast.LENGTH_LONG).show();
+            openNotificationSettings();
+            return;
+        }
+        NotificationsController.checkOtherNotificationsChannel();
+        NotificationCompat.Builder builder = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                ? new NotificationCompat.Builder(context, NotificationsController.OTHER_NOTIFICATIONS_CHANNEL)
+                : new NotificationCompat.Builder(context);
+        builder
+                .setSmallIcon(R.drawable.notification)
+                .setContentTitle(LocaleController.getString(R.string.SingGramPushTestNotificationTitle))
+                .setContentText(LocaleController.getString(R.string.SingGramPushTestNotificationText))
+                .setStyle(new NotificationCompat.BigTextStyle().bigText(LocaleController.getString(R.string.SingGramPushTestNotificationText)))
+                .setAutoCancel(true)
+                .setPriority(NotificationCompat.PRIORITY_DEFAULT);
+        try {
+            manager.notify(76026, builder.build());
+            Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramPushTestNotificationSent), Toast.LENGTH_SHORT).show();
+        } catch (Throwable ignore) {
+            Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramPushTestNotificationBlocked), Toast.LENGTH_LONG).show();
+            openNotificationSettings();
+        }
     }
 
     private void repairPush() {

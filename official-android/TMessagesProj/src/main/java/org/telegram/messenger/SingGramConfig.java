@@ -19,6 +19,8 @@ public class SingGramConfig {
     private static final String KEY_AI_SYSTEM_PROMPT = "ai_system_prompt";
     private static final String KEY_AI_PROVIDERS = "ai_providers";
     private static final String KEY_AI_ACTIVE_PROVIDER = "ai_active_provider";
+    private static final String KEY_AI_LAST_HEALTH_TIME = "ai_last_health_time";
+    private static final String KEY_AI_LAST_HEALTH_SUMMARY = "ai_last_health_summary";
     private static final String KEY_LIQUID_GLASS = "liquid_glass";
     private static final String KEY_HIDE_PHONE_IN_SETTINGS = "hide_phone_in_settings";
     private static final String KEY_AI_CONTEXT_MENU = "ai_context_menu";
@@ -213,6 +215,42 @@ public class SingGramConfig {
                     .putString(KEY_AI_ACTIVE_PROVIDER, provider.name == null ? "" : provider.name.trim())
                     .apply();
         }
+    }
+
+    public static void deleteAiProvider(AiProvider target) {
+        if (target == null) {
+            return;
+        }
+        ArrayList<AiProvider> providers = getAiProviders();
+        for (int i = providers.size() - 1; i >= 0; i--) {
+            AiProvider provider = providers.get(i);
+            if (TextUtils.equals(provider.name, target.name) && TextUtils.equals(provider.baseUrl, target.baseUrl)) {
+                providers.remove(i);
+            }
+        }
+        saveAiProviders(providers);
+        if (TextUtils.equals(getActiveAiProviderName(), target.name)) {
+            setString(KEY_AI_ACTIVE_PROVIDER, "");
+        }
+    }
+
+    public static void setAiLastHealth(String summary) {
+        SharedPreferences preferences = prefs();
+        if (preferences != null) {
+            preferences.edit()
+                    .putLong(KEY_AI_LAST_HEALTH_TIME, System.currentTimeMillis())
+                    .putString(KEY_AI_LAST_HEALTH_SUMMARY, summary == null ? "" : summary)
+                    .apply();
+        }
+    }
+
+    public static long getAiLastHealthTime() {
+        SharedPreferences preferences = prefs();
+        return preferences == null ? 0 : preferences.getLong(KEY_AI_LAST_HEALTH_TIME, 0);
+    }
+
+    public static String getAiLastHealthSummary() {
+        return getString(KEY_AI_LAST_HEALTH_SUMMARY, "");
     }
 
     public static String getActiveAiProviderName() {

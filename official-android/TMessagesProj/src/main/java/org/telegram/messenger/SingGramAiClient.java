@@ -27,6 +27,7 @@ public class SingGramAiClient {
     public static final int ACTION_TRANSLATE_YUE = 9;
     public static final int ACTION_TEST_CONNECTION = 10;
     public static final int ACTION_CHAT_APP = 11;
+    public static final int ACTION_ASK_PAGE = 12;
 
     public interface Callback {
         void onResult(String text);
@@ -62,6 +63,8 @@ public class SingGramAiClient {
                 return LocaleController.getString(R.string.SingGramAITestConnection);
             case ACTION_CHAT_APP:
                 return LocaleController.getString(R.string.SingGramAIChatApp);
+            case ACTION_ASK_PAGE:
+                return LocaleController.getString(R.string.SingGramAIBrowserAsk);
             default:
                 return LocaleController.getString(R.string.SingGramAI);
         }
@@ -136,8 +139,8 @@ public class SingGramAiClient {
             try {
                 JSONObject body = new JSONObject();
                 body.put("model", SingGramConfig.getAiModel());
-                body.put("temperature", action == ACTION_REPLY_SUGGESTIONS || action == ACTION_CHAT_APP ? 0.7 : action == ACTION_TEST_CONNECTION ? 0.0 : 0.35);
-                body.put("max_tokens", action == ACTION_TEST_CONNECTION ? 64 : action == ACTION_REPLY_SUGGESTIONS || action == ACTION_CHAT_APP ? 900 : 1200);
+                body.put("temperature", action == ACTION_REPLY_SUGGESTIONS || action == ACTION_CHAT_APP || action == ACTION_ASK_PAGE ? 0.7 : action == ACTION_TEST_CONNECTION ? 0.0 : 0.35);
+                body.put("max_tokens", action == ACTION_TEST_CONNECTION ? 64 : action == ACTION_REPLY_SUGGESTIONS || action == ACTION_CHAT_APP || action == ACTION_ASK_PAGE ? 900 : 1200);
 
                 JSONArray messages = new JSONArray();
                 JSONObject system = new JSONObject();
@@ -219,6 +222,8 @@ public class SingGramAiClient {
                 return base + "\nThis is a connectivity test. Reply with a short OK message only.";
             case ACTION_CHAT_APP:
                 return base + "\nYou are a chat app inside SingGram. Reply naturally to the user's draft or question, and keep the result ready to send in chat.";
+            case ACTION_ASK_PAGE:
+                return base + "\nAnswer the user's question using the supplied page title, URL, and page text. If the page text does not contain the answer, say what is missing instead of inventing details.";
             default:
                 return base;
         }
