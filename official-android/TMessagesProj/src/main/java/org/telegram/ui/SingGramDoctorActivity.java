@@ -91,6 +91,8 @@ public class SingGramDoctorActivity extends BaseFragment {
         LinearLayout featureSection = addSection(context, container);
         addInfoCell(context, featureSection, LocaleController.getString(R.string.SingGramAI), aiValue());
         addDivider(context, featureSection);
+        addInfoCell(context, featureSection, LocaleController.getString(R.string.SingGramAIUsageToday), SingGramConfig.getAiUsageSummary());
+        addDivider(context, featureSection);
         addInfoCell(context, featureSection, LocaleController.getString(R.string.SingGramGhostMode), ghostValue());
         addDivider(context, featureSection);
         addInfoCell(context, featureSection, LocaleController.getString(R.string.SingGramMessageProtection), protectionValue());
@@ -104,6 +106,8 @@ public class SingGramDoctorActivity extends BaseFragment {
         addInfoCell(context, diagnosticsSection, LocaleController.getString(R.string.SingGramCrashSafeMode), crashSafeValue());
         addDivider(context, diagnosticsSection);
         addInfoCell(context, diagnosticsSection, LocaleController.getString(R.string.SingGramUpdates), updateValue());
+        addDivider(context, diagnosticsSection);
+        addInfoCell(context, diagnosticsSection, LocaleController.getString(R.string.SingGramOtaInstallHistory), updateInstallHistoryValue());
         addDivider(context, diagnosticsSection);
         addActionCell(context, diagnosticsSection, LocaleController.getString(R.string.SingGramDoctorCopyReport), LocaleController.getString(R.string.SingGramCopyDiagnostics), true, v -> copyReport());
         addDivider(context, diagnosticsSection);
@@ -163,6 +167,11 @@ public class SingGramDoctorActivity extends BaseFragment {
         return version + " / " + state;
     }
 
+    private String updateInstallHistoryValue() {
+        String history = SingGramConfig.getUpdateInstallHistory();
+        return TextUtils.isEmpty(history) ? LocaleController.getString(R.string.SingGramOtaInstallHistoryEmpty) : history;
+    }
+
     private String lastCrashValue() {
         if (SingGramConfig.getLastCrashTime() <= 0) {
             return LocaleController.getString(R.string.SingGramDoctorNoCrash);
@@ -215,6 +224,9 @@ public class SingGramDoctorActivity extends BaseFragment {
         builder.append("accounts: ").append(UserConfig.getActivatedAccountsCount()).append('/').append(UserConfig.MAX_ACCOUNT_COUNT).append('\n');
         builder.append("ai_enabled: ").append(SingGramConfig.isAiEnabled()).append('\n');
         builder.append("ai_configured: ").append(!TextUtils.isEmpty(SingGramConfig.getAiBaseUrl())).append('\n');
+        builder.append("ai_fallback: ").append(SingGramConfig.isAiFallbackEnabled()).append('\n');
+        builder.append("ai_usage_today: ").append(SingGramConfig.getAiUsageSummary()).append('\n');
+        builder.append("ai_last_error: ").append(SingGramConfig.getAiLastErrorSummary()).append('\n');
         builder.append("ghost_mode: ").append(SingGramConfig.isGhostModeEnabled()).append('\n');
         builder.append("ghost_selected_chats_only: ").append(SingGramConfig.isGhostSelectedChatsOnly()).append('\n');
         builder.append("ghost_selected_count: ").append(SingGramConfig.getGhostDialogCount()).append('\n');
@@ -235,6 +247,7 @@ public class SingGramDoctorActivity extends BaseFragment {
         builder.append("last_update_version_code: ").append(SingGramConfig.getLastUpdateVersionCode()).append('\n');
         builder.append("last_update_version_name: ").append(SingGramConfig.getLastUpdateVersionName()).append('\n');
         builder.append("last_update_check_time: ").append(SingGramConfig.getLastUpdateCheckTime()).append('\n');
+        builder.append("update_install_history: ").append(SingGramConfig.getUpdateInstallHistory()).append('\n');
         builder.append(SingGramPushDiagnostics.buildReport());
         return builder.toString();
     }

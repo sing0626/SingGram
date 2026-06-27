@@ -42,8 +42,8 @@ import androidx.core.content.FileProvider;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.io.RandomAccessFile;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.security.MessageDigest;
@@ -135,6 +135,11 @@ public class SingGramUpdateActivity extends BaseFragment {
                 SingGramConfig.setPendingUpdateInstall(false);
                 showToast(LocaleController.getString(R.string.SingGramOtaInstallPermissionMissing), Toast.LENGTH_LONG);
             }
+        } else if (requestCode == REQUEST_INSTALL_APK) {
+            SingGramConfig.appendUpdateInstallHistory(LocaleController.formatString(R.string.SingGramOtaInstallReturned, resultCode));
+            if (contentContainer != null) {
+                buildContent(getParentActivity(), true);
+            }
         }
     }
 
@@ -167,6 +172,8 @@ public class SingGramUpdateActivity extends BaseFragment {
             addDivider(context, installSection);
             addInfoCell(context, installSection, LocaleController.getString(R.string.SingGramOtaShaStatus), downloadedShaValue());
         }
+        addDivider(context, installSection);
+        addInfoCell(context, installSection, LocaleController.getString(R.string.SingGramOtaInstallHistory), installHistoryValue());
         if (downloadedApkFile != null && downloadedApkFile.exists() && !canInstallPackages()) {
             addDivider(context, installSection);
             addActionRow(context, installSection, LocaleController.getString(R.string.SingGramOtaGrantInstallPermission), LocaleController.getString(R.string.SingGramOtaGrantInstallPermissionInfo), R.drawable.msg_permissions, 0xFFFF8B3D, 0xFFE45644, true, v -> openInstallPermissionSettings());
@@ -416,6 +423,11 @@ public class SingGramUpdateActivity extends BaseFragment {
                 : LocaleController.formatString(R.string.SingGramOtaShaMismatchValue, shortSha(downloadedApkSha256), shortSha(expected));
     }
 
+    private String installHistoryValue() {
+        String history = SingGramConfig.getUpdateInstallHistory();
+        return TextUtils.isEmpty(history) ? LocaleController.getString(R.string.SingGramOtaInstallHistoryEmpty) : history;
+    }
+
     private String notesValue() {
         if (updateInfo == null) {
             return LocaleController.getString(R.string.SingGramUpdateNotesEmpty);
@@ -503,7 +515,7 @@ public class SingGramUpdateActivity extends BaseFragment {
     private void runApkDownload(String apkUrl, String versionName, long manifestSize, String expectedSha256) {
         HttpURLConnection connection = null;
         InputStream inputStream = null;
-        FileOutputStream outputStream = null;
+        RandomAccessFile outputFile = null;
         try {
             File dir = new File(ApplicationLoader.applicationContext.getFilesDir(), "updates");
             if (!dir.exists()) {
@@ -511,30 +523,48 @@ public class SingGramUpdateActivity extends BaseFragment {
             }
             File file = new File(dir, "SingGram-" + (TextUtils.isEmpty(versionName) ? "latest" : versionName.replaceAll("[^A-Za-z0-9._-]", "_")) + ".apk");
             File partFile = new File(file.getAbsolutePath() + ".part");
+            long resumeBytes = partFile.exists() ? Math.max(0, partFile.length()) : 0;
             connection = (HttpURLConnection) new URL(apkUrl).openConnection();
             connection.setRequestMethod("GET");
             connection.setConnectTimeout(15000);
             connection.setReadTimeout(60000);
             connection.setRequestProperty("Accept", "application/vnd.android.package-archive,*/*");
+            if (resumeBytes > 0) {
+                connection.setRequestProperty("Range", "bytes=" + resumeBytes + "-");
+            }
             int responseCode = connection.getResponseCode();
             if (responseCode < 200 || responseCode >= 300) {
                 throw new Exception("HTTP " + responseCode);
             }
+            if (resumeBytes > 0 && responseCode != HttpURLConnection.HTTP_PARTIAL) {
+                if (!partFile.delete()) {
+                    FileLog.d("SingGram OTA could not reset partial APK " + partFile);
+                }
+                resumeBytes = 0;
+            }
             long total = connection.getContentLength();
+            if (resumeBytes > 0 && total > 0) {
+                total += resumeBytes;
+            }
             if (total <= 0) {
                 total = manifestSize;
             }
             inputStream = connection.getInputStream();
-            outputStream = new FileOutputStream(partFile);
+            outputFile = new RandomAccessFile(partFile, "rw");
+            if (resumeBytes > 0) {
+                outputFile.seek(resumeBytes);
+            } else {
+                outputFile.setLength(0);
+            }
             byte[] buffer = new byte[64 * 1024];
             long startTime = System.currentTimeMillis();
             long lastUiTime = startTime;
-            long lastUiBytes = 0;
-            long current = 0;
+            long lastUiBytes = resumeBytes;
+            long current = resumeBytes;
             postDownloadProgress(current, total, 0, false, null, null, null);
             int read;
             while ((read = inputStream.read(buffer)) != -1) {
-                outputStream.write(buffer, 0, read);
+                outputFile.write(buffer, 0, read);
                 current += read;
                 long now = System.currentTimeMillis();
                 if (now - lastUiTime >= 400) {
@@ -546,9 +576,8 @@ public class SingGramUpdateActivity extends BaseFragment {
                     lastUiBytes = current;
                 }
             }
-            outputStream.flush();
-            outputStream.close();
-            outputStream = null;
+            outputFile.close();
+            outputFile = null;
             if (file.exists() && !file.delete()) {
                 throw new Exception("Cannot replace old APK file");
             }
@@ -563,15 +592,15 @@ public class SingGramUpdateActivity extends BaseFragment {
                 throw new Exception(LocaleController.getString(R.string.SingGramOtaShaMismatch));
             }
             long elapsed = Math.max(1, System.currentTimeMillis() - startTime);
-            long averageSpeed = current * 1000L / elapsed;
+            long averageSpeed = Math.max(0, current - resumeBytes) * 1000L / elapsed;
             postDownloadProgress(current, total, averageSpeed, true, file, actualSha256, null);
         } catch (Exception e) {
             FileLog.e(e);
             postDownloadProgress(downloadedBytes, downloadTotalBytes, 0, false, null, null, e.getMessage());
         } finally {
             try {
-                if (outputStream != null) {
-                    outputStream.close();
+                if (outputFile != null) {
+                    outputFile.close();
                 }
             } catch (Exception ignore) {
 
@@ -661,6 +690,7 @@ public class SingGramUpdateActivity extends BaseFragment {
             return;
         }
         if (!canInstallPackages()) {
+            SingGramConfig.appendUpdateInstallHistory(LocaleController.getString(R.string.SingGramOtaInstallNeedsPermission));
             openInstallPermissionSettings();
             return;
         }
@@ -670,9 +700,11 @@ public class SingGramUpdateActivity extends BaseFragment {
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
             intent.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
             intent.putExtra(Intent.EXTRA_RETURN_RESULT, true);
+            SingGramConfig.appendUpdateInstallHistory(LocaleController.formatString(R.string.SingGramOtaInstallOpened, downloadedApkFile.getName(), AndroidUtilities.formatFileSize(downloadedApkFile.length())));
             startActivityForResult(intent, REQUEST_INSTALL_APK);
         } catch (Exception e) {
             FileLog.e(e);
+            SingGramConfig.appendUpdateInstallHistory(LocaleController.formatString(R.string.SingGramOtaInstallFailedValue, e.getMessage()));
             showToast(LocaleController.getString(R.string.SingGramOtaInstallOpenFailed), Toast.LENGTH_LONG);
         }
     }

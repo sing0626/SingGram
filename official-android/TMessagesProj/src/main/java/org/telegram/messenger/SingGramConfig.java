@@ -4,8 +4,11 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.text.TextUtils;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashSet;
+import java.util.Locale;
 import java.util.Set;
 
 public class SingGramConfig {
@@ -21,6 +24,19 @@ public class SingGramConfig {
     private static final String KEY_AI_ACTIVE_PROVIDER = "ai_active_provider";
     private static final String KEY_AI_LAST_HEALTH_TIME = "ai_last_health_time";
     private static final String KEY_AI_LAST_HEALTH_SUMMARY = "ai_last_health_summary";
+    private static final String KEY_AI_FALLBACK = "ai_fallback";
+    private static final String KEY_AI_STATS_DAY = "ai_stats_day";
+    private static final String KEY_AI_STATS_DAY_REQUESTS = "ai_stats_day_requests";
+    private static final String KEY_AI_STATS_DAY_SUCCESS = "ai_stats_day_success";
+    private static final String KEY_AI_STATS_DAY_ERRORS = "ai_stats_day_errors";
+    private static final String KEY_AI_STATS_DAY_429 = "ai_stats_day_429";
+    private static final String KEY_AI_STATS_DAY_LATENCY = "ai_stats_day_latency";
+    private static final String KEY_AI_STATS_TOTAL_REQUESTS = "ai_stats_total_requests";
+    private static final String KEY_AI_STATS_TOTAL_SUCCESS = "ai_stats_total_success";
+    private static final String KEY_AI_STATS_TOTAL_ERRORS = "ai_stats_total_errors";
+    private static final String KEY_AI_STATS_TOTAL_429 = "ai_stats_total_429";
+    private static final String KEY_AI_STATS_LAST_ERROR = "ai_stats_last_error";
+    private static final String KEY_AI_STATS_LAST_TIME = "ai_stats_last_time";
     private static final String KEY_LIQUID_GLASS = "liquid_glass";
     private static final String KEY_HIDE_PHONE_IN_SETTINGS = "hide_phone_in_settings";
     private static final String KEY_AI_CONTEXT_MENU = "ai_context_menu";
@@ -56,6 +72,7 @@ public class SingGramConfig {
     private static final String KEY_LAST_UPDATE_VERSION_NAME = "last_update_version_name";
     private static final String KEY_LAST_UPDATE_CHECK_TIME = "last_update_check_time";
     private static final String KEY_LAST_UPDATE_APK_PATH = "last_update_apk_path";
+    private static final String KEY_UPDATE_INSTALL_HISTORY = "update_install_history";
     private static final String KEY_PENDING_UPDATE_INSTALL = "pending_update_install";
     private static final String KEY_LAST_FEATURE_HUB_INTRO_BUILD = "last_feature_hub_intro_build";
     private static final String KEY_BROWSER_ENGINE = "browser_engine";
@@ -253,6 +270,85 @@ public class SingGramConfig {
         return getString(KEY_AI_LAST_HEALTH_SUMMARY, "");
     }
 
+    public static boolean isAiFallbackEnabled() {
+        return getBoolean(KEY_AI_FALLBACK, true);
+    }
+
+    public static void setAiFallbackEnabled(boolean enabled) {
+        setBoolean(KEY_AI_FALLBACK, enabled);
+    }
+
+    public static void recordAiRequest(boolean success, long latencyMs, String error) {
+        SharedPreferences preferences = prefs();
+        if (preferences == null) {
+            return;
+        }
+        String today = todayKey();
+        SharedPreferences.Editor editor = preferences.edit();
+        boolean newDay = !TextUtils.equals(preferences.getString(KEY_AI_STATS_DAY, ""), today);
+        if (newDay) {
+            editor.putString(KEY_AI_STATS_DAY, today)
+                    .putInt(KEY_AI_STATS_DAY_REQUESTS, 0)
+                    .putInt(KEY_AI_STATS_DAY_SUCCESS, 0)
+                    .putInt(KEY_AI_STATS_DAY_ERRORS, 0)
+                    .putInt(KEY_AI_STATS_DAY_429, 0)
+                    .putLong(KEY_AI_STATS_DAY_LATENCY, 0);
+        }
+        int dayRequests = newDay ? 0 : preferences.getInt(KEY_AI_STATS_DAY_REQUESTS, 0);
+        int daySuccess = newDay ? 0 : preferences.getInt(KEY_AI_STATS_DAY_SUCCESS, 0);
+        int dayErrors = newDay ? 0 : preferences.getInt(KEY_AI_STATS_DAY_ERRORS, 0);
+        int day429 = newDay ? 0 : preferences.getInt(KEY_AI_STATS_DAY_429, 0);
+        long dayLatency = newDay ? 0 : preferences.getLong(KEY_AI_STATS_DAY_LATENCY, 0);
+        editor.putInt(KEY_AI_STATS_DAY_REQUESTS, dayRequests + 1)
+                .putInt(KEY_AI_STATS_TOTAL_REQUESTS, preferences.getInt(KEY_AI_STATS_TOTAL_REQUESTS, 0) + 1)
+                .putLong(KEY_AI_STATS_LAST_TIME, System.currentTimeMillis());
+        if (success) {
+            editor.putInt(KEY_AI_STATS_DAY_SUCCESS, daySuccess + 1)
+                    .putInt(KEY_AI_STATS_TOTAL_SUCCESS, preferences.getInt(KEY_AI_STATS_TOTAL_SUCCESS, 0) + 1)
+                    .putLong(KEY_AI_STATS_DAY_LATENCY, dayLatency + Math.max(0, latencyMs))
+                    .putString(KEY_AI_STATS_LAST_ERROR, "");
+        } else {
+            boolean rateLimited = !TextUtils.isEmpty(error) && error.contains("429");
+            editor.putInt(KEY_AI_STATS_DAY_ERRORS, dayErrors + 1)
+                    .putInt(KEY_AI_STATS_TOTAL_ERRORS, preferences.getInt(KEY_AI_STATS_TOTAL_ERRORS, 0) + 1)
+                    .putString(KEY_AI_STATS_LAST_ERROR, error == null ? "" : error);
+            if (rateLimited) {
+                editor.putInt(KEY_AI_STATS_DAY_429, day429 + 1)
+                        .putInt(KEY_AI_STATS_TOTAL_429, preferences.getInt(KEY_AI_STATS_TOTAL_429, 0) + 1);
+            }
+        }
+        editor.apply();
+    }
+
+    public static String getAiUsageSummary() {
+        SharedPreferences preferences = prefs();
+        if (preferences == null) {
+            return "";
+        }
+        ensureAiStatsDay(preferences);
+        int requests = preferences.getInt(KEY_AI_STATS_DAY_REQUESTS, 0);
+        int success = preferences.getInt(KEY_AI_STATS_DAY_SUCCESS, 0);
+        int errors = preferences.getInt(KEY_AI_STATS_DAY_ERRORS, 0);
+        int rateLimited = preferences.getInt(KEY_AI_STATS_DAY_429, 0);
+        long latency = preferences.getLong(KEY_AI_STATS_DAY_LATENCY, 0);
+        long average = success <= 0 ? 0 : latency / success;
+        return LocaleController.formatString(R.string.SingGramAIUsageSummary, requests, success, errors, rateLimited, average);
+    }
+
+    public static String getAiLastErrorSummary() {
+        SharedPreferences preferences = prefs();
+        if (preferences == null) {
+            return "";
+        }
+        String error = preferences.getString(KEY_AI_STATS_LAST_ERROR, "");
+        long time = preferences.getLong(KEY_AI_STATS_LAST_TIME, 0);
+        if (TextUtils.isEmpty(error)) {
+            return LocaleController.getString(R.string.SingGramAIStatsNoError);
+        }
+        String date = time <= 0 ? "" : LocaleController.formatDateTime(time / 1000, true) + "\n";
+        return date + error;
+    }
+
     public static String getActiveAiProviderName() {
         return getString(KEY_AI_ACTIVE_PROVIDER, "");
     }
@@ -284,6 +380,29 @@ public class SingGramConfig {
                     .append(escapeProfilePart(provider.model));
         }
         setString(KEY_AI_PROVIDERS, builder.toString());
+    }
+
+    public static void appendUpdateInstallHistory(String line) {
+        if (TextUtils.isEmpty(line)) {
+            return;
+        }
+        String current = getString(KEY_UPDATE_INSTALL_HISTORY, "");
+        String entry = LocaleController.formatDateTime(System.currentTimeMillis() / 1000, true) + " - " + line.trim();
+        String value = TextUtils.isEmpty(current) ? entry : entry + "\n" + current;
+        String[] lines = value.split("\\n");
+        StringBuilder builder = new StringBuilder();
+        int count = Math.min(lines.length, 8);
+        for (int i = 0; i < count; i++) {
+            if (builder.length() > 0) {
+                builder.append('\n');
+            }
+            builder.append(lines[i]);
+        }
+        setString(KEY_UPDATE_INSTALL_HISTORY, builder.toString());
+    }
+
+    public static String getUpdateInstallHistory() {
+        return getString(KEY_UPDATE_INSTALL_HISTORY, "");
     }
 
     public static String normalizeAiBaseUrl(String value) {
@@ -324,6 +443,25 @@ public class SingGramConfig {
             host = host.substring(0, slash);
         }
         return TextUtils.isEmpty(host) ? "NewAPI" : host;
+    }
+
+    private static void ensureAiStatsDay(SharedPreferences preferences) {
+        String today = todayKey();
+        if (TextUtils.equals(preferences.getString(KEY_AI_STATS_DAY, ""), today)) {
+            return;
+        }
+        preferences.edit()
+                .putString(KEY_AI_STATS_DAY, today)
+                .putInt(KEY_AI_STATS_DAY_REQUESTS, 0)
+                .putInt(KEY_AI_STATS_DAY_SUCCESS, 0)
+                .putInt(KEY_AI_STATS_DAY_ERRORS, 0)
+                .putInt(KEY_AI_STATS_DAY_429, 0)
+                .putLong(KEY_AI_STATS_DAY_LATENCY, 0)
+                .apply();
+    }
+
+    private static String todayKey() {
+        return new SimpleDateFormat("yyyyMMdd", Locale.US).format(new Date());
     }
 
     public static int getBrowserEngine() {

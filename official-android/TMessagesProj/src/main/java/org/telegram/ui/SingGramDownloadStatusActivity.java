@@ -18,6 +18,7 @@ import org.telegram.messenger.R;
 import org.telegram.messenger.SingGramConfig;
 import org.telegram.messenger.SingGramDownloadStats;
 import org.telegram.ui.ActionBar.ActionBar;
+import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.ActionBar.ThemeDescription;
@@ -100,7 +101,7 @@ public class SingGramDownloadStatusActivity extends BaseFragment {
                 if (added) {
                     addDivider(context, recentSection);
                 }
-                addInfoCell(context, recentSection, shortFileName(item.fileName), itemValue(item));
+                addActionCell(context, recentSection, shortFileName(item.fileName), itemValue(item), true, v -> showDownloadItemDialog(item));
                 added = true;
             }
         }
@@ -223,6 +224,55 @@ public class SingGramDownloadStatusActivity extends BaseFragment {
             state = LocaleController.getString(R.string.SingGramDownloadStatusRecentState);
         }
         return LocaleController.formatString(R.string.SingGramDownloadStatusItemValue, state, progressValue(item), speedValue(item.active ? item.speedBytesPerSecond : 0));
+    }
+
+    private void showDownloadItemDialog(SingGramDownloadStats.ItemSnapshot item) {
+        if (getParentActivity() == null || item == null) {
+            return;
+        }
+        String details = LocaleController.formatString(
+                R.string.SingGramDownloadItemDetails,
+                TextUtils.isEmpty(item.fileName) ? LocaleController.getString(R.string.SingGramDownloadStatusUnknownFile) : item.fileName,
+                itemStateValue(item),
+                progressValue(item),
+                speedValue(item.speedBytesPerSecond),
+                failedReasonValue(item)
+        );
+        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+        builder.setTitle(shortFileName(item.fileName));
+        builder.setMessage(details);
+        builder.setPositiveButton(LocaleController.getString(R.string.SingGramCopyButton), (dialog, which) -> {
+            AndroidUtilities.addToClipboard(details);
+            Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramTextCopied), Toast.LENGTH_SHORT).show();
+        });
+        builder.setNegativeButton(LocaleController.getString(R.string.OK), null);
+        showDialog(builder.create());
+    }
+
+    private String itemStateValue(SingGramDownloadStats.ItemSnapshot item) {
+        if (item.completed) {
+            return LocaleController.getString(R.string.SingGramDownloadStatusDone);
+        }
+        if (item.failed) {
+            return LocaleController.getString(R.string.SingGramDownloadStatusFailed);
+        }
+        if (item.active) {
+            return LocaleController.getString(R.string.SingGramDownloadStatusActiveState);
+        }
+        return LocaleController.getString(R.string.SingGramDownloadStatusRecentState);
+    }
+
+    private String failedReasonValue(SingGramDownloadStats.ItemSnapshot item) {
+        if (!item.failed) {
+            return LocaleController.getString(R.string.SingGramDownloadItemNoFailure);
+        }
+        if (item.downloadedSize <= 0) {
+            return LocaleController.getString(R.string.SingGramDownloadItemFailedNetwork);
+        }
+        if (item.totalSize > 0 && item.downloadedSize < item.totalSize) {
+            return LocaleController.getString(R.string.SingGramDownloadItemFailedInterrupted);
+        }
+        return LocaleController.getString(R.string.SingGramDownloadItemFailedUnknown);
     }
 
     private String progressValue(SingGramDownloadStats.ItemSnapshot item) {

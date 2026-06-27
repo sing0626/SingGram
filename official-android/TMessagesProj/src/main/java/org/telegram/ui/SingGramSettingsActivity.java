@@ -494,6 +494,8 @@ public class SingGramSettingsActivity extends BaseFragment {
         addDivider(context, aiSection);
         addSwitchSetting(context, aiSection, LocaleController.getString(R.string.SingGramAIPreferCantonese), LocaleController.getString(R.string.SingGramAIPreferCantoneseInfo), SingGramConfig.shouldAiPreferCantonese(), SingGramConfig::setAiPreferCantonese, false);
         addDivider(context, aiSection);
+        addSwitchSetting(context, aiSection, LocaleController.getString(R.string.SingGramAIFallback), LocaleController.getString(R.string.SingGramAIFallbackInfo), SingGramConfig.isAiFallbackEnabled(), SingGramConfig::setAiFallbackEnabled, false);
+        addDivider(context, aiSection);
         addActionCell(context, aiSection, LocaleController.getString(R.string.SingGramAIProvider), aiProviderValue(), true, v -> showAiProviderDialog());
         addDivider(context, aiSection);
         baseUrlField = addField(context, aiSection, LocaleController.getString(R.string.SingGramAIBaseUrl), LocaleController.getString(R.string.SingGramAIBaseUrlHint), SingGramConfig.getAiBaseUrl(), false);
@@ -501,6 +503,8 @@ public class SingGramSettingsActivity extends BaseFragment {
         apiKeyField = addField(context, aiSection, LocaleController.getString(R.string.SingGramAIApiKey), "sk-...", SingGramConfig.getAiApiKey(), false, true);
         addDivider(context, aiSection);
         modelField = addField(context, aiSection, LocaleController.getString(R.string.SingGramAIModel), SingGramConfig.DEFAULT_AI_MODEL, SingGramConfig.getAiModel(), false);
+        addDivider(context, aiSection);
+        addActionCell(context, aiSection, LocaleController.getString(R.string.SingGramAIModelType), aiModelTypeValue(SingGramConfig.getAiModel()), false, null);
         addDivider(context, aiSection);
         addActionCell(context, aiSection, LocaleController.getString(R.string.SingGramAIChooseModel), LocaleController.getString(R.string.SingGramAIChooseModelInfo), true, v -> fetchAndChooseModel());
         addDivider(context, aiSection);
@@ -513,6 +517,10 @@ public class SingGramSettingsActivity extends BaseFragment {
         addIconActionCell(context, aiSection, LocaleController.getString(R.string.SingGramAISaveProvider), LocaleController.getString(R.string.SingGramAISaveProviderInfo), R.drawable.menu_browser_bookmarks, 0xFF8A7CFF, 0xFF5267E8, true, v -> saveCurrentAiProvider());
         addDivider(context, aiSection);
         addIconActionCell(context, aiSection, LocaleController.getString(R.string.SingGramAITestConnection), LocaleController.getString(R.string.SingGramAITestConnectionInfo), R.drawable.settings_features, 0xFF35C46A, 0xFF168DDF, true, v -> testNewApiConnection());
+        addDivider(context, aiSection);
+        addActionCell(context, aiSection, LocaleController.getString(R.string.SingGramAIUsageToday), SingGramConfig.getAiUsageSummary(), false, null);
+        addDivider(context, aiSection);
+        addActionCell(context, aiSection, LocaleController.getString(R.string.SingGramAIStatsLastError), SingGramConfig.getAiLastErrorSummary(), false, null);
         addDivider(context, aiSection);
         addActionCell(context, aiSection, LocaleController.getString(R.string.SingGramAIHealthLast), aiHealthLastValue(), false, null);
         addInfo(context, container, LocaleController.getString(R.string.SingGramAIInfo));
@@ -739,7 +747,8 @@ public class SingGramSettingsActivity extends BaseFragment {
         }
         CharSequence[] items = new CharSequence[models.size()];
         for (int i = 0; i < models.size(); i++) {
-            items[i] = models.get(i);
+            String model = models.get(i);
+            items[i] = model + "  ·  " + aiModelTypeValue(model);
         }
         AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
         builder.setTitle(LocaleController.getString(R.string.SingGramAIChooseModel));
@@ -752,6 +761,26 @@ public class SingGramSettingsActivity extends BaseFragment {
             Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramAIModelSelected), Toast.LENGTH_SHORT).show();
         });
         showDialog(builder.create());
+    }
+
+    private String aiModelTypeValue(String model) {
+        if (TextUtils.isEmpty(model)) {
+            return LocaleController.getString(R.string.SingGramAIModelTypeUnknown);
+        }
+        String value = model.toLowerCase();
+        if (value.contains("vision") || value.contains("vl") || value.contains("omni") || value.contains("4o")) {
+            return LocaleController.getString(R.string.SingGramAIModelTypeVision);
+        }
+        if (value.contains("mini") || value.contains("flash") || value.contains("turbo") || value.contains("fast")) {
+            return LocaleController.getString(R.string.SingGramAIModelTypeFast);
+        }
+        if (value.contains("reason") || value.matches(".*\\bo[134].*")) {
+            return LocaleController.getString(R.string.SingGramAIModelTypeReasoning);
+        }
+        if (value.contains("embed")) {
+            return LocaleController.getString(R.string.SingGramAIModelTypeEmbedding);
+        }
+        return LocaleController.getString(R.string.SingGramAIModelTypeChat);
     }
 
     private void runAction(int action) {

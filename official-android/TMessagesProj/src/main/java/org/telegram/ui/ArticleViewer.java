@@ -4796,6 +4796,9 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
         addSingGramAiSideButton(context, R.drawable.premium_ai_editor, LocaleController.getString(R.string.SingGramAIBrowserSummarize), () -> runSingGramAiBrowserAction(SingGramAiClient.ACTION_SUMMARIZE));
         addSingGramAiSideButton(context, R.drawable.msg_translate, LocaleController.getString(R.string.SingGramAIBrowserTranslate), () -> runSingGramAiBrowserAction(SingGramAiClient.ACTION_TRANSLATE_ZH_HANT));
         addSingGramAiSideButton(context, R.drawable.msg_discussion, LocaleController.getString(R.string.SingGramAIBrowserAsk), this::showSingGramAiBrowserAskDialog);
+        addSingGramAiSideButton(context, R.drawable.msg_info, LocaleController.getString(R.string.SingGramAIBrowserTasks), () -> runSingGramAiBrowserAction(SingGramAiClient.ACTION_PAGE_TASKS));
+        addSingGramAiSideButton(context, R.drawable.menu_copy_s, LocaleController.getString(R.string.SingGramAIBrowserTable), () -> runSingGramAiBrowserAction(SingGramAiClient.ACTION_PAGE_TABLE));
+        addSingGramAiSideButton(context, R.drawable.msg_language, LocaleController.getString(R.string.SingGramAIBrowserLanguage), () -> runSingGramAiBrowserAction(SingGramAiClient.ACTION_PAGE_LANGUAGE));
         containerView.addView(singGramAiSideToolbar, LayoutHelper.createFrame(44, LayoutHelper.WRAP_CONTENT, Gravity.RIGHT | Gravity.CENTER_VERTICAL, 0, 0, 10, 0));
     }
 
@@ -4993,6 +4996,7 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
             AndroidUtilities.addToClipboard(result);
             Toast.makeText(parentActivity, LocaleController.getString(R.string.SingGramTextCopied), Toast.LENGTH_SHORT).show();
         });
+        builder.setNeutralButton(LocaleController.getString(R.string.SingGramAIBrowserFollowUp), (dialog, which) -> showSingGramAiBrowserAskDialog());
         builder.setNegativeButton(LocaleController.getString(R.string.OK), null);
         showDialog(builder.create());
     }
@@ -5003,6 +5007,15 @@ public class ArticleViewer implements NotificationCenter.NotificationCenterDeleg
         }
         if (action == SingGramAiClient.ACTION_ASK_PAGE) {
             return LocaleController.getString(R.string.SingGramAIBrowserAsk);
+        }
+        if (action == SingGramAiClient.ACTION_PAGE_TASKS) {
+            return LocaleController.getString(R.string.SingGramAIBrowserTasks);
+        }
+        if (action == SingGramAiClient.ACTION_PAGE_TABLE) {
+            return LocaleController.getString(R.string.SingGramAIBrowserTable);
+        }
+        if (action == SingGramAiClient.ACTION_PAGE_LANGUAGE) {
+            return LocaleController.getString(R.string.SingGramAIBrowserLanguage);
         }
         return LocaleController.getString(R.string.SingGramAIBrowserSummarize);
     }
