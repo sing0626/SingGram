@@ -10859,7 +10859,7 @@
     <string name="SingGramAIPreferCantoneseInfo">Ask SingGram AI to answer in natural Hong Kong Cantonese by default.</string>
     <string name="SingGramAIFallback">Fallback provider</string>
     <string name="SingGramAIFallbackInfo">If the current NewAPI provider fails, try saved providers in order.</string>
-    <string name="SingGramAIUsageToday">Today's AI usage</string>
+    <string name="SingGramAIUsageToday">Today\'s AI usage</string>
     <string name="SingGramAIUsageSummary">%1$d requests / %2$d OK / %3$d errors / %4$d rate limited / avg %5$d ms</string>
     <string name="SingGramAIStatsLastError">Last AI error</string>
     <string name="SingGramAIStatsNoError">No AI error recorded.</string>
