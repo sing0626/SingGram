@@ -889,30 +889,55 @@ public class SingGramSettingsActivity extends BaseFragment {
         AlertDialog progressDialog = new AlertDialog(getParentActivity(), AlertDialog.ALERT_TYPE_SPINNER);
         progressDialog.setCanCancel(false);
         progressDialog.show();
-        SingGramAiClient.testConnection(new SingGramAiClient.Callback() {
+        SingGramAiClient.fetchModels(new SingGramAiClient.ModelsCallback() {
             @Override
-            public void onResult(String text) {
-                try {
-                    progressDialog.dismiss();
-                } catch (Exception ignore) {
-
-                }
-                if (resultView != null) {
-                    resultView.setText(text);
-                }
-                Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramAIConnectionOk), Toast.LENGTH_SHORT).show();
+            public void onResult(ArrayList<String> models) {
+                runNewApiChatHealthCheck(progressDialog, models, null);
             }
 
             @Override
             public void onError(String error) {
-                try {
-                    progressDialog.dismiss();
-                } catch (Exception ignore) {
-
-                }
-                Toast.makeText(getParentActivity(), error, Toast.LENGTH_LONG).show();
+                runNewApiChatHealthCheck(progressDialog, null, error);
             }
         });
+    }
+
+    private void runNewApiChatHealthCheck(AlertDialog progressDialog, ArrayList<String> models, String modelsError) {
+        SingGramAiClient.testConnection(new SingGramAiClient.Callback() {
+            @Override
+            public void onResult(String text) {
+                finishNewApiHealthCheck(progressDialog, models, modelsError, text, null);
+            }
+
+            @Override
+            public void onError(String error) {
+                finishNewApiHealthCheck(progressDialog, models, modelsError, null, error);
+            }
+        });
+    }
+
+    private void finishNewApiHealthCheck(AlertDialog progressDialog, ArrayList<String> models, String modelsError, String chatResult, String chatError) {
+        try {
+            progressDialog.dismiss();
+        } catch (Exception ignore) {
+
+        }
+        String currentModel = SingGramConfig.getAiModel();
+        boolean modelFound = models != null && models.contains(currentModel);
+        String modelState;
+        if (models != null) {
+            modelState = LocaleController.formatString(R.string.SingGramAIHealthModelsOk, models.size(), modelFound ? LocaleController.getString(R.string.SingGramAIHealthModelFound) : LocaleController.getString(R.string.SingGramAIHealthModelMissing));
+        } else {
+            modelState = LocaleController.formatString(R.string.SingGramAIHealthModelsFailed, TextUtils.isEmpty(modelsError) ? LocaleController.getString(R.string.ErrorOccurred) : modelsError);
+        }
+        String chatState = TextUtils.isEmpty(chatError)
+                ? LocaleController.formatString(R.string.SingGramAIHealthChatOk, TextUtils.isEmpty(chatResult) ? "OK" : chatResult.trim())
+                : LocaleController.formatString(R.string.SingGramAIHealthChatFailed, chatError);
+        String report = LocaleController.formatString(R.string.SingGramAIHealthReport, aiProviderValue(), currentModel, modelState, chatState);
+        if (resultView != null) {
+            resultView.setText(report);
+        }
+        Toast.makeText(getParentActivity(), TextUtils.isEmpty(chatError) ? LocaleController.getString(R.string.SingGramAIConnectionOk) : chatError, TextUtils.isEmpty(chatError) ? Toast.LENGTH_SHORT : Toast.LENGTH_LONG).show();
     }
 
     private String buildInfoValue() {

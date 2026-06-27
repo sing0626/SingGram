@@ -76,6 +76,18 @@ public class SingGramDownloadStatusActivity extends BaseFragment {
         addDivider(context, queueSection);
         addInfoCell(context, queueSection, LocaleController.getString(R.string.SingGramDownloadCenterLimits), LocaleController.getString(R.string.SingGramDownloadBoostFootnote));
 
+        addHeader(context, container, LocaleController.getString(R.string.SingGramDownloadBoostMode));
+        LinearLayout modeSection = addSection(context, container);
+        addBoostModeCell(context, modeSection, LocaleController.getString(R.string.SingGramDownloadBoostOff), LocaleController.getString(R.string.SingGramDownloadThreadsDefault), -1);
+        addDivider(context, modeSection);
+        addBoostModeCell(context, modeSection, LocaleController.getString(R.string.SingGramDownloadBoostAuto), LocaleController.getString(R.string.SingGramDownloadAutoThreads), 3);
+        addDivider(context, modeSection);
+        addBoostModeCell(context, modeSection, LocaleController.getString(R.string.SingGramDownloadBoostBalanced), LocaleController.getString(R.string.SingGramDownloadBoostBalancedInfo), 0);
+        addDivider(context, modeSection);
+        addBoostModeCell(context, modeSection, LocaleController.getString(R.string.SingGramDownloadBoostAggressive), LocaleController.getString(R.string.SingGramDownloadBoostAggressiveInfo), 1);
+        addDivider(context, modeSection);
+        addBoostModeCell(context, modeSection, LocaleController.getString(R.string.SingGramDownloadBoostMaximum), LocaleController.getString(R.string.SingGramDownloadBoostMaximumInfo), 2);
+
         addHeader(context, container, LocaleController.getString(R.string.SingGramDownloadStatusRecent));
         LinearLayout recentSection = addSection(context, container);
         if (snapshot.items.isEmpty()) {
@@ -232,6 +244,33 @@ public class SingGramDownloadStatusActivity extends BaseFragment {
             return LocaleController.getString(R.string.SingGramDownloadBoostMaximum);
         }
         return LocaleController.getString(R.string.SingGramDownloadBoostAggressive);
+    }
+
+    private void addBoostModeCell(Context context, LinearLayout container, String text, String value, int mode) {
+        boolean selected;
+        if (mode < 0) {
+            selected = !SingGramConfig.isDownloadBoostEnabled();
+        } else if (mode == 3) {
+            selected = SingGramConfig.isDownloadBoostEnabled() && SingGramConfig.isDownloadBoostAutoEnabled();
+        } else {
+            selected = SingGramConfig.isDownloadBoostEnabled() && !SingGramConfig.isDownloadBoostAutoEnabled() && SingGramConfig.getDownloadBoostLevel() == mode;
+        }
+        String displayValue = selected ? LocaleController.getString(R.string.SingGramCurrentSelection) + " / " + value : value;
+        addActionCell(context, container, text, displayValue, true, v -> setBoostMode(mode));
+    }
+
+    private void setBoostMode(int mode) {
+        if (mode < 0) {
+            SingGramConfig.setDownloadBoostEnabled(false);
+        } else {
+            SingGramConfig.setDownloadBoostEnabled(true);
+            SingGramConfig.setDownloadBoostAutoEnabled(mode == 3);
+            if (mode >= 0 && mode <= 2) {
+                SingGramConfig.setDownloadBoostLevel(mode);
+            }
+        }
+        Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramDownloadBoostChanged), Toast.LENGTH_SHORT).show();
+        refresh();
     }
 
     private String shortFileName(String fileName) {

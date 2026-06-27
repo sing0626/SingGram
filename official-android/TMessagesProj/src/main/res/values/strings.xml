@@ -10884,6 +10884,13 @@
     <string name="SingGramEventLogCount">%1$d events recorded</string>
     <string name="SingGramAITestConnection">Test NewAPI connection</string>
     <string name="SingGramAIConnectionOk">NewAPI connection works.</string>
+    <string name="SingGramAIHealthModelsOk">%1$d models / %2$s</string>
+    <string name="SingGramAIHealthModelFound">current model found</string>
+    <string name="SingGramAIHealthModelMissing">current model not listed</string>
+    <string name="SingGramAIHealthModelsFailed">models failed: %1$s</string>
+    <string name="SingGramAIHealthChatOk">chat OK: %1$s</string>
+    <string name="SingGramAIHealthChatFailed">chat failed: %1$s</string>
+    <string name="SingGramAIHealthReport">Provider: %1$s\nModel: %2$s\nModels: %3$s\nChat: %4$s</string>
     <string name="SingGramAIExplain">Explain message</string>
     <string name="SingGramAICleanCopy">Clean copy</string>
     <string name="SingGramAIExtractTasks">Extract tasks</string>
@@ -11148,6 +11155,14 @@
     <string name="SingGramOtaDownloadComplete">APK downloaded</string>
     <string name="SingGramOtaInstallDownloaded">Install downloaded APK</string>
     <string name="SingGramOtaInstallDownloadedInfo">Open Android installer for the downloaded APK.</string>
+    <string name="SingGramOtaInstallState">Install state</string>
+    <string name="SingGramOtaInstallPermission">Install permission</string>
+    <string name="SingGramOtaInstallPermissionAllowed">Allowed</string>
+    <string name="SingGramOtaInstallPermissionBlocked">Needs permission</string>
+    <string name="SingGramOtaDownloadedApk">Downloaded APK</string>
+    <string name="SingGramOtaDownloadedApkNone">No saved APK</string>
+    <string name="SingGramOtaGrantInstallPermission">Allow APK install</string>
+    <string name="SingGramOtaGrantInstallPermissionInfo">Open Android permission settings, then return here to continue installing.</string>
     <string name="SingGramOtaInstallPermissionRequired">Allow SingGram to install unknown apps, then return here to continue installing.</string>
     <string name="SingGramOtaInstallPermissionMissing">Install permission was not granted. The APK is still saved in OTA Update Center.</string>
     <string name="SingGramOtaDownloadedApkMissing">The downloaded APK is no longer available. Please download it again.</string>
@@ -11174,6 +11189,7 @@
     <string name="SingGramFeatureHubInfo">Overview of OTA, Liquid Glass, AI, privacy, downloads, push and icon polish.</string>
     <string name="SingGramFeatureHubTitle">SingGram feature hub</string>
     <string name="SingGramFeatureHubSubtitle">A quick launch page for the SingGram features added to this fork.</string>
+    <string name="SingGramFeatureHubControlCenter">Control center</string>
     <string name="SingGramFeatureHubBuild">Build</string>
     <string name="SingGramFeatureHubEnabled">Active</string>
     <string name="SingGramFeatureHubNow">Ready now</string>

@@ -65,6 +65,14 @@ public class SingGramFeatureHubActivity extends BaseFragment {
 
         addHero(context, container);
 
+        addHeader(context, container, LocaleController.getString(R.string.SingGramFeatureHubControlCenter));
+        LinearLayout statusSection = addSection(context, container);
+        addFeatureCell(context, statusSection, LocaleController.getString(R.string.SingGramAINewApiConnection), aiProviderStatusValue(), R.drawable.premium_ai_editor, 0xFF23B9C9, 0xFF2684E8, v -> presentFragment(SingGramSettingsActivity.aiPage()));
+        addDivider(context, statusSection);
+        addFeatureCell(context, statusSection, LocaleController.getString(R.string.SingGramBrowserEngine), browserValue(), R.drawable.settings_language, 0xFF23B9C9, 0xFF617CFF, v -> presentFragment(SingGramSettingsActivity.aiPage()));
+        addDivider(context, statusSection);
+        addFeatureCell(context, statusSection, LocaleController.getString(R.string.SingGramCrashSafeMode), crashValue(), R.drawable.settings_power, 0xFFFF8B3D, 0xFFE45644, v -> presentFragment(SingGramSettingsActivity.diagnosticsPage()));
+
         addHeader(context, container, LocaleController.getString(R.string.SingGramFeatureHubNow));
         LinearLayout liveSection = addSection(context, container);
         addFeatureCell(context, liveSection, LocaleController.getString(R.string.SingGramLiquidGlassStudio), liquidGlassValue(), R.drawable.settings_chat, 0xFFB659FF, 0xFF617CFF, v -> presentFragment(new SingGramLiquidGlassStudioActivity()));
@@ -220,6 +228,14 @@ public class SingGramFeatureHubActivity extends BaseFragment {
     private String aiValue() {
         String configured = SingGramConfig.isAiConfigured() ? SingGramConfig.getAiModel() : LocaleController.getString(R.string.SingGramDoctorNotConfigured);
         return stateValue(SingGramConfig.isAiEnabled()) + " / " + configured;
+    }
+
+    private String aiProviderStatusValue() {
+        String provider = SingGramConfig.getAiProviderSummary();
+        if (TextUtils.isEmpty(provider)) {
+            provider = LocaleController.getString(R.string.SingGramAIProviderNone);
+        }
+        return provider + " / " + aiValue();
     }
 
     private String browserValue() {

@@ -109,7 +109,6 @@ public class SingGramUpdateActivity extends BaseFragment {
             waitingForInstallPermission = false;
             installDownloadedApk();
         } else if (waitingForInstallPermission && SingGramConfig.hasPendingUpdateInstall()) {
-            SingGramConfig.setPendingUpdateInstall(false);
             waitingForInstallPermission = false;
             showToast(LocaleController.getString(R.string.SingGramOtaInstallPermissionMissing), Toast.LENGTH_LONG);
         }
@@ -155,6 +154,16 @@ public class SingGramUpdateActivity extends BaseFragment {
         addInfoCell(context, versionSection, LocaleController.getString(R.string.SingGramOtaLastChecked), lastCheckedValue());
         addDivider(context, versionSection);
         addInfoCell(context, versionSection, LocaleController.getString(R.string.SingGramOtaReleaseChannel), SingGramUpdateClient.DEFAULT_RELEASE_URL);
+
+        addHeader(context, contentContainer, LocaleController.getString(R.string.SingGramOtaInstallState));
+        LinearLayout installSection = addSection(context, contentContainer);
+        addInfoCell(context, installSection, LocaleController.getString(R.string.SingGramOtaInstallPermission), installPermissionValue());
+        addDivider(context, installSection);
+        addInfoCell(context, installSection, LocaleController.getString(R.string.SingGramOtaDownloadedApk), downloadedApkValue());
+        if (downloadedApkFile != null && downloadedApkFile.exists() && !canInstallPackages()) {
+            addDivider(context, installSection);
+            addActionRow(context, installSection, LocaleController.getString(R.string.SingGramOtaGrantInstallPermission), LocaleController.getString(R.string.SingGramOtaGrantInstallPermissionInfo), R.drawable.msg_permissions, 0xFFFF8B3D, 0xFFE45644, true, v -> openInstallPermissionSettings());
+        }
 
         addHeader(context, contentContainer, LocaleController.getString(R.string.SingGramUpdateActions));
         LinearLayout actionSection = addSection(context, contentContainer);
@@ -364,6 +373,18 @@ public class SingGramUpdateActivity extends BaseFragment {
             return LocaleController.getString(R.string.SingGramUpdateNoApk);
         }
         return LocaleController.getString(R.string.SingGramOtaOpenLatestInfo);
+    }
+
+    private String installPermissionValue() {
+        return LocaleController.getString(canInstallPackages() ? R.string.SingGramOtaInstallPermissionAllowed : R.string.SingGramOtaInstallPermissionBlocked);
+    }
+
+    private String downloadedApkValue() {
+        restoreDownloadedApkState();
+        if (downloadedApkFile == null || !downloadedApkFile.exists()) {
+            return LocaleController.getString(R.string.SingGramOtaDownloadedApkNone);
+        }
+        return downloadedApkFile.getName() + " / " + AndroidUtilities.formatFileSize(downloadedApkFile.length());
     }
 
     private String notesValue() {

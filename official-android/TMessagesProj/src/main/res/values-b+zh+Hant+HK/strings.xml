@@ -175,6 +175,13 @@
     <string name="SingGramEventLogCount">已記錄 %1$d 個事件</string>
     <string name="SingGramAITestConnection">測試 NewAPI 連線</string>
     <string name="SingGramAIConnectionOk">NewAPI 連線正常。</string>
+    <string name="SingGramAIHealthModelsOk">%1$d 個模型 / %2$s</string>
+    <string name="SingGramAIHealthModelFound">搵到目前模型</string>
+    <string name="SingGramAIHealthModelMissing">目前模型唔喺列表</string>
+    <string name="SingGramAIHealthModelsFailed">模型檢查失敗：%1$s</string>
+    <string name="SingGramAIHealthChatOk">聊天測試正常：%1$s</string>
+    <string name="SingGramAIHealthChatFailed">聊天測試失敗：%1$s</string>
+    <string name="SingGramAIHealthReport">Provider：%1$s\n模型：%2$s\n模型列表：%3$s\n聊天：%4$s</string>
     <string name="SingGramAIExplain">解釋訊息</string>
     <string name="SingGramAICleanCopy">清理成可複製文字</string>
     <string name="SingGramAIExtractTasks">抽出待辦</string>
@@ -439,6 +446,14 @@
     <string name="SingGramOtaDownloadComplete">APK 已下載</string>
     <string name="SingGramOtaInstallDownloaded">安裝已下載 APK</string>
     <string name="SingGramOtaInstallDownloadedInfo">開啟 Android 安裝器安裝已下載 APK。</string>
+    <string name="SingGramOtaInstallState">安裝狀態</string>
+    <string name="SingGramOtaInstallPermission">安裝權限</string>
+    <string name="SingGramOtaInstallPermissionAllowed">已允許</string>
+    <string name="SingGramOtaInstallPermissionBlocked">需要授權</string>
+    <string name="SingGramOtaDownloadedApk">已下載 APK</string>
+    <string name="SingGramOtaDownloadedApkNone">未有已保存 APK</string>
+    <string name="SingGramOtaGrantInstallPermission">允許安裝 APK</string>
+    <string name="SingGramOtaGrantInstallPermissionInfo">開 Android 權限設定，之後返嚟呢度繼續安裝。</string>
     <string name="SingGramOtaUpdatePromptTitle">SingGram 有新版本</string>
     <string name="SingGramOtaUpdatePromptMessage">版本 %1$s 已經準備好。打開 OTA 更新中心就可以下載同安裝。</string>
     <string name="SingGramOtaUpdatePromptOpen">立即更新</string>
@@ -461,6 +476,7 @@
     <string name="SingGramFeatureHubInfo">集中睇 OTA、Liquid Glass、AI、私隱、下載、推送同 icon 狀態。</string>
     <string name="SingGramFeatureHubTitle">SingGram 功能總覽</string>
     <string name="SingGramFeatureHubSubtitle">呢度係今次 fork 加落去嘅功能入口，方便一次過睇晒同打開。</string>
+    <string name="SingGramFeatureHubControlCenter">控制中心</string>
     <string name="SingGramFeatureHubBuild">版本</string>
     <string name="SingGramFeatureHubEnabled">已啟用</string>
     <string name="SingGramFeatureHubNow">已準備</string>
