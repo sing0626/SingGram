@@ -1,9 +1,9 @@
 {
   "upstream": "https://github.com/DrKLO/Telegram.git",
   "ref": "master",
-  "importedCommit": "45ab8f4308496e1f01026a97fcdb0d58a5274474",
-  "importedVersion": "12.9.2",
-  "importedVersionCode": "6991",
-  "lastCheckedAt": 1785729269.642475,
-  "lastCheckedCommit": "45ab8f4308496e1f01026a97fcdb0d58a5274474"
+  "importedCommit": "4e1a61eca6c9b6ee3aa9c35cf8c70554750f2439",
+  "importedVersion": "12.10.0",
+  "importedVersionCode": "7031",
+  "lastCheckedAt": 1787381956.631824,
+  "lastCheckedCommit": "4e1a61eca6c9b6ee3aa9c35cf8c70554750f2439"
 }
