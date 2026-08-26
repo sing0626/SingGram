@@ -69,8 +69,6 @@ public class SingGramFeatureHubActivity extends BaseFragment {
         LinearLayout statusSection = addSection(context, container);
         addFeatureCell(context, statusSection, LocaleController.getString(R.string.SingGramAINewApiConnection), aiProviderStatusValue(), R.drawable.premium_ai_editor, 0xFF23B9C9, 0xFF2684E8, v -> presentFragment(SingGramSettingsActivity.aiPage()));
         addDivider(context, statusSection);
-        addFeatureCell(context, statusSection, LocaleController.getString(R.string.SingGramBrowserEngine), browserValue(), R.drawable.settings_language, 0xFF23B9C9, 0xFF617CFF, v -> presentFragment(SingGramSettingsActivity.aiPage()));
-        addDivider(context, statusSection);
         addFeatureCell(context, statusSection, LocaleController.getString(R.string.SingGramCrashSafeMode), crashValue(), R.drawable.settings_power, 0xFFFF8B3D, 0xFFE45644, v -> presentFragment(SingGramSettingsActivity.diagnosticsPage()));
 
         addHeader(context, container, LocaleController.getString(R.string.SingGramFeatureHubNow));
@@ -88,8 +86,6 @@ public class SingGramFeatureHubActivity extends BaseFragment {
         addFeatureCell(context, aiPrivacySection, LocaleController.getString(R.string.SingGramPrivacyPanel), privacyValue(), R.drawable.settings_privacy, 0xFF55CA47, 0xFF27B434, v -> presentFragment(SingGramSettingsActivity.privacyPage()));
         addDivider(context, aiPrivacySection);
         addFeatureCell(context, aiPrivacySection, LocaleController.getString(R.string.SingGramAIShortcutTools), aiValue(), R.drawable.premium_ai_editor, 0xFF23B9C9, 0xFF2684E8, v -> presentFragment(SingGramSettingsActivity.aiPage()));
-        addDivider(context, aiPrivacySection);
-        addFeatureCell(context, aiPrivacySection, LocaleController.getString(R.string.SingGramAIBrowser), browserValue(), R.drawable.settings_language, 0xFF23B9C9, 0xFF617CFF, v -> presentFragment(SingGramSettingsActivity.aiPage()));
         addDivider(context, aiPrivacySection);
         addFeatureCell(context, aiPrivacySection, LocaleController.getString(R.string.SingGramChatNotesAll), LocaleController.formatString(R.string.SingGramChatNotesAllCount, SingGramChatNotesStore.getNotesCount()), R.drawable.msg_addbio, 0xFF55CA47, 0xFF27B434, v -> presentFragment(new SingGramChatNotesListActivity()));
 
@@ -189,7 +185,6 @@ public class SingGramFeatureHubActivity extends BaseFragment {
         if (SingGramConfig.isAiEnabled()) count++;
         if (SingGramConfig.shouldAiPreferCantonese()) count++;
         if (UserConfig.getActivatedAccountsCount() > 1) count++;
-        if (SingGramConfig.shouldUseGeckoBrowser()) count++;
         if (SingGramConfig.isCrashSafeModeEnabled()) count++;
         return count;
     }
@@ -236,12 +231,6 @@ public class SingGramFeatureHubActivity extends BaseFragment {
             provider = LocaleController.getString(R.string.SingGramAIProviderNone);
         }
         return provider + " / " + aiValue();
-    }
-
-    private String browserValue() {
-        return SingGramConfig.shouldUseGeckoBrowser()
-                ? LocaleController.getString(R.string.SingGramBrowserEngineGecko)
-                : LocaleController.getString(R.string.SingGramBrowserEngineSystem);
     }
 
     private String crashValue() {

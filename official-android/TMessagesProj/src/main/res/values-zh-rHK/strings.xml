@@ -322,12 +322,6 @@
     <string name="SingGramAIBrowserNoPage">暫時未有頁面可以分析。</string>
     <string name="SingGramAIBrowser">AI Browser</string>
     <string name="SingGramAIChatApp">Apps：同 API 對話</string>
-    <string name="SingGramBrowserEngine">Browser 內核</string>
-    <string name="SingGramBrowserEngineSystem">系統 WebView</string>
-    <string name="SingGramBrowserEngineGecko">GeckoView 實驗版</string>
-    <string name="SingGramBrowserEngineInfo">GeckoView 會喺 Android 8+ 用內置 Firefox 內核開一般網頁。Telegram Web Apps 會繼續用系統 WebView，保持相容。</string>
-    <string name="SingGramBrowserEngineChanged">Browser 內核已更新。重新開 AI Browser 後生效。</string>
-    <string name="SingGramBrowserEngineFallback">GeckoView 開唔到呢頁，會改用系統 WebView。</string>
     <string name="SingGramBrowserPageError">呢頁載入唔到。你可以重試、複製連結、外部開啟，或者交返畀 Telegram AI Browser。</string>
     <string name="SingGramDiagnostics">診斷</string>
     <string name="SingGramExportLogs">匯出記錄</string>

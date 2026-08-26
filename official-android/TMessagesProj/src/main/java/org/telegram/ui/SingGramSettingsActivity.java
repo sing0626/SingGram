@@ -390,8 +390,6 @@ public class SingGramSettingsActivity extends BaseFragment {
         addDivider(context, toolsSection);
         addIconActionCell(context, toolsSection, LocaleController.getString(R.string.SingGramUpdates), updateSummaryValue(), R.drawable.settings_features, 0xFF4EA5F6, 0xFF3577E5, true, v -> presentFragment(new SingGramUpdateActivity()));
         addDivider(context, toolsSection);
-        addIconActionCell(context, toolsSection, LocaleController.getString(R.string.SingGramAIBrowser), browserEngineValue(), R.drawable.settings_language, 0xFF23B9C9, 0xFF617CFF, true, v -> presentFragment(SingGramSettingsActivity.aiPage()));
-        addDivider(context, toolsSection);
         addIconActionCell(context, toolsSection, LocaleController.getString(R.string.SingGramCrashRecovery), crashSafeModeValue(), R.drawable.settings_power, 0xFFFF8B3D, 0xFFE45644, true, v -> applyCrashRecovery());
         addDivider(context, toolsSection);
         addIconActionCell(context, toolsSection, LocaleController.getString(R.string.SingGramDoctor), LocaleController.getString(R.string.SingGramDoctorInfo), R.drawable.settings_power, 0xFFFF8B3D, 0xFFE45644, true, v -> presentFragment(new SingGramDoctorActivity()));
@@ -536,11 +534,6 @@ public class SingGramSettingsActivity extends BaseFragment {
         addSwitchSetting(context, chatSection, LocaleController.getString(R.string.SingGramAIInsertResultSwitch), LocaleController.getString(R.string.SingGramAIInsertResultSwitchInfo), SingGramConfig.isAiInsertResultEnabled(), SingGramConfig::setAiInsertResultEnabled, false);
         addDivider(context, chatSection);
         addActionCell(context, chatSection, LocaleController.getString(R.string.SingGramChatNotesAll), LocaleController.formatString(R.string.SingGramChatNotesAllCount, SingGramChatNotesStore.getNotesCount()), true, v -> presentFragment(new SingGramChatNotesListActivity()));
-
-        addHeader(context, container, LocaleController.getString(R.string.SingGramAIBrowser));
-        LinearLayout browserSection = addSection(context, container);
-        addActionCell(context, browserSection, LocaleController.getString(R.string.SingGramBrowserEngine), browserEngineValue(), true, v -> showBrowserEngineDialog());
-        addInfo(context, container, LocaleController.getString(R.string.SingGramBrowserEngineInfo));
 
         addHeader(context, container, LocaleController.getString(R.string.SingGramAITestLab));
         LinearLayout testSection = addSection(context, container);
@@ -1243,29 +1236,6 @@ public class SingGramSettingsActivity extends BaseFragment {
             return LocaleController.getString(R.string.SingGramLiquidGlassStrong);
         }
         return LocaleController.getString(R.string.SingGramLiquidGlassStandard);
-    }
-
-    private String browserEngineValue() {
-        return SingGramConfig.getBrowserEngine() == SingGramConfig.BROWSER_ENGINE_GECKOVIEW
-                ? LocaleController.getString(R.string.SingGramBrowserEngineGecko)
-                : LocaleController.getString(R.string.SingGramBrowserEngineSystem);
-    }
-
-    private void showBrowserEngineDialog() {
-        String[] items = new String[] {
-                LocaleController.getString(R.string.SingGramBrowserEngineSystem),
-                LocaleController.getString(R.string.SingGramBrowserEngineGecko)
-        };
-        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
-        builder.setTitle(LocaleController.getString(R.string.SingGramBrowserEngine));
-        builder.setItems(items, (dialog, which) -> {
-            SingGramConfig.setBrowserEngine(which == 1 ? SingGramConfig.BROWSER_ENGINE_GECKOVIEW : SingGramConfig.BROWSER_ENGINE_SYSTEM_WEBVIEW);
-            Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramBrowserEngineChanged), Toast.LENGTH_SHORT).show();
-            if (getParentActivity() != null) {
-                createView(getParentActivity());
-            }
-        });
-        showDialog(builder.create());
     }
 
     private void showDownloadBoostModeDialog() {

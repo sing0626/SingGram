@@ -25,8 +25,6 @@
     <uses-permission android:name="android.permission.READ_CALL_LOG" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
 
-    <uses-sdk tools:overrideLibrary="org.mozilla.geckoview" />
-
     <permission android:name="${applicationId}.permission.MAPS_RECEIVE" android:protectionLevel="signature"/>
 
     <application

@@ -75,11 +75,8 @@ public class SingGramConfig {
     private static final String KEY_UPDATE_INSTALL_HISTORY = "update_install_history";
     private static final String KEY_PENDING_UPDATE_INSTALL = "pending_update_install";
     private static final String KEY_LAST_FEATURE_HUB_INTRO_BUILD = "last_feature_hub_intro_build";
-    private static final String KEY_BROWSER_ENGINE = "browser_engine";
 
     public static final String DEFAULT_AI_MODEL = "gpt-4o-mini";
-    public static final int BROWSER_ENGINE_SYSTEM_WEBVIEW = 0;
-    public static final int BROWSER_ENGINE_GECKOVIEW = 1;
     private static boolean crashHandlerInstalled;
 
     public static class AiProvider {
@@ -462,19 +459,6 @@ public class SingGramConfig {
 
     private static String todayKey() {
         return new SimpleDateFormat("yyyyMMdd", Locale.US).format(new Date());
-    }
-
-    public static int getBrowserEngine() {
-        int engine = getInt(KEY_BROWSER_ENGINE, BROWSER_ENGINE_SYSTEM_WEBVIEW);
-        return engine == BROWSER_ENGINE_GECKOVIEW ? BROWSER_ENGINE_GECKOVIEW : BROWSER_ENGINE_SYSTEM_WEBVIEW;
-    }
-
-    public static void setBrowserEngine(int engine) {
-        setInt(KEY_BROWSER_ENGINE, engine == BROWSER_ENGINE_GECKOVIEW ? BROWSER_ENGINE_GECKOVIEW : BROWSER_ENGINE_SYSTEM_WEBVIEW);
-    }
-
-    public static boolean shouldUseGeckoBrowser() {
-        return !isCrashSafeModeEnabled() && getBrowserEngine() == BROWSER_ENGINE_GECKOVIEW;
     }
 
     public static boolean isLiquidGlassEnabled() {
@@ -1093,7 +1077,6 @@ public class SingGramConfig {
                     .putBoolean(KEY_AI_ENABLED, false)
                     .putBoolean(KEY_LIQUID_GLASS, false)
                     .putBoolean(KEY_DOWNLOAD_BOOST, false)
-                    .putInt(KEY_BROWSER_ENGINE, BROWSER_ENGINE_SYSTEM_WEBVIEW)
                     .apply();
         }
     }

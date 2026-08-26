@@ -54,7 +54,6 @@ import org.telegram.ui.ActionBar.BottomSheetTabs;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.BubbleActivity;
 import org.telegram.ui.LaunchActivity;
-import org.telegram.ui.SingGramGeckoBrowserActivity;
 import org.telegram.ui.web.RestrictedDomainsList;
 
 import java.lang.ref.WeakReference;
@@ -488,16 +487,6 @@ public class Browser {
     }
 
     public static boolean openInTelegramBrowser(Context context, String url, Browser.Progress progress) {
-        return openInTelegramBrowser(context, url, progress, true);
-    }
-
-    public static boolean openInTelegramBrowser(Context context, String url, Browser.Progress progress, boolean allowSingGramGecko) {
-        if (allowSingGramGecko && SingGramGeckoBrowserActivity.openIfEnabled(context, url)) {
-            if (progress != null) {
-                progress.end(true);
-            }
-            return true;
-        }
         if (LaunchActivity.instance != null) {
             BottomSheetTabs tabs = LaunchActivity.instance.getBottomSheetTabs();
             if (tabs != null && tabs.tryReopenTab(url) != null) {

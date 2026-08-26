@@ -84,7 +84,7 @@
 
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
 
-    <uses-sdk tools:overrideLibrary="com.google.mlkit.vision.segmentation.subject,org.mozilla.geckoview"/>
+    <uses-sdk tools:overrideLibrary="com.google.mlkit.vision.segmentation.subject"/>
 
     <queries>
         <package android:name="com.google.android.apps.maps"/>
@@ -288,13 +288,6 @@
                 android:name="com.google.mlkit.vision.DEPENDENCIES"
                 android:value="subject_segment" />
         </activity>
-
-        <activity
-            android:name="org.telegram.ui.SingGramGeckoBrowserActivity"
-            android:theme="@style/Theme.TMessages"
-            android:configChanges="keyboard|keyboardHidden|orientation|screenSize|uiMode|smallestScreenSize|screenLayout"
-            android:hardwareAccelerated="true"
-            android:exported="false" />
 
         <activity-alias
             android:name="org.telegram.ui.CallsActivity"
