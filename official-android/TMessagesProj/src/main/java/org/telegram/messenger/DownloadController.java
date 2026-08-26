@@ -333,7 +333,7 @@ public class DownloadController extends BaseController implements NotificationCe
         BroadcastReceiver networkStateReceiver = new BroadcastReceiver() {
             @Override
             public void onReceive(Context context, Intent intent) {
-                checkAutodownloadSettings();
+                refreshSingGramAutomaticDownloads();
             }
         };
         IntentFilter filter = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
@@ -604,6 +604,11 @@ public class DownloadController extends BaseController implements NotificationCe
                 getMessagesStorage().clearDownloadQueue(AUTODOWNLOAD_TYPE_DOCUMENT);
             }
         }
+    }
+
+    public void refreshSingGramAutomaticDownloads() {
+        lastCheckMask = -1;
+        checkAutodownloadSettings();
     }
 
     public boolean canDownloadMedia(MessageObject messageObject) {
@@ -1131,6 +1136,9 @@ public class DownloadController extends BaseController implements NotificationCe
 
     protected void processDownloadObjects(int type, ArrayList<DownloadObject> objects) {
         if (objects.isEmpty()) {
+            return;
+        }
+        if (SingGramWorkspaceConfig.shouldDeferAutomaticDownload(currentAccount)) {
             return;
         }
         ArrayList<DownloadObject> queue;

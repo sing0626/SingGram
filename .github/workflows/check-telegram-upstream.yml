@@ -110,7 +110,7 @@ jobs:
           fi
 
       - name: Commit upstream version metadata
-        if: ${{ steps.upstream.outputs.changed == 'true' && (github.event_name == 'schedule' || inputs.auto_commit_to_branch) }}
+        if: ${{ github.event_name == 'schedule' || inputs.auto_commit_to_branch }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
@@ -120,6 +120,7 @@ jobs:
           LATEST_SHORT: ${{ steps.upstream.outputs.latest_short }}
           LATEST_VERSION: ${{ steps.upstream.outputs.latest_version }}
           LATEST_VERSION_CODE: ${{ steps.upstream.outputs.latest_version_code }}
+          UPSTREAM_CHANGED: ${{ steps.upstream.outputs.changed }}
         run: |
           set -euo pipefail
 
@@ -127,31 +128,38 @@ jobs:
           git switch "$TARGET_BRANCH" || git switch -c "$TARGET_BRANCH" "origin/$TARGET_BRANCH"
           git pull --ff-only origin "$TARGET_BRANCH"
 
-          jq \
-            --arg upstream "$UPSTREAM_URL" \
-            --arg ref "$UPSTREAM_REF" \
-            --arg commit "$LATEST_COMMIT" \
-            --arg version "$LATEST_VERSION" \
-            --arg versionCode "$LATEST_VERSION_CODE" \
-            '.upstream = $upstream
-             | .ref = $ref
-             | .importedCommit = $commit
-             | .importedVersion = $version
-             | .importedVersionCode = $versionCode
-             | .lastCheckedAt = now
-             | .lastCheckedCommit = $commit' \
-            .github/singgram-upstream.json > /tmp/singgram-upstream.json
-          mv /tmp/singgram-upstream.json .github/singgram-upstream.json
+          if [[ "$UPSTREAM_CHANGED" == "true" ]]; then
+            jq \
+              --arg upstream "$UPSTREAM_URL" \
+              --arg ref "$UPSTREAM_REF" \
+              --arg commit "$LATEST_COMMIT" \
+              --arg version "$LATEST_VERSION" \
+              --arg versionCode "$LATEST_VERSION_CODE" \
+              '.upstream = $upstream
+               | .ref = $ref
+               | .importedCommit = $commit
+               | .importedVersion = $version
+               | .importedVersionCode = $versionCode
+               | .lastCheckedAt = now
+               | .lastCheckedCommit = $commit' \
+              .github/singgram-upstream.json > /tmp/singgram-upstream.json
+            mv /tmp/singgram-upstream.json .github/singgram-upstream.json
 
-          perl -0pi -e "s/APP_VERSION_NAME=.*/APP_VERSION_NAME=$LATEST_VERSION/" official-android/gradle.properties
+            perl -0pi -e "s/APP_VERSION_NAME=.*/APP_VERSION_NAME=$LATEST_VERSION/" official-android/gradle.properties
+          fi
+          bash scripts/update_upstream_version_docs.sh "$LATEST_VERSION" "$LATEST_VERSION_CODE" "$LATEST_COMMIT"
 
-          if git diff --quiet -- .github/singgram-upstream.json official-android/gradle.properties; then
+          if git diff --quiet -- .github/singgram-upstream.json official-android/gradle.properties README.md docs/official-android-fork.md; then
             echo "No metadata changes to commit."
           else
             git config user.name "github-actions[bot]"
             git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add .github/singgram-upstream.json official-android/gradle.properties
-            git commit -m "Track Telegram Android $LATEST_VERSION"
+            git add .github/singgram-upstream.json official-android/gradle.properties README.md docs/official-android-fork.md
+            if [[ "$UPSTREAM_CHANGED" == "true" ]]; then
+              git commit -m "Track Telegram Android $LATEST_VERSION"
+            else
+              git commit -m "Refresh Telegram Android version docs"
+            fi
             git push origin "HEAD:$TARGET_BRANCH"
           fi
 

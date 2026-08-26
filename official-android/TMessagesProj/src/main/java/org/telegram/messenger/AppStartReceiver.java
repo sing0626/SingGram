@@ -22,6 +22,7 @@ public class AppStartReceiver extends BroadcastReceiver {
                     SharedConfig.appLocked = true;
                     SharedConfig.saveConfig();
                 }
+                SingGramChatNotesStore.rescheduleFollowUps();
                 ApplicationLoader.startPushService();
             });
         }

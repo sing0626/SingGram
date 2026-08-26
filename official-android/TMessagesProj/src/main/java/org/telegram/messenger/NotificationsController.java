@@ -1219,6 +1219,9 @@ public class NotificationsController extends BaseController {
                 if (BuildVars.LOGS_ENABLED) {
                     FileLog.d("NotificationsController: process new messages, value is " + value + " ("+dialogId+", "+isChannel+", "+messageObject.isReactionPush+", "+messageObject.isStoryReactionPush+")");
                 }
+                if (value && !SingGramWorkspaceConfig.shouldShowNotification(currentAccount, messageObject)) {
+                    value = false;
+                }
                 if (value) {
                     if (!isFcm) {
                         popup = addToPopupMessages(popupArrayAdd, messageObject, dialogId, isChannel, preferences);
@@ -1299,6 +1302,7 @@ public class NotificationsController extends BaseController {
                     } else {
                         canAddValue = notifyOverride != 2;
                     }
+                    canAddValue = canAddValue && SingGramWorkspaceConfig.shouldShowNotification(currentAccount, messageObject);
 
                     Integer currentCount = pushDialogs.get(dialog_id);
                     int newCount = currentCount != null ? currentCount + 1 : 1;

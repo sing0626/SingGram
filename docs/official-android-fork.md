@@ -6,7 +6,7 @@ This branch uses the official Telegram Android source as the base UI and client 
 
 - Upstream: `https://github.com/DrKLO/Telegram`
 - Imported under: `official-android/`
-- Imported upstream commit: `9fea7264 update to 12.7.3 (6750)`
+- Imported upstream metadata: `62b56a07ca7e30e39f7fd00a6728d6bbd716ca1c` / Telegram Android `12.10.1` / version code `7038`
 - License: GPL-2.0 or later, as shipped by upstream.
 
 Production work should target `official-android/`.
@@ -37,7 +37,7 @@ Inside the official Android project these become:
 
 ## Liquid Glass Direction
 
-Telegram Android 12.7.3 already contains a native glass pipeline:
+The tracked official Telegram Android source contains a native glass pipeline:
 
 - `org.telegram.ui.Components.blur3.LiquidGlassEffect`
 - `org.telegram.ui.Components.blur3.drawable.BlurredBackgroundDrawableRenderNode`
@@ -79,8 +79,10 @@ The workflow at `.github/workflows/check-telegram-upstream.yml` checks
 `https://github.com/DrKLO/Telegram.git` every six hours and can also be started
 manually. It compares the upstream ref and app version with
 `.github/singgram-upstream.json`; when a newer upstream version is detected, it
-commits the new tracker metadata and `APP_VERSION_NAME` to
-`android-official-fork`, then dispatches the public SingGram release build.
+commits the new tracker metadata, `APP_VERSION_NAME`, README, and fork documentation to
+`android-official-fork`, then dispatches the public SingGram release build. Every check
+also corrects the version values in README and this document if they drift from the
+detected upstream metadata.
 
 It still does not blindly merge upstream source code into SingGram, because
 upstream changes can conflict with branding, settings, Liquid Glass, diagnostics,

@@ -31,6 +31,7 @@ public class SingGramAiClient {
     public static final int ACTION_PAGE_TABLE = 13;
     public static final int ACTION_PAGE_TASKS = 14;
     public static final int ACTION_PAGE_LANGUAGE = 15;
+    public static final int ACTION_FOLLOW_UP_BRIEF = 16;
 
     public interface Callback {
         void onResult(String text);
@@ -88,6 +89,8 @@ public class SingGramAiClient {
                 return LocaleController.getString(R.string.SingGramAIBrowserTasks);
             case ACTION_PAGE_LANGUAGE:
                 return LocaleController.getString(R.string.SingGramAIBrowserLanguage);
+            case ACTION_FOLLOW_UP_BRIEF:
+                return LocaleController.getString(R.string.SingGramAIFollowUpBrief);
             default:
                 return LocaleController.getString(R.string.SingGramAI);
         }
@@ -307,6 +310,8 @@ public class SingGramAiClient {
                 return base + "\nExtract actionable tasks, deadlines, people, links, and follow-up items from the supplied page. If there are no tasks, summarize the useful facts briefly.";
             case ACTION_PAGE_LANGUAGE:
                 return base + "\nDetect the main language of the supplied page, say whether a Traditional Chinese or Cantonese translation is useful, then give a short recommendation for summarize, translate, table, or tasks.";
+            case ACTION_FOLLOW_UP_BRIEF:
+                return base + "\nTurn the message into a concise follow-up brief with exactly these headings: Next action, Owner, Due, Context. Preserve uncertain facts as uncertain. If no deadline or owner is stated, say Not specified.";
             default:
                 return base;
         }

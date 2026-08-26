@@ -1,5 +1,6 @@
 package org.telegram.ui;
 
+import android.app.TimePickerDialog;
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -11,6 +12,7 @@ import android.os.Build;
 import android.provider.Settings;
 import android.text.InputType;
 import android.text.TextUtils;
+import android.text.format.DateFormat;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -28,13 +30,18 @@ import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SingGramAiClient;
 import org.telegram.messenger.SingGramBackupBundle;
+import org.telegram.messenger.SingGramBotAuth;
+import org.telegram.messenger.SingGramCallDiagnostics;
 import org.telegram.messenger.SingGramChatNotesStore;
 import org.telegram.messenger.SingGramConfig;
 import org.telegram.messenger.SingGramDownloadStats;
 import org.telegram.messenger.SingGramEventLog;
 import org.telegram.messenger.SingGramPushDiagnostics;
+import org.telegram.messenger.SingGramWorkspaceConfig;
 import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.UserConfig;
+import org.telegram.messenger.UserObject;
+import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
@@ -55,6 +62,8 @@ public class SingGramSettingsActivity extends BaseFragment {
     private static final int MODE_DOWNLOADS = 4;
     private static final int MODE_APPEARANCE = 5;
     private static final int MODE_DIAGNOSTICS = 6;
+    private static final int MODE_WORKSPACE = 7;
+    private static final int MODE_CALL_HEALTH = 8;
 
     private final int mode;
 
@@ -63,6 +72,7 @@ public class SingGramSettingsActivity extends BaseFragment {
     private EditTextBoldCursor modelField;
     private EditTextBoldCursor systemPromptField;
     private EditTextBoldCursor inputField;
+    private EditTextBoldCursor priorityKeywordsField;
     private TextView resultView;
     private TextCheckCell aiEnabledCell;
     private TextCheckCell liquidGlassCell;
@@ -102,6 +112,14 @@ public class SingGramSettingsActivity extends BaseFragment {
 
     public static SingGramSettingsActivity diagnosticsPage() {
         return new SingGramSettingsActivity(MODE_DIAGNOSTICS);
+    }
+
+    public static SingGramSettingsActivity workspacePage() {
+        return new SingGramSettingsActivity(MODE_WORKSPACE);
+    }
+
+    public static SingGramSettingsActivity callHealthPage() {
+        return new SingGramSettingsActivity(MODE_CALL_HEALTH);
     }
 
     @Override
@@ -321,6 +339,10 @@ public class SingGramSettingsActivity extends BaseFragment {
                 return LocaleController.getString(R.string.SingGramAppearance);
             case MODE_DIAGNOSTICS:
                 return LocaleController.getString(R.string.SingGramDiagnostics);
+            case MODE_WORKSPACE:
+                return LocaleController.getString(R.string.SingGramWorkspace);
+            case MODE_CALL_HEALTH:
+                return LocaleController.getString(R.string.SingGramCallHealth);
             case MODE_HOME:
             default:
                 return LocaleController.getString(R.string.SingGramSettingsTitle);
@@ -346,6 +368,12 @@ public class SingGramSettingsActivity extends BaseFragment {
                 break;
             case MODE_DIAGNOSTICS:
                 buildDiagnosticsPage(context, container);
+                break;
+            case MODE_WORKSPACE:
+                buildWorkspacePage(context, container);
+                break;
+            case MODE_CALL_HEALTH:
+                buildCallHealthPage(context, container);
                 break;
             case MODE_HOME:
             default:
@@ -393,6 +421,10 @@ public class SingGramSettingsActivity extends BaseFragment {
         addIconActionCell(context, toolsSection, LocaleController.getString(R.string.SingGramCrashRecovery), crashSafeModeValue(), R.drawable.settings_power, 0xFFFF8B3D, 0xFFE45644, true, v -> applyCrashRecovery());
         addDivider(context, toolsSection);
         addIconActionCell(context, toolsSection, LocaleController.getString(R.string.SingGramDoctor), LocaleController.getString(R.string.SingGramDoctorInfo), R.drawable.settings_power, 0xFFFF8B3D, 0xFFE45644, true, v -> presentFragment(new SingGramDoctorActivity()));
+        addDivider(context, toolsSection);
+        addIconActionCell(context, toolsSection, LocaleController.getString(R.string.SingGramWorkspace), workspaceSummaryValue(), R.drawable.settings_chat, 0xFF55CA47, 0xFF23B9C9, true, v -> presentFragment(new SingGramSettingsActivity(MODE_WORKSPACE)));
+        addDivider(context, toolsSection);
+        addIconActionCell(context, toolsSection, LocaleController.getString(R.string.SingGramCallHealth), LocaleController.getString(R.string.SingGramCallHealthSummary), R.drawable.settings_devices, 0xFF4EA5F6, 0xFF3577E5, true, v -> presentFragment(new SingGramSettingsActivity(MODE_CALL_HEALTH)));
 
         addHeader(context, container, LocaleController.getString(R.string.SingGramSettingsCategories));
         LinearLayout categoriesSection = addSection(context, container);
@@ -407,6 +439,8 @@ public class SingGramSettingsActivity extends BaseFragment {
         addIconActionCell(context, categoriesSection, LocaleController.getString(R.string.SingGramAppearance), categoryValue(LocaleController.getString(R.string.SingGramAppearanceSummary), appearanceBadgeValue()), R.drawable.settings_chat, 0xFFB659FF, 0xFF617CFF, true, v -> presentFragment(new SingGramSettingsActivity(MODE_APPEARANCE)));
         addDivider(context, categoriesSection);
         addIconActionCell(context, categoriesSection, LocaleController.getString(R.string.SingGramDiagnostics), categoryValue(LocaleController.getString(R.string.SingGramDiagnosticsSummary), diagnosticsBadgeValue()), R.drawable.settings_devices, 0xFF8A98A7, 0xFF5D6C7B, true, v -> presentFragment(new SingGramSettingsActivity(MODE_DIAGNOSTICS)));
+        addDivider(context, categoriesSection);
+        addIconActionCell(context, categoriesSection, LocaleController.getString(R.string.SingGramWorkspace), workspaceSummaryValue(), R.drawable.settings_chat, 0xFF55CA47, 0xFF23B9C9, true, v -> presentFragment(new SingGramSettingsActivity(MODE_WORKSPACE)));
         addInfo(context, container, LocaleController.getString(R.string.SingGramSettingsHomeInfo));
     }
 
@@ -565,6 +599,12 @@ public class SingGramSettingsActivity extends BaseFragment {
         addActionCell(context, downloadSection, LocaleController.getString(R.string.SingGramDownloadAutoThreads), downloadThreadsValue(), false, null);
         addDivider(context, downloadSection);
         addActionCell(context, downloadSection, LocaleController.getString(R.string.SingGramDownloadStatus), downloadStatusValue(), true, v -> presentFragment(new SingGramDownloadStatusActivity()));
+
+        addHeader(context, container, LocaleController.getString(R.string.SingGramAutomaticDownloads));
+        LinearLayout automaticSection = addSection(context, container);
+        addSwitchSetting(context, automaticSection, LocaleController.getString(R.string.SingGramAutomaticDownloadsPause), LocaleController.getString(R.string.SingGramAutomaticDownloadsPauseInfo), SingGramWorkspaceConfig.areAutomaticDownloadsPaused(UserConfig.selectedAccount), enabled -> SingGramWorkspaceConfig.setAutomaticDownloadsPaused(UserConfig.selectedAccount, enabled), false);
+        addDivider(context, automaticSection);
+        addSwitchSetting(context, automaticSection, LocaleController.getString(R.string.SingGramAutomaticDownloadsWifi), LocaleController.getString(R.string.SingGramAutomaticDownloadsWifiInfo), SingGramWorkspaceConfig.areAutomaticDownloadsWifiOnly(UserConfig.selectedAccount), enabled -> SingGramWorkspaceConfig.setAutomaticDownloadsWifiOnly(UserConfig.selectedAccount, enabled), false);
         addInfo(context, container, LocaleController.getString(R.string.SingGramDownloadBoostFootnote));
     }
 
@@ -610,6 +650,63 @@ public class SingGramSettingsActivity extends BaseFragment {
         addActionCell(context, diagnosticsSection, LocaleController.getString(R.string.SingGramUpdates), updateSummaryValue(), true, v -> presentFragment(new SingGramUpdateActivity()));
         addDivider(context, diagnosticsSection);
         addActionCell(context, diagnosticsSection, LocaleController.getString(R.string.SingGramCopyDiagnostics), LocaleController.getString(R.string.SingGramDiagnosticsCopied), true, v -> copyDiagnostics());
+        addDivider(context, diagnosticsSection);
+        addActionCell(context, diagnosticsSection, LocaleController.getString(R.string.SingGramCallHealth), LocaleController.getString(R.string.SingGramCallHealthSummary), true, v -> presentFragment(new SingGramSettingsActivity(MODE_CALL_HEALTH)));
+    }
+
+    private void buildWorkspacePage(Context context, LinearLayout container) {
+        int account = UserConfig.selectedAccount;
+        addHeader(context, container, LocaleController.getString(R.string.SingGramWorkspace));
+        LinearLayout focusSection = addSection(context, container);
+        addSwitchSetting(context, focusSection, LocaleController.getString(R.string.SingGramQuietHours), quietHoursValue(account), SingGramWorkspaceConfig.isQuietHoursEnabled(account), enabled -> {
+            SingGramWorkspaceConfig.setQuietHoursEnabled(account, enabled);
+            rebuildSettingsPage();
+        }, false);
+        addDivider(context, focusSection);
+        addActionCell(context, focusSection, LocaleController.getString(R.string.SingGramQuietHoursSet), LocaleController.getString(R.string.SingGramQuietHoursSetInfo), true, v -> showQuietHoursDialog());
+        addDivider(context, focusSection);
+        priorityKeywordsField = addField(context, focusSection, LocaleController.getString(R.string.SingGramPriorityKeywords), LocaleController.getString(R.string.SingGramPriorityKeywordsHint), SingGramWorkspaceConfig.getPriorityKeywords(account), false);
+
+        addHeader(context, container, LocaleController.getString(R.string.SingGramGroupFocus));
+        LinearLayout groupSection = addSection(context, container);
+        addSwitchSetting(context, groupSection, LocaleController.getString(R.string.SingGramGroupFocus), LocaleController.getString(R.string.SingGramGroupFocusInfo), SingGramWorkspaceConfig.isGroupFocusEnabled(account), enabled -> SingGramWorkspaceConfig.setGroupFocusEnabled(account, enabled), false);
+        addDivider(context, groupSection);
+        addActionCell(context, groupSection, LocaleController.getString(R.string.SingGramGroupFocusChat), LocaleController.formatString(R.string.SingGramGroupFocusValue, SingGramWorkspaceConfig.getWatchedGroupCount(account), SingGramWorkspaceConfig.getPriorityDialogCount(account)), false, null);
+
+        addHeader(context, container, LocaleController.getString(R.string.SingGramWorkspaceSecurity));
+        LinearLayout securitySection = addSection(context, container);
+        addActionCell(context, securitySection, LocaleController.getString(R.string.SingGramAppLock), LocaleController.getString(R.string.SingGramAppLockInfo), true, v -> presentFragment(PasscodeActivity.determineOpenFragment()));
+        addDivider(context, securitySection);
+        addActionCell(context, securitySection, LocaleController.getString(R.string.SingGramChatNotesAll), LocaleController.formatString(R.string.SingGramChatNotesAllCount, SingGramChatNotesStore.getNotesCount()), true, v -> presentFragment(new SingGramChatNotesListActivity()));
+
+        addHeader(context, container, LocaleController.getString(R.string.SingGramWorkspaceBots));
+        LinearLayout botSection = addSection(context, container);
+        addActionCell(context, botSection, LocaleController.getString(R.string.SingGramBotLogin), LocaleController.getString(R.string.SingGramBotLoginInfo), true, v -> showBotLoginDialog());
+        addInfo(context, container, LocaleController.getString(R.string.SingGramWorkspaceInfo));
+    }
+
+    private void buildCallHealthPage(Context context, LinearLayout container) {
+        SingGramCallDiagnostics.Snapshot snapshot = SingGramCallDiagnostics.inspect();
+        addHeader(context, container, LocaleController.getString(R.string.SingGramCallHealth));
+        LinearLayout statusSection = addSection(context, container);
+        addActionCell(context, statusSection, LocaleController.getString(R.string.SingGramCallMicrophone), snapshot.microphoneSummary(), false, null);
+        addDivider(context, statusSection);
+        addActionCell(context, statusSection, LocaleController.getString(R.string.SingGramCallOutput), snapshot.outputSummary(), false, null);
+        addDivider(context, statusSection);
+        addActionCell(context, statusSection, LocaleController.getString(R.string.SingGramCallRoute), snapshot.routeSummary(), false, null);
+        addDivider(context, statusSection);
+        addActionCell(context, statusSection, LocaleController.getString(R.string.SingGramCallState), snapshot.callSummary(), false, null);
+
+        addHeader(context, container, LocaleController.getString(R.string.SingGramCallActions));
+        LinearLayout actionSection = addSection(context, container);
+        addActionCell(context, actionSection, LocaleController.getString(R.string.SingGramCallRouteEarpiece), LocaleController.getString(R.string.SingGramCallRouteEarpieceInfo), true, v -> setCallRoute(false));
+        addDivider(context, actionSection);
+        addActionCell(context, actionSection, LocaleController.getString(R.string.SingGramCallRouteSpeaker), LocaleController.getString(R.string.SingGramCallRouteSpeakerInfo), true, v -> setCallRoute(true));
+        addDivider(context, actionSection);
+        addActionCell(context, actionSection, LocaleController.getString(R.string.SingGramCallCopyReport), LocaleController.getString(R.string.SingGramCallCopyReportInfo), true, v -> copyCallDiagnostics());
+        addDivider(context, actionSection);
+        addActionCell(context, actionSection, LocaleController.getString(R.string.SingGramCallRefresh), LocaleController.getString(R.string.SingGramCallRefreshInfo), true, v -> rebuildSettingsPage());
+        addInfo(context, container, LocaleController.getString(R.string.SingGramCallHealthInfo));
     }
 
     private void saveSettings() {
@@ -626,14 +723,24 @@ public class SingGramSettingsActivity extends BaseFragment {
         if (systemPromptField != null) {
             SingGramConfig.setAiSystemPrompt(systemPromptField.getText().toString());
         }
+        if (priorityKeywordsField != null) {
+            SingGramWorkspaceConfig.setPriorityKeywords(UserConfig.selectedAccount, priorityKeywordsField.getText().toString());
+        }
     }
 
     private void rebuildSettingsPage() {
+        saveSettings();
         if (contentContainer == null || getParentActivity() == null) {
             return;
         }
         contentContainer.removeAllViews();
         buildContent(getParentActivity(), contentContainer);
+    }
+
+    @Override
+    public void onPause() {
+        saveSettings();
+        super.onPause();
     }
 
     private String aiProviderValue() {
@@ -997,6 +1104,139 @@ public class SingGramSettingsActivity extends BaseFragment {
         Toast.makeText(getParentActivity(), TextUtils.isEmpty(chatError) ? LocaleController.getString(R.string.SingGramAIConnectionOk) : chatError, TextUtils.isEmpty(chatError) ? Toast.LENGTH_SHORT : Toast.LENGTH_LONG).show();
     }
 
+    private void showQuietHoursDialog() {
+        int account = UserConfig.selectedAccount;
+        String[] items = new String[] {
+                LocaleController.getString(R.string.SingGramQuietHoursDisabled),
+                LocaleController.formatString(R.string.SingGramQuietHoursCurrent, SingGramWorkspaceConfig.getQuietHoursLabel(account)),
+                LocaleController.getString(R.string.SingGramQuietHoursSet)
+        };
+        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+        builder.setTitle(LocaleController.getString(R.string.SingGramQuietHours));
+        builder.setItems(items, (dialog, which) -> {
+            if (which == 0) {
+                SingGramWorkspaceConfig.setQuietHoursEnabled(account, false);
+                rebuildSettingsPage();
+            } else if (which == 1) {
+                SingGramWorkspaceConfig.setQuietHoursEnabled(account, true);
+                rebuildSettingsPage();
+            } else {
+                chooseQuietHoursStart(account);
+            }
+        });
+        showDialog(builder.create());
+    }
+
+    private void showBotLoginDialog() {
+        if (getParentActivity() == null) {
+            return;
+        }
+        LinearLayout container = new LinearLayout(getParentActivity());
+        container.setOrientation(LinearLayout.VERTICAL);
+        container.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(4), AndroidUtilities.dp(24), AndroidUtilities.dp(4));
+        EditTextBoldCursor tokenField = new EditTextBoldCursor(getParentActivity());
+        tokenField.setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
+        tokenField.setHintTextColor(Theme.getColor(Theme.key_dialogTextGray2));
+        tokenField.setHintColor(Theme.getColor(Theme.key_dialogTextGray2));
+        tokenField.setCursorColor(Theme.getColor(Theme.key_dialogTextBlue2));
+        tokenField.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
+        tokenField.setSingleLine(true);
+        tokenField.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
+        tokenField.setHint(LocaleController.getString(R.string.SingGramBotTokenHint));
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            tokenField.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS);
+        }
+        container.addView(tokenField, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48));
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
+        builder.setTitle(LocaleController.getString(R.string.SingGramBotLogin));
+        builder.setMessage(LocaleController.getString(R.string.SingGramBotLoginDialogInfo));
+        builder.setView(container);
+        builder.setPositiveButton(LocaleController.getString(R.string.SingGramBotConnect), (dialog, which) -> {
+            String token = tokenField.getText().toString();
+            tokenField.setText("");
+            if (TextUtils.isEmpty(token.trim())) {
+                Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramBotTokenRequired), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            AlertDialog progressDialog = new AlertDialog(getParentActivity(), AlertDialog.ALERT_TYPE_SPINNER);
+            progressDialog.setCanCancel(false);
+            progressDialog.show();
+            SingGramBotAuth.login(token, new SingGramBotAuth.Callback() {
+                @Override
+                public void onSuccess(int account, TLRPC.User bot) {
+                    try {
+                        progressDialog.dismiss();
+                    } catch (Throwable ignore) {
+                    }
+                    if (getParentActivity() == null) {
+                        return;
+                    }
+                    AlertDialog.Builder success = new AlertDialog.Builder(getParentActivity());
+                    success.setTitle(LocaleController.getString(R.string.SingGramBotConnected));
+                    success.setMessage(LocaleController.formatString(R.string.SingGramBotConnectedInfo, UserObject.getUserName(bot), account + 1));
+                    success.setPositiveButton(LocaleController.getString(R.string.SingGramBotSwitch), (resultDialog, resultWhich) -> {
+                        if (LaunchActivity.instance != null) {
+                            LaunchActivity.instance.switchToAccount(account, true);
+                        }
+                    });
+                    success.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
+                    showDialog(success.create());
+                }
+
+                @Override
+                public void onError(String error) {
+                    try {
+                        progressDialog.dismiss();
+                    } catch (Throwable ignore) {
+                    }
+                    if (getParentActivity() == null) {
+                        return;
+                    }
+                    AlertDialog.Builder failure = new AlertDialog.Builder(getParentActivity());
+                    failure.setTitle(LocaleController.getString(R.string.SingGramBotLoginFailed));
+                    failure.setMessage(LocaleController.formatString(R.string.SingGramBotLoginFailedInfo, error));
+                    failure.setPositiveButton(LocaleController.getString(R.string.OK), null);
+                    showDialog(failure.create());
+                }
+            });
+        });
+        builder.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
+        showDialog(builder.create());
+    }
+
+    private void chooseQuietHoursStart(int account) {
+        int start = SingGramWorkspaceConfig.getQuietHoursStartMinutes(account);
+        TimePickerDialog dialog = new TimePickerDialog(getParentActivity(), (view, hourOfDay, minute) -> {
+            SingGramWorkspaceConfig.setQuietHoursStartMinutes(account, hourOfDay * 60 + minute);
+            chooseQuietHoursEnd(account);
+        }, start / 60, start % 60, DateFormat.is24HourFormat(getParentActivity()));
+        dialog.show();
+    }
+
+    private void chooseQuietHoursEnd(int account) {
+        int end = SingGramWorkspaceConfig.getQuietHoursEndMinutes(account);
+        TimePickerDialog dialog = new TimePickerDialog(getParentActivity(), (view, hourOfDay, minute) -> {
+            SingGramWorkspaceConfig.setQuietHoursEndMinutes(account, hourOfDay * 60 + minute);
+            SingGramWorkspaceConfig.setQuietHoursEnabled(account, true);
+            rebuildSettingsPage();
+        }, end / 60, end % 60, DateFormat.is24HourFormat(getParentActivity()));
+        dialog.show();
+    }
+
+    private void setCallRoute(boolean speaker) {
+        boolean changed = speaker ? SingGramCallDiagnostics.useSpeaker() : SingGramCallDiagnostics.useEarpiece();
+        Toast.makeText(getParentActivity(), LocaleController.getString(changed ? R.string.SingGramCallRouteChanged : R.string.SingGramCallNoActive), Toast.LENGTH_SHORT).show();
+        if (changed) {
+            rebuildSettingsPage();
+        }
+    }
+
+    private void copyCallDiagnostics() {
+        AndroidUtilities.addToClipboard(SingGramCallDiagnostics.inspect().buildReport());
+        Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramCallReportCopied), Toast.LENGTH_SHORT).show();
+    }
+
     private String buildInfoValue() {
         String packageName = ApplicationLoader.applicationContext == null ? "com.sing.singgram" : ApplicationLoader.applicationContext.getPackageName();
         return BuildVars.BUILD_VERSION_STRING + " / " + packageName;
@@ -1062,6 +1302,20 @@ public class SingGramSettingsActivity extends BaseFragment {
             return push + " / " + LocaleController.getString(R.string.SingGramCrashSafeMode);
         }
         return push;
+    }
+
+    private String workspaceSummaryValue() {
+        int account = UserConfig.selectedAccount;
+        String quietHours = SingGramWorkspaceConfig.isQuietHoursEnabled(account)
+                ? SingGramWorkspaceConfig.getQuietHoursLabel(account)
+                : LocaleController.getString(R.string.SingGramQuietHoursDisabled);
+        return LocaleController.formatString(R.string.SingGramWorkspaceSummary, quietHours, SingGramWorkspaceConfig.getWatchedGroupCount(account), SingGramWorkspaceConfig.getPriorityDialogCount(account));
+    }
+
+    private String quietHoursValue(int account) {
+        return SingGramWorkspaceConfig.isQuietHoursEnabled(account)
+                ? SingGramWorkspaceConfig.getQuietHoursLabel(account)
+                : LocaleController.getString(R.string.SingGramQuietHoursDisabled);
     }
 
     private String stateValue(boolean enabled) {
@@ -1717,6 +1971,9 @@ public class SingGramSettingsActivity extends BaseFragment {
         LinearLayout row5 = addButtonRow(context, container);
         addAiTestActionCard(context, row5, LocaleController.getString(R.string.SingGramAITranslateCantonese), R.drawable.menu_feature_translate, v -> runAction(SingGramAiClient.ACTION_TRANSLATE_YUE));
         addAiTestActionCard(context, row5, LocaleController.getString(R.string.SingGramAIPasteClipboard), R.drawable.input_keyboard, v -> pasteClipboard());
+
+        LinearLayout row6 = addButtonRow(context, container);
+        addAiTestActionCard(context, row6, LocaleController.getString(R.string.SingGramAIFollowUpBrief), R.drawable.msg_work, v -> runAction(SingGramAiClient.ACTION_FOLLOW_UP_BRIEF));
     }
 
     private void addAiTestActionCard(Context context, LinearLayout row, String text, int icon, View.OnClickListener listener) {

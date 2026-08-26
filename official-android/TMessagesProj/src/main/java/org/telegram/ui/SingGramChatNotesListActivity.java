@@ -121,6 +121,7 @@ public class SingGramChatNotesListActivity extends BaseFragment {
         String haystack = dialogId + " "
                 + SingGramChatNotesStore.getTags(dialogId) + " "
                 + SingGramChatNotesStore.getReminder(dialogId) + " "
+                + SingGramChatNotesStore.getFollowUpDueAt(dialogId) + " "
                 + SingGramChatNotesStore.getNote(dialogId);
         return haystack.toLowerCase().contains(query);
     }
@@ -134,7 +135,7 @@ public class SingGramChatNotesListActivity extends BaseFragment {
         textView.setLineSpacing(AndroidUtilities.dp(2), 1.0f);
         textView.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(12), AndroidUtilities.dp(16), AndroidUtilities.dp(12));
         textView.setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector), Theme.RIPPLE_MASK_ALL));
-        textView.setOnClickListener(v -> presentFragment(new SingGramChatNotesActivity(dialogId)));
+        textView.setOnClickListener(v -> presentFragment(new SingGramChatNotesActivity(dialogId, UserConfig.selectedAccount)));
         container.addView(textView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
     }
 
@@ -144,11 +145,16 @@ public class SingGramChatNotesListActivity extends BaseFragment {
         String tags = SingGramChatNotesStore.getTags(dialogId);
         String reminder = SingGramChatNotesStore.getReminder(dialogId);
         String note = SingGramChatNotesStore.getNote(dialogId);
+        long followUpDueAt = SingGramChatNotesStore.getFollowUpDueAt(dialogId);
         if (!TextUtils.isEmpty(tags)) {
             builder.append('\n').append(tags);
         }
         if (!TextUtils.isEmpty(reminder)) {
             builder.append('\n').append(reminder);
+        }
+        if (followUpDueAt > 0) {
+            builder.append('\n').append(LocaleController.getString(SingGramChatNotesStore.isFollowUpComplete(dialogId) ? R.string.SingGramFollowUpCompleted : R.string.SingGramFollowUp));
+            builder.append(": ").append(LocaleController.formatDateTime(followUpDueAt / 1000, true));
         }
         if (!TextUtils.isEmpty(note)) {
             String singleLine = note.replace('\n', ' ').trim();

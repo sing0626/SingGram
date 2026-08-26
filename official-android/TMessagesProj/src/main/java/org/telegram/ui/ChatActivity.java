@@ -179,6 +179,7 @@ import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.SingGramAiClient;
 import org.telegram.messenger.SingGramChatNotesStore;
 import org.telegram.messenger.SingGramConfig;
+import org.telegram.messenger.SingGramWorkspaceConfig;
 import org.telegram.messenger.SvgHelper;
 import org.telegram.messenger.Timer;
 import org.telegram.messenger.TranslateController;
@@ -1206,6 +1207,7 @@ public class ChatActivity extends BaseFragment implements
     public final static int OPTION_SINGGRAM_AI_MENU = 127;
     public final static int OPTION_SINGGRAM_AI_DRAFT_MENU = 128;
     public final static int OPTION_SINGGRAM_AI_CHAT_APP = 129;
+    public final static int OPTION_SINGGRAM_AI_FOLLOW_UP = 130;
 
     private final static int[] allowedNotificationsDuringChatListAnimations = new int[]{
             NotificationCenter.messagesRead,
@@ -3910,7 +3912,7 @@ public class ChatActivity extends BaseFragment implements
                 } else if (id == singgram_settings) {
                     presentFragment(new SingGramSettingsActivity());
                 } else if (id == singgram_chat_notes) {
-                    presentFragment(new SingGramChatNotesActivity(getDialogId()));
+                    presentFragment(new SingGramChatNotesActivity(getDialogId(), currentAccount));
                 } else if (id == singgram_toggle_ghost) {
                     toggleSingGramGhostForCurrentChat();
                 } else if (id == singgram_ai_recent_summary) {
@@ -8526,7 +8528,8 @@ public class ChatActivity extends BaseFragment implements
 
         flagSecure = new FlagSecureReason(getParentActivity().getWindow(), () ->
             currentEncryptedChat != null ||
-            isPeerNoForwards()
+            isPeerNoForwards() ||
+            SingGramWorkspaceConfig.isSensitiveDialog(currentAccount, dialog_id)
         );
 
         if (oldMessage != null) {
@@ -29299,6 +29302,7 @@ public class ChatActivity extends BaseFragment implements
         }
 
         flagSecure.attach();
+        flagSecure.invalidate();
 
         if (starReactionsOverlay != null) {
             starReactionsOverlay.bringToFront();
@@ -32990,8 +32994,12 @@ public class ChatActivity extends BaseFragment implements
                 runSingGramAiForSelected(SingGramAiClient.ACTION_TRANSLATE_YUE);
                 break;
             }
+            case OPTION_SINGGRAM_AI_FOLLOW_UP: {
+                runSingGramAiForSelected(SingGramAiClient.ACTION_FOLLOW_UP_BRIEF);
+                break;
+            }
             case OPTION_SINGGRAM_CHAT_NOTES: {
-                presentFragment(new SingGramChatNotesActivity(getDialogId()));
+                presentFragment(new SingGramChatNotesActivity(getDialogId(), currentAccount));
                 break;
             }
             case OPTION_RETRY: {
@@ -45856,6 +45864,10 @@ public class ChatActivity extends BaseFragment implements
         items.add(LocaleController.getString(R.string.SingGramAIExtractTasks));
         options.add(OPTION_SINGGRAM_AI_EXTRACT_TASKS);
         icons.add(R.drawable.msg_addbot);
+
+        items.add(LocaleController.getString(R.string.SingGramAIFollowUpBrief));
+        options.add(OPTION_SINGGRAM_AI_FOLLOW_UP);
+        icons.add(R.drawable.msg_work);
     }
 
     private CharSequence getSingGramAiSourceText(MessageObject messageObject, MessageObject.GroupedMessages group) {

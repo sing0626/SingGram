@@ -1,9 +1,12 @@
 package org.telegram.ui;
 
+import android.app.DatePickerDialog;
+import android.app.TimePickerDialog;
 import android.content.Context;
 import android.graphics.Color;
 import android.text.InputType;
 import android.text.TextUtils;
+import android.text.format.DateFormat;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
@@ -14,28 +17,40 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import org.telegram.messenger.AndroidUtilities;
+import org.telegram.messenger.DialogObject;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SingGramChatNotesStore;
+import org.telegram.messenger.SingGramWorkspaceConfig;
+import org.telegram.messenger.UserConfig;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.ActionBar.ThemeDescription;
+import org.telegram.ui.Cells.TextCheckCell;
 import org.telegram.ui.Components.EditTextBoldCursor;
 import org.telegram.ui.Components.LayoutHelper;
 
 import java.util.ArrayList;
+import java.util.Calendar;
 
 public class SingGramChatNotesActivity extends BaseFragment {
 
     private final long dialogId;
+    private final int account;
     private EditTextBoldCursor tagsField;
     private EditTextBoldCursor reminderField;
     private EditTextBoldCursor noteField;
+    private EditTextBoldCursor groupKeywordsField;
 
     public SingGramChatNotesActivity(long dialogId) {
+        this(dialogId, UserConfig.selectedAccount);
+    }
+
+    public SingGramChatNotesActivity(long dialogId, int account) {
         this.dialogId = dialogId;
+        this.account = account;
     }
 
     @Override
@@ -83,6 +98,27 @@ public class SingGramChatNotesActivity extends BaseFragment {
         addButton(context, section, LocaleController.getString(R.string.Copy), false, v -> copy());
         addButton(context, section, LocaleController.getString(R.string.ClearButton), false, v -> confirmClear());
 
+        addHeader(context, container, LocaleController.getString(R.string.SingGramFollowUp));
+        LinearLayout followUpSection = addSection(context, container);
+        addInfoCell(context, followUpSection, LocaleController.getString(R.string.SingGramFollowUp), followUpSummary());
+        addButton(context, followUpSection, LocaleController.getString(R.string.SingGramFollowUpSet), false, v -> chooseFollowUpDate());
+        addButton(context, followUpSection, LocaleController.getString(SingGramChatNotesStore.isFollowUpComplete(dialogId) ? R.string.SingGramFollowUpReopen : R.string.SingGramFollowUpComplete), false, v -> toggleFollowUpComplete());
+        if (SingGramChatNotesStore.getFollowUpDueAt(dialogId) > 0) {
+            addButton(context, followUpSection, LocaleController.getString(R.string.SingGramFollowUpClear), false, v -> clearFollowUp());
+        }
+
+        addHeader(context, container, LocaleController.getString(R.string.SingGramChatControls));
+        LinearLayout policySection = addSection(context, container);
+        addToggle(context, policySection, LocaleController.getString(R.string.SingGramPriorityNotifications), LocaleController.getString(R.string.SingGramPriorityNotificationsInfo), SingGramWorkspaceConfig.isPriorityDialog(account, dialogId), enabled -> SingGramWorkspaceConfig.setPriorityDialog(account, dialogId, enabled));
+        addDivider(context, policySection);
+        addToggle(context, policySection, LocaleController.getString(R.string.SingGramSensitiveChat), LocaleController.getString(R.string.SingGramSensitiveChatInfo), SingGramWorkspaceConfig.isSensitiveDialog(account, dialogId), enabled -> SingGramWorkspaceConfig.setSensitiveDialog(account, dialogId, enabled));
+        if (DialogObject.isChatDialog(dialogId)) {
+            addDivider(context, policySection);
+            addToggle(context, policySection, LocaleController.getString(R.string.SingGramGroupFocusChat), LocaleController.getString(R.string.SingGramGroupFocusChatInfo), SingGramWorkspaceConfig.isWatchedGroup(account, dialogId), enabled -> SingGramWorkspaceConfig.setWatchedGroup(account, dialogId, enabled));
+            addDivider(context, policySection);
+            groupKeywordsField = addField(context, policySection, LocaleController.getString(R.string.SingGramGroupKeywords), LocaleController.getString(R.string.SingGramGroupKeywordsHint), SingGramWorkspaceConfig.getGroupKeywords(account, dialogId), false);
+        }
+
         addInfo(context, container, LocaleController.getString(R.string.SingGramChatNotesInfo));
         return fragmentView;
     }
@@ -102,6 +138,9 @@ public class SingGramChatNotesActivity extends BaseFragment {
         }
         if (noteField != null) {
             SingGramChatNotesStore.setNote(dialogId, noteField.getText().toString());
+        }
+        if (groupKeywordsField != null) {
+            SingGramWorkspaceConfig.setGroupKeywords(account, dialogId, groupKeywordsField.getText().toString());
         }
     }
 
@@ -135,12 +174,108 @@ public class SingGramChatNotesActivity extends BaseFragment {
         showDialog(builder.create());
     }
 
+    private void chooseFollowUpDate() {
+        Calendar calendar = Calendar.getInstance();
+        long currentDueAt = SingGramChatNotesStore.getFollowUpDueAt(dialogId);
+        if (currentDueAt > System.currentTimeMillis()) {
+            calendar.setTimeInMillis(currentDueAt);
+        }
+        DatePickerDialog dialog = new DatePickerDialog(getParentActivity(), (view, year, month, day) -> chooseFollowUpTime(year, month, day), calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH), calendar.get(Calendar.DAY_OF_MONTH));
+        dialog.getDatePicker().setMinDate(System.currentTimeMillis() - 60_000L);
+        dialog.show();
+    }
+
+    private void chooseFollowUpTime(int year, int month, int day) {
+        Calendar calendar = Calendar.getInstance();
+        long currentDueAt = SingGramChatNotesStore.getFollowUpDueAt(dialogId);
+        if (currentDueAt > System.currentTimeMillis()) {
+            calendar.setTimeInMillis(currentDueAt);
+        }
+        TimePickerDialog dialog = new TimePickerDialog(getParentActivity(), (view, hourOfDay, minute) -> {
+            Calendar dueAt = Calendar.getInstance();
+            dueAt.set(year, month, day, hourOfDay, minute, 0);
+            dueAt.set(Calendar.MILLISECOND, 0);
+            if (dueAt.getTimeInMillis() <= System.currentTimeMillis()) {
+                Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramFollowUpFutureOnly), Toast.LENGTH_SHORT).show();
+                return;
+            }
+            save();
+            SingGramChatNotesStore.setFollowUpDueAt(dialogId, account, dueAt.getTimeInMillis());
+            reload();
+        }, calendar.get(Calendar.HOUR_OF_DAY), calendar.get(Calendar.MINUTE), DateFormat.is24HourFormat(getParentActivity()));
+        dialog.show();
+    }
+
+    private void toggleFollowUpComplete() {
+        long dueAt = SingGramChatNotesStore.getFollowUpDueAt(dialogId);
+        if (dueAt <= 0) {
+            chooseFollowUpDate();
+            return;
+        }
+        save();
+        SingGramChatNotesStore.setFollowUpComplete(dialogId, !SingGramChatNotesStore.isFollowUpComplete(dialogId));
+        reload();
+    }
+
+    private void clearFollowUp() {
+        SingGramChatNotesStore.setFollowUpDueAt(dialogId, 0);
+        reload();
+    }
+
+    private String followUpSummary() {
+        long dueAt = SingGramChatNotesStore.getFollowUpDueAt(dialogId);
+        if (dueAt <= 0) {
+            return LocaleController.getString(R.string.SingGramFollowUpNotSet);
+        }
+        String due = LocaleController.formatDateTime(dueAt / 1000, true);
+        if (SingGramChatNotesStore.isFollowUpComplete(dialogId)) {
+            return LocaleController.formatString(R.string.SingGramFollowUpCompletedValue, due);
+        }
+        if (dueAt <= System.currentTimeMillis()) {
+            return LocaleController.formatString(R.string.SingGramFollowUpOverdueValue, due);
+        }
+        return LocaleController.formatString(R.string.SingGramFollowUpDueValue, due);
+    }
+
+    private void reload() {
+        removeSelfFromStack();
+        presentFragment(new SingGramChatNotesActivity(dialogId, account));
+    }
+
     private LinearLayout addSection(Context context, LinearLayout container) {
         LinearLayout section = new LinearLayout(context);
         section.setOrientation(LinearLayout.VERTICAL);
         section.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(8), Theme.getColor(Theme.key_windowBackgroundWhite)));
         container.addView(section, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 12, 0, 12, 0));
         return section;
+    }
+
+    private void addHeader(Context context, LinearLayout container, String text) {
+        TextView textView = new TextView(context);
+        textView.setText(text);
+        textView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueHeader));
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
+        textView.setGravity((LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
+        textView.setTypeface(AndroidUtilities.bold());
+        textView.setIncludeFontPadding(false);
+        textView.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(18), AndroidUtilities.dp(24), AndroidUtilities.dp(8));
+        container.addView(textView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+    }
+
+    private void addToggle(Context context, LinearLayout container, String title, String value, boolean checked, ToggleSetter setter) {
+        TextCheckCell cell = new TextCheckCell(context, 16);
+        cell.setTextAndValueAndCheck(title, value, checked, true, false);
+        cell.setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector), Theme.RIPPLE_MASK_ALL));
+        cell.setOnClickListener(v -> {
+            boolean enabled = !cell.isChecked();
+            cell.setChecked(enabled);
+            setter.set(enabled);
+        });
+        container.addView(cell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+    }
+
+    private interface ToggleSetter {
+        void set(boolean enabled);
     }
 
     private void addInfoCell(Context context, LinearLayout container, String text, String value) {
