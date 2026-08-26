@@ -1186,6 +1186,45 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
         switchToAccount(account, removeAll, obj -> new MainTabsActivity());
     }
 
+    /** Opens an account that was authorized from a login surface, including the initial Bot login. */
+    public void openAuthorizedAccount(int account) {
+        if (!UserConfig.isValidAccount(account)) {
+            return;
+        }
+        if (account != UserConfig.selectedAccount) {
+            switchToAccount(account, true);
+            return;
+        }
+
+        if (currentAccount != account) {
+            checkCurrentAccount();
+        }
+        if (AndroidUtilities.isTablet()) {
+            layersActionBarLayout.removeAllFragments();
+            rightActionBarLayout.removeAllFragments();
+            if (!tabletFullSize) {
+                shadowTabletSide.setVisibility(View.VISIBLE);
+                if (rightActionBarLayout.getFragmentStack().isEmpty()) {
+                    backgroundTablet.setVisibility(View.VISIBLE);
+                }
+                rightActionBarLayout.getView().setVisibility(View.GONE);
+            }
+            layersActionBarLayout.getView().setVisibility(View.GONE);
+        }
+        actionBarLayout.removeAllFragments();
+        MainTabsActivity mainTabsActivity = new MainTabsActivity();
+        actionBarLayout.addFragmentToStack(mainTabsActivity, INavigationLayout.FORCE_ATTACH_VIEW_AS_FIRST);
+        actionBarLayout.rebuildFragments(INavigationLayout.REBUILD_FLAG_REBUILD_LAST);
+        if (AndroidUtilities.isTablet()) {
+            layersActionBarLayout.rebuildFragments(INavigationLayout.REBUILD_FLAG_REBUILD_LAST);
+            rightActionBarLayout.rebuildFragments(INavigationLayout.REBUILD_FLAG_REBUILD_LAST);
+        }
+        if (!ApplicationLoader.mainInterfacePaused) {
+            ConnectionsManager.getInstance(currentAccount).setAppPaused(false, false);
+        }
+        updateCurrentConnectionState(currentAccount);
+    }
+
     public void switchToAccount(int account, boolean removeAll, GenericProvider<Void, MainTabsActivity> dialogsActivityProvider) {
         if (account == UserConfig.selectedAccount || !UserConfig.isValidAccount(account)) {
             return;

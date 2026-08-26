@@ -91,7 +91,7 @@ public class SingGramFeatureHubActivity extends BaseFragment {
 
         addHeader(context, container, LocaleController.getString(R.string.SingGramFeatureHubSetup));
         LinearLayout setupSection = addSection(context, container);
-        addFeatureCell(context, setupSection, LocaleController.getString(R.string.SingGramAccountOverview), LocaleController.formatString(R.string.SingGramDoctorAccountsValue, UserConfig.getActivatedAccountsCount(), UserConfig.MAX_ACCOUNT_COUNT), R.drawable.settings_account, 0xFF4EA5F6, 0xFF3577E5, v -> presentFragment(new SingGramAccountOverviewActivity()));
+        addFeatureCell(context, setupSection, LocaleController.getString(R.string.SingGramUserCenter), LocaleController.formatString(R.string.SingGramDoctorAccountsValue, UserConfig.getActivatedAccountsCount(), UserConfig.MAX_ACCOUNT_COUNT), R.drawable.settings_account, 0xFF4EA5F6, 0xFF3577E5, v -> presentFragment(new SingGramUserCenterActivity()));
         addDivider(context, setupSection);
         addFeatureCell(context, setupSection, LocaleController.getString(R.string.SingGramCrashRecovery), crashValue(), R.drawable.settings_power, 0xFFFF8B3D, 0xFFE45644, v -> presentFragment(SingGramSettingsActivity.diagnosticsPage()));
         addDivider(context, setupSection);

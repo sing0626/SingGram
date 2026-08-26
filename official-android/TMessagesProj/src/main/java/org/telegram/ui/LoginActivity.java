@@ -1964,6 +1964,7 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
         private ImageView chevronRight;
         private CheckBoxCell syncContactsBox;
         private CheckBoxCell testBackendCheckBox;
+        private TextView botLoginButton;
 
         @CountryState
         private int countryState = COUNTRY_STATE_NOT_SET_OR_VALID;
@@ -2494,6 +2495,18 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
                 });
             }
 
+            if (activityMode == MODE_LOGIN) {
+                botLoginButton = new TextView(context);
+                botLoginButton.setText(getString(R.string.SingGramLoginBotAction));
+                botLoginButton.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
+                botLoginButton.setTypeface(AndroidUtilities.bold());
+                botLoginButton.setGravity(Gravity.CENTER);
+                botLoginButton.setContentDescription(getString(R.string.SingGramLoginBotAction));
+                botLoginButton.setOnClickListener(v -> presentFragment(new SingGramBotLoginActivity()));
+                addView(botLoginButton, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48, 16, 10, 16, 0));
+                bottomMargin = Math.max(0, bottomMargin - 48);
+            }
+
             if (bottomMargin > 0 && !AndroidUtilities.isSmallScreen()) {
                 Space bottomSpacer = new Space(context);
                 bottomSpacer.setMinimumHeight(AndroidUtilities.dp(bottomMargin));
@@ -2697,6 +2710,11 @@ public class LoginActivity extends BaseFragment implements NotificationCenter.No
             if (testBackendCheckBox != null) {
                 testBackendCheckBox.setSquareCheckBoxColor(Theme.key_checkboxSquareUnchecked, Theme.key_checkboxSquareBackground, Theme.key_checkboxSquareCheck);
                 testBackendCheckBox.updateTextColor();
+            }
+            if (botLoginButton != null) {
+                int accent = Theme.getColor(Theme.key_windowBackgroundWhiteBlueText);
+                botLoginButton.setTextColor(accent);
+                botLoginButton.setBackground(Theme.createSimpleSelectorRoundRectDrawable(dp(8), Theme.multAlpha(accent, 0.10f), Theme.multAlpha(accent, 0.18f)));
             }
 
             phoneOutlineView.updateColor();

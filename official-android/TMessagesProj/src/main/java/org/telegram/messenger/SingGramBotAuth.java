@@ -76,7 +76,7 @@ public final class SingGramBotAuth {
         return user != null && user.bot;
     }
 
-    private static boolean isValidToken(String token) {
+    public static boolean isValidToken(String token) {
         int separator = token.indexOf(':');
         if (separator <= 0 || separator == token.length() - 1 || token.indexOf(':', separator + 1) >= 0) {
             return false;

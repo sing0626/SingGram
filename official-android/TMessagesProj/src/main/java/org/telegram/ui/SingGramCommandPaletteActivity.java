@@ -130,7 +130,7 @@ public class SingGramCommandPaletteActivity extends BaseFragment {
         ArrayList<Command> commands = new ArrayList<>();
         commands.add(new Command(LocaleController.getString(R.string.SingGramFeatureHub), LocaleController.getString(R.string.SingGramFeatureHubInfo), () -> presentFragment(new SingGramFeatureHubActivity())));
         commands.add(new Command(LocaleController.getString(R.string.SingGramDoctor), LocaleController.getString(R.string.SingGramDoctorInfo), () -> presentFragment(new SingGramDoctorActivity())));
-        commands.add(new Command(LocaleController.getString(R.string.SingGramAccountOverview), LocaleController.getString(R.string.SingGramAccountOverviewInfo), () -> presentFragment(new SingGramAccountOverviewActivity())));
+        commands.add(new Command(LocaleController.getString(R.string.SingGramUserCenter), LocaleController.getString(R.string.SingGramUserCenterInfo), () -> presentFragment(new SingGramUserCenterActivity())));
         commands.add(new Command(LocaleController.getString(R.string.SingGramAccountProfiles), LocaleController.getString(R.string.SingGramAccountProfilesInfo), () -> presentFragment(new SingGramAccountProfilesActivity())));
         commands.add(new Command(LocaleController.getString(R.string.SingGramChatNotesAll), LocaleController.formatString(R.string.SingGramChatNotesAllCount, SingGramChatNotesStore.getNotesCount()), () -> presentFragment(new SingGramChatNotesListActivity())));
         commands.add(new Command(LocaleController.getString(R.string.SingGramWorkspace), LocaleController.getString(R.string.SingGramWorkspaceSummaryShort), () -> presentFragment(SingGramSettingsActivity.workspacePage())));

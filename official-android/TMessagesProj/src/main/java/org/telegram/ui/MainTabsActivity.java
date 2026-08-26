@@ -479,6 +479,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         });
 
         ItemOptions o = ItemOptions.makeOptions(this, button);
+        o.add(R.drawable.settings_account, getString(R.string.SingGramUserCenter), () -> presentFragment(new SingGramUserCenterActivity()));
         if (UserConfig.getActivatedAccountsCount() < UserConfig.MAX_ACCOUNT_COUNT) {
             o.add(R.drawable.msg_addbot, getString(R.string.AddAccount), () -> {
                 int freeAccounts = 0;
@@ -495,7 +496,7 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
                     freeAccounts -= (UserConfig.MAX_ACCOUNT_COUNT - UserConfig.MAX_ACCOUNT_DEFAULT_COUNT);
                 }
                 if (freeAccounts > 0 && availableAccount != null) {
-                    presentFragment(new LoginActivity(availableAccount));
+                    presentFragment(new SingGramLoginChoiceActivity());
                 } else if (!UserConfig.hasPremiumOnAccounts()) {
                     showDialog(new LimitReachedBottomSheet(this, getContext(), TYPE_ACCOUNTS, currentAccount, null));
                 }

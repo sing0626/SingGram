@@ -30,7 +30,6 @@ import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SingGramAiClient;
 import org.telegram.messenger.SingGramBackupBundle;
-import org.telegram.messenger.SingGramBotAuth;
 import org.telegram.messenger.SingGramCallDiagnostics;
 import org.telegram.messenger.SingGramChatNotesStore;
 import org.telegram.messenger.SingGramConfig;
@@ -40,8 +39,6 @@ import org.telegram.messenger.SingGramPushDiagnostics;
 import org.telegram.messenger.SingGramWorkspaceConfig;
 import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.UserConfig;
-import org.telegram.messenger.UserObject;
-import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
@@ -165,7 +162,7 @@ public class SingGramSettingsActivity extends BaseFragment {
         addDivider(context, accountSection);
         addActionCell(context, accountSection, LocaleController.getString(R.string.SingGramDoctor), LocaleController.getString(R.string.SingGramDoctorInfo), true, v -> presentFragment(new SingGramDoctorActivity()));
         addDivider(context, accountSection);
-        addActionCell(context, accountSection, LocaleController.getString(R.string.SingGramAccountOverview), LocaleController.getString(R.string.SingGramAccountOverviewInfo), true, v -> presentFragment(new SingGramAccountOverviewActivity()));
+        addActionCell(context, accountSection, LocaleController.getString(R.string.SingGramUserCenter), LocaleController.getString(R.string.SingGramUserCenterInfo), true, v -> presentFragment(new SingGramUserCenterActivity()));
         addDivider(context, accountSection);
         addActionCell(context, accountSection, LocaleController.getString(R.string.SingGramMaxAccounts100), LocaleController.formatString(R.string.SingGramMaxAccounts100Info, UserConfig.getActivatedAccountsCount(), UserConfig.MAX_ACCOUNT_COUNT), false, null);
         addDivider(context, accountSection);
@@ -465,7 +462,7 @@ public class SingGramSettingsActivity extends BaseFragment {
     private void buildAccountsPage(Context context, LinearLayout container) {
         addHeader(context, container, LocaleController.getString(R.string.SingGramAccount));
         LinearLayout accountSection = addSection(context, container);
-        addActionCell(context, accountSection, LocaleController.getString(R.string.SingGramAccountOverview), LocaleController.getString(R.string.SingGramAccountOverviewInfo), true, v -> presentFragment(new SingGramAccountOverviewActivity()));
+        addActionCell(context, accountSection, LocaleController.getString(R.string.SingGramUserCenter), LocaleController.getString(R.string.SingGramUserCenterInfo), true, v -> presentFragment(new SingGramUserCenterActivity()));
         addDivider(context, accountSection);
         addActionCell(context, accountSection, LocaleController.getString(R.string.SingGramMaxAccounts100), LocaleController.formatString(R.string.SingGramMaxAccounts100Info, UserConfig.getActivatedAccountsCount(), UserConfig.MAX_ACCOUNT_COUNT), false, null);
         addDivider(context, accountSection);
@@ -681,7 +678,7 @@ public class SingGramSettingsActivity extends BaseFragment {
 
         addHeader(context, container, LocaleController.getString(R.string.SingGramWorkspaceBots));
         LinearLayout botSection = addSection(context, container);
-        addActionCell(context, botSection, LocaleController.getString(R.string.SingGramBotLogin), LocaleController.getString(R.string.SingGramBotLoginInfo), true, v -> showBotLoginDialog());
+        addActionCell(context, botSection, LocaleController.getString(R.string.SingGramLoginBotAccount), LocaleController.getString(R.string.SingGramLoginBotAccountInfo), true, v -> showBotLoginDialog());
         addInfo(context, container, LocaleController.getString(R.string.SingGramWorkspaceInfo));
     }
 
@@ -1128,81 +1125,7 @@ public class SingGramSettingsActivity extends BaseFragment {
     }
 
     private void showBotLoginDialog() {
-        if (getParentActivity() == null) {
-            return;
-        }
-        LinearLayout container = new LinearLayout(getParentActivity());
-        container.setOrientation(LinearLayout.VERTICAL);
-        container.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(4), AndroidUtilities.dp(24), AndroidUtilities.dp(4));
-        EditTextBoldCursor tokenField = new EditTextBoldCursor(getParentActivity());
-        tokenField.setTextColor(Theme.getColor(Theme.key_dialogTextBlack));
-        tokenField.setHintTextColor(Theme.getColor(Theme.key_dialogTextGray2));
-        tokenField.setHintColor(Theme.getColor(Theme.key_dialogTextGray2));
-        tokenField.setCursorColor(Theme.getColor(Theme.key_dialogTextBlue2));
-        tokenField.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
-        tokenField.setSingleLine(true);
-        tokenField.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD | InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS);
-        tokenField.setHint(LocaleController.getString(R.string.SingGramBotTokenHint));
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            tokenField.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO_EXCLUDE_DESCENDANTS);
-        }
-        container.addView(tokenField, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, 48));
-
-        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
-        builder.setTitle(LocaleController.getString(R.string.SingGramBotLogin));
-        builder.setMessage(LocaleController.getString(R.string.SingGramBotLoginDialogInfo));
-        builder.setView(container);
-        builder.setPositiveButton(LocaleController.getString(R.string.SingGramBotConnect), (dialog, which) -> {
-            String token = tokenField.getText().toString();
-            tokenField.setText("");
-            if (TextUtils.isEmpty(token.trim())) {
-                Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramBotTokenRequired), Toast.LENGTH_SHORT).show();
-                return;
-            }
-            AlertDialog progressDialog = new AlertDialog(getParentActivity(), AlertDialog.ALERT_TYPE_SPINNER);
-            progressDialog.setCanCancel(false);
-            progressDialog.show();
-            SingGramBotAuth.login(token, new SingGramBotAuth.Callback() {
-                @Override
-                public void onSuccess(int account, TLRPC.User bot) {
-                    try {
-                        progressDialog.dismiss();
-                    } catch (Throwable ignore) {
-                    }
-                    if (getParentActivity() == null) {
-                        return;
-                    }
-                    AlertDialog.Builder success = new AlertDialog.Builder(getParentActivity());
-                    success.setTitle(LocaleController.getString(R.string.SingGramBotConnected));
-                    success.setMessage(LocaleController.formatString(R.string.SingGramBotConnectedInfo, UserObject.getUserName(bot), account + 1));
-                    success.setPositiveButton(LocaleController.getString(R.string.SingGramBotSwitch), (resultDialog, resultWhich) -> {
-                        if (LaunchActivity.instance != null) {
-                            LaunchActivity.instance.switchToAccount(account, true);
-                        }
-                    });
-                    success.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
-                    showDialog(success.create());
-                }
-
-                @Override
-                public void onError(String error) {
-                    try {
-                        progressDialog.dismiss();
-                    } catch (Throwable ignore) {
-                    }
-                    if (getParentActivity() == null) {
-                        return;
-                    }
-                    AlertDialog.Builder failure = new AlertDialog.Builder(getParentActivity());
-                    failure.setTitle(LocaleController.getString(R.string.SingGramBotLoginFailed));
-                    failure.setMessage(LocaleController.formatString(R.string.SingGramBotLoginFailedInfo, error));
-                    failure.setPositiveButton(LocaleController.getString(R.string.OK), null);
-                    showDialog(failure.create());
-                }
-            });
-        });
-        builder.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
-        showDialog(builder.create());
+        presentFragment(new SingGramBotLoginActivity());
     }
 
     private void chooseQuietHoursStart(int account) {
