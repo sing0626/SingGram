@@ -11287,7 +11287,7 @@
     <string name="SingGramSensitiveChat">Sensitive chat screen privacy</string>
     <string name="SingGramSensitiveChatInfo">Blocks screenshots and screen recording while this chat is visible.</string>
     <string name="SingGramAppLock">App lock</string>
-    <string name="SingGramAppLockInfo">Open Telegram's native passcode and biometric lock settings.</string>
+    <string name="SingGramAppLockInfo">Open native Telegram passcode and biometric lock settings.</string>
     <string name="SingGramAutomaticDownloads">Automatic downloads</string>
     <string name="SingGramAutomaticDownloadsPause">Pause new automatic downloads</string>
     <string name="SingGramAutomaticDownloadsPauseInfo">Manual downloads continue; queued automatic media resumes when this is off.</string>
