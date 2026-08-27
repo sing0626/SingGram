@@ -183,7 +183,7 @@ jobs:
           NOTES="${NOTES}"$'\n\n'"Build metadata:"$'\n'"- Branch: ${GITHUB_REF_NAME}"$'\n'"- Commit: ${GITHUB_SHA}"$'\n\n'"Recent commits:"$'\n'"${RECENT_COMMITS}"
           SHA256="$(shasum -a 256 release/SingGram-arm64-release.apk | awk '{print $1}')"
           APK_SIZE_BYTES="$(stat -c%s release/SingGram-arm64-release.apk)"
-          APK_URL="https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/SingGram-arm64-release.apk"
+          APK_URL="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/SingGram-arm64-release.apk"
           PUBLISHED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
           jq -n \

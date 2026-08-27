@@ -7108,10 +7108,13 @@ public class LaunchActivity extends BasePermissionsActivity implements INavigati
                 @Override
                 public void onResult(SingGramUpdateClient.UpdateInfo info) {
                     singGramOtaCheckInProgress = false;
-                    if (info == null || !info.hasUpdate() || !isResumed || isFinishing()) {
+                    if (info == null) {
                         return;
                     }
                     SingGramConfig.setLastUpdateCheck(info.versionCode, info.versionName);
+                    if (!info.hasUpdate() || !isResumed || isFinishing()) {
+                        return;
+                    }
                     showSingGramOtaUpdatePrompt(info);
                 }
 

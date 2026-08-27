@@ -1,6 +1,7 @@
 package org.telegram.ui;
 
 import android.content.ActivityNotFoundException;
+import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
@@ -695,18 +696,28 @@ public class SingGramUpdateActivity extends BaseFragment {
             return;
         }
         try {
-            Intent intent = new Intent(Intent.ACTION_INSTALL_PACKAGE);
-            intent.setDataAndType(apkUri(downloadedApkFile), "application/vnd.android.package-archive");
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            intent.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
-            intent.putExtra(Intent.EXTRA_RETURN_RESULT, true);
+            Uri uri = apkUri(downloadedApkFile);
+            try {
+                startActivityForResult(createInstallIntent(uri, Intent.ACTION_INSTALL_PACKAGE), REQUEST_INSTALL_APK);
+            } catch (ActivityNotFoundException ignored) {
+                startActivityForResult(createInstallIntent(uri, Intent.ACTION_VIEW), REQUEST_INSTALL_APK);
+            }
             SingGramConfig.appendUpdateInstallHistory(LocaleController.formatString(R.string.SingGramOtaInstallOpened, downloadedApkFile.getName(), AndroidUtilities.formatFileSize(downloadedApkFile.length())));
-            startActivityForResult(intent, REQUEST_INSTALL_APK);
         } catch (Exception e) {
             FileLog.e(e);
             SingGramConfig.appendUpdateInstallHistory(LocaleController.formatString(R.string.SingGramOtaInstallFailedValue, e.getMessage()));
             showToast(LocaleController.getString(R.string.SingGramOtaInstallOpenFailed), Toast.LENGTH_LONG);
         }
+    }
+
+    private Intent createInstallIntent(Uri uri, String action) {
+        Intent intent = new Intent(action);
+        intent.setDataAndType(uri, "application/vnd.android.package-archive");
+        intent.setClipData(ClipData.newRawUri("singgram_update_apk", uri));
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        intent.putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true);
+        intent.putExtra(Intent.EXTRA_RETURN_RESULT, true);
+        return intent;
     }
 
     private void restoreDownloadedApkState() {

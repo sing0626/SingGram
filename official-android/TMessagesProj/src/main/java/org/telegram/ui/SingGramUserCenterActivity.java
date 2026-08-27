@@ -1,11 +1,13 @@
 package org.telegram.ui;
 
 import android.content.Context;
+import android.graphics.PorterDuff;
 import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.View;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -17,22 +19,23 @@ import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.MessagesStorage;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SingGramBotAuth;
-import org.telegram.messenger.SingGramConfig;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.UserObject;
 import org.telegram.tgnet.TLRPC;
 import org.telegram.ui.ActionBar.ActionBar;
-import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
 import org.telegram.ui.ActionBar.Theme;
 import org.telegram.ui.ActionBar.ThemeDescription;
-import org.telegram.ui.Cells.TextCheckCell;
+import org.telegram.ui.Components.AvatarDrawable;
+import org.telegram.ui.Components.BackupImageView;
 import org.telegram.ui.Components.LayoutHelper;
 
 import java.util.ArrayList;
 
-/** Central account management surface for personal Telegram accounts and Bot accounts. */
+/** Central account management for personal Telegram accounts and native Bot accounts. */
 public class SingGramUserCenterActivity extends BaseFragment {
+
+    private LinearLayout contentContainer;
 
     @Override
     public View createView(Context context) {
@@ -58,14 +61,31 @@ public class SingGramUserCenterActivity extends BaseFragment {
         scrollView.setFillViewport(true);
         ((FrameLayout) fragmentView).addView(scrollView, LayoutHelper.createFrame(LayoutHelper.MATCH_PARENT, LayoutHelper.MATCH_PARENT));
 
-        LinearLayout container = new LinearLayout(context);
-        container.setOrientation(LinearLayout.VERTICAL);
-        container.setPadding(0, AndroidUtilities.dp(12), 0, AndroidUtilities.dp(28));
-        scrollView.addView(container, new ScrollView.LayoutParams(ScrollView.LayoutParams.MATCH_PARENT, ScrollView.LayoutParams.WRAP_CONTENT));
+        contentContainer = new LinearLayout(context);
+        contentContainer.setOrientation(LinearLayout.VERTICAL);
+        contentContainer.setPadding(0, AndroidUtilities.dp(12), 0, AndroidUtilities.dp(28));
+        scrollView.addView(contentContainer, new ScrollView.LayoutParams(ScrollView.LayoutParams.MATCH_PARENT, ScrollView.LayoutParams.WRAP_CONTENT));
 
-        addSummary(context, container);
-        addHeader(context, container, LocaleController.getString(R.string.SingGramUserCenterAccounts));
-        LinearLayout accounts = addSection(context, container);
+        buildContent(context);
+        return fragmentView;
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        buildContent(getParentActivity());
+    }
+
+    private void buildContent(Context context) {
+        if (context == null || contentContainer == null) {
+            return;
+        }
+        contentContainer.removeAllViews();
+
+        addCurrentAccountHero(context, contentContainer);
+
+        addHeader(context, contentContainer, LocaleController.getString(R.string.SingGramUserCenterAccounts));
+        LinearLayout accounts = addSection(context, contentContainer);
         boolean added = false;
         for (int account = 0; account < UserConfig.MAX_ACCOUNT_COUNT; account++) {
             if (!UserConfig.getInstance(account).isClientActivated()) {
@@ -75,144 +95,202 @@ public class SingGramUserCenterActivity extends BaseFragment {
             if (added) {
                 addDivider(context, accounts);
             }
-            addAccountCell(context, accounts, account);
+            addAccountRow(context, accounts, account);
             added = true;
         }
         if (!added) {
-            addInfoCell(context, accounts, LocaleController.getString(R.string.SingGramUserCenterNoAccounts), "");
+            addEmptyAccountState(context, accounts);
         }
 
-        addHeader(context, container, LocaleController.getString(R.string.SingGramUserCenterAddAccount));
-        LinearLayout addAccount = addSection(context, container);
+        if (SingGramBotAuth.isBotAccount(UserConfig.selectedAccount)) {
+            addHeader(context, contentContainer, LocaleController.getString(R.string.SingGramBotWorkspace));
+            LinearLayout botTools = addSection(context, contentContainer);
+            addActionRow(context, botTools, R.drawable.msg_edit, LocaleController.getString(R.string.SingGramBotWorkspace), LocaleController.getString(R.string.SingGramBotWorkspaceInfo), true, v -> presentFragment(new SingGramBotWorkspaceActivity()));
+        }
+
+        addHeader(context, contentContainer, LocaleController.getString(R.string.SingGramUserCenterAddAccount));
+        LinearLayout addAccount = addSection(context, contentContainer);
         boolean hasSlot = SingGramBotAuth.findFreeAccount() >= 0;
-        addActionCell(context, addAccount, LocaleController.getString(R.string.SingGramLoginPersonalAccount), LocaleController.getString(R.string.SingGramLoginPersonalAccountInfo), hasSlot, v -> SingGramLoginChoiceActivity.openPersonalLogin(this));
+        addActionRow(context, addAccount, R.drawable.settings_account, LocaleController.getString(R.string.SingGramLoginPersonalAccount), LocaleController.getString(R.string.SingGramLoginPersonalAccountInfo), hasSlot, v -> SingGramLoginChoiceActivity.openPersonalLogin(this));
         addDivider(context, addAccount);
-        addActionCell(context, addAccount, LocaleController.getString(R.string.SingGramLoginBotAccount), LocaleController.getString(R.string.SingGramLoginBotAccountInfo), hasSlot, v -> presentFragment(new SingGramBotLoginActivity()));
+        addActionRow(context, addAccount, R.drawable.msg_addbot, LocaleController.getString(R.string.SingGramLoginBotAccount), LocaleController.getString(R.string.SingGramLoginBotAccountInfo), hasSlot, v -> presentFragment(new SingGramBotLoginActivity()));
         if (!hasSlot) {
-            addInfo(context, container, LocaleController.getString(R.string.SingGramAccountSlotsFull));
+            addInfo(context, contentContainer, LocaleController.getString(R.string.SingGramAccountSlotsFull));
         }
 
-        addHeader(context, container, LocaleController.getString(R.string.SingGramUserCenterManage));
-        LinearLayout manage = addSection(context, container);
-        addActionCell(context, manage, LocaleController.getString(R.string.SingGramAccountProfiles), LocaleController.getString(R.string.SingGramAccountProfilesInfo), true, v -> presentFragment(new SingGramAccountProfilesActivity()));
-        addInfo(context, container, LocaleController.getString(R.string.SingGramUserCenterInfo));
-        return fragmentView;
+        addHeader(context, contentContainer, LocaleController.getString(R.string.SingGramUserCenterManage));
+        LinearLayout manage = addSection(context, contentContainer);
+        addActionRow(context, manage, R.drawable.settings_account, LocaleController.getString(R.string.SingGramAccountProfiles), LocaleController.getString(R.string.SingGramAccountProfilesInfo), true, v -> presentFragment(new SingGramAccountProfilesActivity()));
+        addInfo(context, contentContainer, LocaleController.getString(R.string.SingGramUserCenterInfo));
     }
 
-    private void addSummary(Context context, LinearLayout container) {
-        LinearLayout summary = new LinearLayout(context);
-        summary.setOrientation(LinearLayout.VERTICAL);
-        summary.setPadding(AndroidUtilities.dp(18), AndroidUtilities.dp(16), AndroidUtilities.dp(18), AndroidUtilities.dp(16));
-        summary.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(8), Theme.getColor(Theme.key_windowBackgroundWhite)));
-        container.addView(summary, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 12, 0, 12, 4));
-
-        TextView title = new TextView(context);
-        title.setText(LocaleController.getString(R.string.SingGramUserCenter));
-        title.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
-        title.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 20);
-        title.setTypeface(AndroidUtilities.bold());
-        title.setIncludeFontPadding(false);
-        summary.addView(title, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-
-        TextView account = new TextView(context);
-        account.setText(currentAccountSummary());
-        account.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText2));
-        account.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 14);
-        account.setLineSpacing(AndroidUtilities.dp(2), 1.0f);
-        account.setPadding(0, AndroidUtilities.dp(6), 0, 0);
-        summary.addView(account, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
-    }
-
-    private String currentAccountSummary() {
+    private void addCurrentAccountHero(Context context, LinearLayout container) {
         int account = UserConfig.selectedAccount;
-        if (!UserConfig.getInstance(account).isClientActivated()) {
-            return LocaleController.formatString(R.string.SingGramAccountSlots, UserConfig.getActivatedAccountsCount(), UserConfig.MAX_ACCOUNT_COUNT);
+        LinearLayout hero = new LinearLayout(context);
+        hero.setGravity(Gravity.CENTER_VERTICAL);
+        hero.setPadding(AndroidUtilities.dp(18), AndroidUtilities.dp(18), AndroidUtilities.dp(18), AndroidUtilities.dp(18));
+        hero.setBackground(Theme.createRoundRectDrawable(AndroidUtilities.dp(8), Theme.getColor(Theme.key_windowBackgroundWhite)));
+        container.addView(hero, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT, 12, 0, 12, 4));
+
+        TLRPC.User user = UserConfig.getInstance(account).getCurrentUser();
+        AvatarDrawable avatarDrawable = new AvatarDrawable();
+        if (user != null) {
+            avatarDrawable.setInfo(user);
         }
-        return LocaleController.formatString(R.string.SingGramUserCenterCurrentSummary, accountTitle(account), accountType(account));
+        BackupImageView avatar = new BackupImageView(context);
+        avatar.setRoundRadius(AndroidUtilities.dp(28));
+        avatar.getImageReceiver().setCurrentAccount(account);
+        if (user != null) {
+            avatar.setForUserOrChat(user, avatarDrawable);
+        } else {
+            avatar.setImageDrawable(avatarDrawable);
+        }
+        hero.addView(avatar, LayoutHelper.createLinear(56, 56, Gravity.CENTER_VERTICAL, 0, 0, 14, 0));
+
+        LinearLayout textContainer = new LinearLayout(context);
+        textContainer.setOrientation(LinearLayout.VERTICAL);
+        hero.addView(textContainer, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1.0f, Gravity.CENTER_VERTICAL));
+
+        TextView label = createText(context, LocaleController.getString(R.string.SingGramUserCenterCurrent), Theme.key_windowBackgroundWhiteBlueText, 13, true);
+        textContainer.addView(label, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        TextView name = createText(context, accountName(account), Theme.key_windowBackgroundWhiteBlackText, 20, true);
+        name.setMaxLines(2);
+        name.setEllipsize(TextUtils.TruncateAt.END);
+        name.setPadding(0, AndroidUtilities.dp(3), 0, 0);
+        textContainer.addView(name, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        TextView accountType = createText(context, typeAndUnreadSummary(account), Theme.key_windowBackgroundWhiteGrayText2, 14, false);
+        accountType.setPadding(0, AndroidUtilities.dp(4), 0, 0);
+        textContainer.addView(accountType, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        TextView accountSlots = createText(context, LocaleController.formatString(R.string.SingGramAccountSlots, UserConfig.getActivatedAccountsCount(), UserConfig.MAX_ACCOUNT_COUNT), Theme.key_windowBackgroundWhiteGrayText4, 13, false);
+        accountSlots.setPadding(0, AndroidUtilities.dp(5), 0, 0);
+        textContainer.addView(accountSlots, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
     }
 
-    private void addAccountCell(Context context, LinearLayout container, int account) {
-        TextCheckCell cell = new TextCheckCell(context, 16);
-        cell.setTextAndValue(accountTitle(account), accountSummary(account), true, false);
-        cell.setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector), Theme.RIPPLE_MASK_ALL));
-        cell.setOnClickListener(v -> showAccountDetails(account));
-        container.addView(cell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+    private void addAccountRow(Context context, LinearLayout container, int account) {
+        LinearLayout row = new LinearLayout(context);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setMinimumHeight(AndroidUtilities.dp(76));
+        row.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(10), AndroidUtilities.dp(16), AndroidUtilities.dp(10));
+        row.setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector), Theme.RIPPLE_MASK_ALL));
+        row.setContentDescription(accountName(account) + ". " + typeAndUnreadSummary(account));
+        row.setOnClickListener(v -> openAccount(account));
+        container.addView(row, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        TLRPC.User user = UserConfig.getInstance(account).getCurrentUser();
+        AvatarDrawable avatarDrawable = new AvatarDrawable();
+        if (user != null) {
+            avatarDrawable.setInfo(user);
+        }
+        BackupImageView avatar = new BackupImageView(context);
+        avatar.setRoundRadius(AndroidUtilities.dp(23));
+        avatar.getImageReceiver().setCurrentAccount(account);
+        if (user != null) {
+            avatar.setForUserOrChat(user, avatarDrawable);
+        } else {
+            avatar.setImageDrawable(avatarDrawable);
+        }
+        row.addView(avatar, LayoutHelper.createLinear(46, 46, Gravity.CENTER_VERTICAL, 0, 0, 12, 0));
+
+        LinearLayout textContainer = new LinearLayout(context);
+        textContainer.setOrientation(LinearLayout.VERTICAL);
+        row.addView(textContainer, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1.0f, Gravity.CENTER_VERTICAL));
+
+        TextView title = createText(context, accountName(account), Theme.key_windowBackgroundWhiteBlackText, 16, false);
+        title.setSingleLine(true);
+        title.setEllipsize(TextUtils.TruncateAt.END);
+        textContainer.addView(title, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        TextView subtitle = createText(context, typeAndUnreadSummary(account), Theme.key_windowBackgroundWhiteGrayText2, 13, false);
+        subtitle.setSingleLine(true);
+        subtitle.setEllipsize(TextUtils.TruncateAt.END);
+        subtitle.setPadding(0, AndroidUtilities.dp(3), 0, 0);
+        textContainer.addView(subtitle, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        if (account == UserConfig.selectedAccount) {
+            TextView current = createText(context, LocaleController.getString(R.string.SingGramUserCenterCurrent), Theme.key_windowBackgroundWhiteBlueText, 12, true);
+            current.setGravity(Gravity.CENTER_VERTICAL | (LocaleController.isRTL ? Gravity.LEFT : Gravity.RIGHT));
+            current.setMaxLines(2);
+            current.setEllipsize(TextUtils.TruncateAt.END);
+            row.addView(current, LayoutHelper.createLinear(70, LayoutHelper.WRAP_CONTENT, Gravity.CENTER_VERTICAL, 8, 0, 0, 0));
+        } else {
+            ImageView arrow = new ImageView(context);
+            arrow.setImageResource(R.drawable.msg_arrowright);
+            arrow.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText4), PorterDuff.Mode.SRC_IN);
+            row.addView(arrow, LayoutHelper.createLinear(28, 28, Gravity.CENTER_VERTICAL, 8, 0, 0, 0));
+        }
     }
 
-    private void addActionCell(Context context, LinearLayout container, String title, String value, boolean enabled, View.OnClickListener listener) {
-        TextCheckCell cell = new TextCheckCell(context, 16);
-        cell.setTextAndValue(title, value, true, false);
-        cell.setEnabled(enabled);
-        cell.setAlpha(enabled ? 1.0f : 0.5f);
-        cell.setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector), Theme.RIPPLE_MASK_ALL));
+    private void addActionRow(Context context, LinearLayout container, int iconResource, String title, String subtitle, boolean enabled, View.OnClickListener listener) {
+        LinearLayout row = new LinearLayout(context);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        row.setMinimumHeight(AndroidUtilities.dp(68));
+        row.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(8), AndroidUtilities.dp(16), AndroidUtilities.dp(8));
+        row.setEnabled(enabled);
+        row.setAlpha(enabled ? 1.0f : 0.5f);
+        row.setBackground(Theme.createSelectorDrawable(Theme.getColor(Theme.key_listSelector), Theme.RIPPLE_MASK_ALL));
+        row.setContentDescription(title + ". " + subtitle);
         if (enabled) {
-            cell.setOnClickListener(listener);
+            row.setOnClickListener(listener);
         }
-        container.addView(cell, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        container.addView(row, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        ImageView icon = new ImageView(context);
+        icon.setImageResource(iconResource);
+        icon.setColorFilter(Theme.getColor(Theme.key_windowBackgroundWhiteBlueText), PorterDuff.Mode.SRC_IN);
+        row.addView(icon, LayoutHelper.createLinear(32, 32, Gravity.CENTER_VERTICAL, 0, 0, 12, 0));
+
+        LinearLayout textContainer = new LinearLayout(context);
+        textContainer.setOrientation(LinearLayout.VERTICAL);
+        row.addView(textContainer, LayoutHelper.createLinear(0, LayoutHelper.WRAP_CONTENT, 1.0f, Gravity.CENTER_VERTICAL));
+
+        TextView titleView = createText(context, title, Theme.key_windowBackgroundWhiteBlackText, 16, false);
+        titleView.setMaxLines(2);
+        titleView.setEllipsize(TextUtils.TruncateAt.END);
+        textContainer.addView(titleView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+
+        TextView subtitleView = createText(context, subtitle, Theme.key_windowBackgroundWhiteGrayText2, 13, false);
+        subtitleView.setMaxLines(2);
+        subtitleView.setEllipsize(TextUtils.TruncateAt.END);
+        subtitleView.setPadding(0, AndroidUtilities.dp(2), 0, 0);
+        textContainer.addView(subtitleView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
     }
 
-    private void showAccountDetails(int account) {
-        if (getParentActivity() == null) {
+    private void addEmptyAccountState(Context context, LinearLayout container) {
+        TextView empty = createText(context, LocaleController.getString(R.string.SingGramUserCenterNoAccounts), Theme.key_windowBackgroundWhiteGrayText2, 15, false);
+        empty.setPadding(AndroidUtilities.dp(18), AndroidUtilities.dp(18), AndroidUtilities.dp(18), AndroidUtilities.dp(18));
+        container.addView(empty, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+    }
+
+    private void openAccount(int account) {
+        if (account == UserConfig.selectedAccount) {
+            if (SingGramBotAuth.isBotAccount(account)) {
+                presentFragment(new SingGramBotWorkspaceActivity());
+            }
             return;
         }
-        AlertDialog.Builder builder = new AlertDialog.Builder(getParentActivity());
-        builder.setTitle(accountTitle(account));
-        builder.setMessage(accountDetails(account));
-        if (account != UserConfig.selectedAccount) {
-            builder.setPositiveButton(LocaleController.getString(R.string.SingGramAccountOverviewSwitch), (dialog, which) -> switchToAccount(account));
-        } else {
-            builder.setPositiveButton(LocaleController.getString(R.string.OK), null);
-        }
-        builder.setNegativeButton(LocaleController.getString(R.string.Cancel), null);
-        showDialog(builder.create());
-    }
-
-    private void switchToAccount(int account) {
         if (LaunchActivity.instance == null) {
             Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramAccountOverviewSwitchUnavailable), Toast.LENGTH_SHORT).show();
             return;
         }
         LaunchActivity.instance.switchToAccount(account, true);
-        finishFragment();
     }
 
-    private String accountTitle(int account) {
+    private String accountName(int account) {
         TLRPC.User user = UserConfig.getInstance(account).getCurrentUser();
-        String name = user == null ? LocaleController.formatString(R.string.SingGramAccountOverviewAccountFallback, account + 1) : UserObject.getUserName(user);
-        return LocaleController.formatString(R.string.SingGramAccountProfileAccount, account + 1, name);
+        return user == null
+                ? LocaleController.formatString(R.string.SingGramAccountOverviewAccountFallback, account + 1)
+                : UserObject.getUserName(user);
     }
 
-    private String accountType(int account) {
-        return SingGramBotAuth.isBotAccount(account)
+    private String typeAndUnreadSummary(int account) {
+        String type = SingGramBotAuth.isBotAccount(account)
                 ? LocaleController.getString(R.string.SingGramLoginBotAccount)
                 : LocaleController.getString(R.string.SingGramLoginPersonalAccount);
-    }
-
-    private String accountSummary(int account) {
         int unread = MessagesStorage.getInstance(account).getMainUnreadCount();
-        String state = account == UserConfig.selectedAccount
-                ? LocaleController.getString(R.string.SingGramUserCenterCurrent)
-                : LocaleController.getString(R.string.SingGramUserCenterSignedIn);
-        return LocaleController.formatString(R.string.SingGramUserCenterAccountSummary, accountType(account), state, unread);
-    }
-
-    private String accountDetails(int account) {
-        int unread = MessagesStorage.getInstance(account).getMainUnreadCount();
-        String profile = profileSummary(account);
-        String state = account == UserConfig.selectedAccount
-                ? LocaleController.getString(R.string.SingGramUserCenterCurrent)
-                : LocaleController.getString(R.string.SingGramUserCenterSignedIn);
-        return LocaleController.formatString(R.string.SingGramUserCenterAccountDetails, accountType(account), state, unread, profile);
-    }
-
-    private String profileSummary(int account) {
-        String label = SingGramConfig.getAccountProfileLabel(account);
-        String group = SingGramConfig.getAccountProfileGroup(account);
-        int color = SingGramConfig.getAccountProfileColor(account);
-        if (TextUtils.isEmpty(label) && TextUtils.isEmpty(group) && color == 0) {
-            return LocaleController.getString(R.string.SingGramAccountProfileUnset);
-        }
-        return LocaleController.formatString(R.string.SingGramAccountProfileSummary, TextUtils.isEmpty(label) ? "-" : label, TextUtils.isEmpty(group) ? "-" : group, color);
+        return LocaleController.formatString(R.string.SingGramUserCenterAccountSummary, type, account == UserConfig.selectedAccount ? LocaleController.getString(R.string.SingGramUserCenterCurrent) : LocaleController.getString(R.string.SingGramUserCenterSignedIn), unread);
     }
 
     private LinearLayout addSection(Context context, LinearLayout container) {
@@ -223,25 +301,23 @@ public class SingGramUserCenterActivity extends BaseFragment {
         return section;
     }
 
-    private void addHeader(Context context, LinearLayout container, String text) {
+    private TextView createText(Context context, String text, int colorKey, int size, boolean bold) {
         TextView textView = new TextView(context);
         textView.setText(text);
-        textView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlueHeader));
-        textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
-        textView.setTypeface(AndroidUtilities.bold());
-        textView.setGravity((LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
-        textView.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(18), AndroidUtilities.dp(24), AndroidUtilities.dp(8));
-        container.addView(textView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
+        textView.setTextColor(Theme.getColor(colorKey));
+        textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, size);
+        textView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        textView.setIncludeFontPadding(false);
+        if (bold) {
+            textView.setTypeface(AndroidUtilities.bold());
+        }
+        return textView;
     }
 
-    private void addInfoCell(Context context, LinearLayout container, String text, String value) {
-        TextView textView = new TextView(context);
-        textView.setText(TextUtils.isEmpty(value) ? text : text + "\n" + value);
-        textView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteBlackText));
-        textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 15);
-        textView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
-        textView.setLineSpacing(AndroidUtilities.dp(2), 1.0f);
-        textView.setPadding(AndroidUtilities.dp(16), AndroidUtilities.dp(12), AndroidUtilities.dp(16), AndroidUtilities.dp(12));
+    private void addHeader(Context context, LinearLayout container, String text) {
+        TextView textView = createText(context, text, Theme.key_windowBackgroundWhiteBlueHeader, 13, true);
+        textView.setGravity((LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT) | Gravity.CENTER_VERTICAL);
+        textView.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(18), AndroidUtilities.dp(24), AndroidUtilities.dp(8));
         container.addView(textView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));
     }
 
@@ -252,11 +328,7 @@ public class SingGramUserCenterActivity extends BaseFragment {
     }
 
     private void addInfo(Context context, LinearLayout container, String text) {
-        TextView textView = new TextView(context);
-        textView.setText(text);
-        textView.setTextColor(Theme.getColor(Theme.key_windowBackgroundWhiteGrayText4));
-        textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 13);
-        textView.setGravity(LocaleController.isRTL ? Gravity.RIGHT : Gravity.LEFT);
+        TextView textView = createText(context, text, Theme.key_windowBackgroundWhiteGrayText4, 13, false);
         textView.setLineSpacing(AndroidUtilities.dp(2), 1.0f);
         textView.setPadding(AndroidUtilities.dp(24), AndroidUtilities.dp(10), AndroidUtilities.dp(24), 0);
         container.addView(textView, LayoutHelper.createLinear(LayoutHelper.MATCH_PARENT, LayoutHelper.WRAP_CONTENT));

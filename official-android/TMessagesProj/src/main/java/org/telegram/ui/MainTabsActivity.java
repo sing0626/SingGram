@@ -44,6 +44,7 @@ import org.telegram.messenger.MessagesStorage;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SharedConfig;
+import org.telegram.messenger.SingGramBotAuth;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.UserObject;
 import org.telegram.tgnet.TLRPC;
@@ -105,6 +106,8 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
 
     private IUpdateLayout updateLayout;
     private boolean dropCallsFragmentAfterPageScroll;
+    private boolean botWorkspaceOpening;
+    private boolean botWorkspaceShown;
 
     private UpdateLayoutWrapper updateLayoutWrapper;
     private FrameLayout tabsViewWrapper;
@@ -223,6 +226,21 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         Bulletin.addDelegate(contentView, delegate);
 
         showAccountChangeHint();
+        maybeOpenBotWorkspace();
+    }
+
+    private void maybeOpenBotWorkspace() {
+        if (botWorkspaceShown || botWorkspaceOpening || !SingGramBotAuth.isBotAccount(currentAccount) || getParentLayout() == null) {
+            return;
+        }
+        botWorkspaceOpening = true;
+        AndroidUtilities.runOnUIThread(() -> {
+            botWorkspaceOpening = false;
+            if (botWorkspaceShown || isPaused() || !SingGramBotAuth.isBotAccount(currentAccount) || getParentLayout() == null || getParentLayout().getLastFragment() != this) {
+                return;
+            }
+            botWorkspaceShown = presentFragment(new SingGramBotWorkspaceActivity());
+        });
     }
 
     private void checkContactsTabBadge() {
@@ -479,6 +497,12 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         });
 
         ItemOptions o = ItemOptions.makeOptions(this, button);
+        if (SingGramBotAuth.isBotAccount(currentAccount)) {
+            o.add(R.drawable.msg_edit, getString(R.string.SingGramBotWorkspace), () -> {
+                o.dismiss();
+                presentFragment(new SingGramBotWorkspaceActivity());
+            });
+        }
         o.add(R.drawable.settings_account, getString(R.string.SingGramUserCenter), () -> presentFragment(new SingGramUserCenterActivity()));
         if (UserConfig.getActivatedAccountsCount() < UserConfig.MAX_ACCOUNT_COUNT) {
             o.add(R.drawable.msg_addbot, getString(R.string.AddAccount), () -> {
@@ -533,6 +557,17 @@ public class MainTabsActivity extends ViewPagerActivity implements NotificationC
         HintsController.Hint.AccountSwitchHint.doNotShowAgain();
 
         return true;
+    }
+
+    public void openBotInbox() {
+        if (viewPager == null) {
+            return;
+        }
+        if (dialogsActivity == null) {
+            prepareDialogsActivity(null);
+        }
+        selectTab(POSITION_CHATS, true);
+        viewPager.scrollToPosition(POSITION_CHATS);
     }
 
     public LinearLayout accountView(int account, boolean selected) {

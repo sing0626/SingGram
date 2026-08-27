@@ -112,6 +112,8 @@ public final class SingGramBotAuth {
         ConnectionsManager.getInstance(account).updateDcSettings();
         MessagesController.getInstance(account).loadAppConfig();
         MessagesController.getInstance(account).checkPeerColors(false);
+        // Fetch the Bot inbox immediately after the account becomes authorized.
+        MessagesController.getInstance(account).loadDialogs(0, 0, 50, false);
         if (authorization.future_auth_token != null) {
             AuthTokensHelper.saveLogInToken(authorization);
         }
