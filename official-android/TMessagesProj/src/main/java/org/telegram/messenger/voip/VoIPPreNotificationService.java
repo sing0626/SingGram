@@ -570,6 +570,11 @@ public class VoIPPreNotificationService { // } extends Service implements AudioM
 
     public static void dismiss(Context context, boolean answered) {
         FileLog.d("VoIPPreNotification.dismiss()");
+        // The pre-notification can be dismissed before VoIPService is created. Clear the
+        // hand-off marker so a later incoming call is not mistaken for an active call.
+        if (VoIPService.getSharedInstance() == null) {
+            VoIPService.callIShouldHavePutIntoIntent = null;
+        }
         pendingVoIP = null;
         pendingCall = null;
         if (currentState != null) {

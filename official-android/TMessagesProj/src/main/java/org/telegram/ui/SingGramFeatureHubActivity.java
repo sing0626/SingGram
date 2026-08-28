@@ -18,6 +18,8 @@ import org.telegram.messenger.BuildVars;
 import org.telegram.messenger.LocaleController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SingGramChatNotesStore;
+import org.telegram.messenger.SingGramBotAuth;
+import org.telegram.messenger.SingGramCallDiagnostics;
 import org.telegram.messenger.SingGramConfig;
 import org.telegram.messenger.SingGramDownloadStats;
 import org.telegram.messenger.SingGramEventLog;
@@ -80,6 +82,12 @@ public class SingGramFeatureHubActivity extends BaseFragment {
         addFeatureCell(context, liveSection, LocaleController.getString(R.string.SingGramDownloadCenter), downloadValue(), R.drawable.settings_data, 0xFF40B7FF, 0xFF168BDE, v -> presentFragment(new SingGramDownloadStatusActivity()));
         addDivider(context, liveSection);
         addFeatureCell(context, liveSection, LocaleController.getString(R.string.SingGramDoctor), pushValue(), R.drawable.settings_power, 0xFFFF8B3D, 0xFFE45644, v -> presentFragment(new SingGramDoctorActivity()));
+        addDivider(context, liveSection);
+        addFeatureCell(context, liveSection, LocaleController.getString(R.string.SingGramCallHealth), callHealthValue(), R.drawable.settings_devices, 0xFF4EA5F6, 0xFF3577E5, v -> presentFragment(SingGramSettingsActivity.callHealthPage()));
+        if (SingGramBotAuth.isBotAccount(UserConfig.selectedAccount)) {
+            addDivider(context, liveSection);
+            addFeatureCell(context, liveSection, LocaleController.getString(R.string.SingGramBotWorkspace), LocaleController.getString(R.string.SingGramBotConnected), R.drawable.msg_addbot, 0xFF55CA47, 0xFF23B9C9, v -> presentFragment(new SingGramBotWorkspaceActivity()));
+        }
 
         addHeader(context, container, LocaleController.getString(R.string.SingGramFeatureHubPrivacyAi));
         LinearLayout aiPrivacySection = addSection(context, container);
@@ -214,6 +222,11 @@ public class SingGramFeatureHubActivity extends BaseFragment {
 
     private String pushValue() {
         return SingGramPushDiagnostics.summary(SingGramPushDiagnostics.getSnapshot());
+    }
+
+    private String callHealthValue() {
+        SingGramCallDiagnostics.Snapshot snapshot = SingGramCallDiagnostics.inspect();
+        return snapshot.microphoneSummary() + " / " + snapshot.routeSummary();
     }
 
     private String privacyValue() {

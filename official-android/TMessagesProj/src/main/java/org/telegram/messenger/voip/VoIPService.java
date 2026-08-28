@@ -4173,6 +4173,8 @@ public class VoIPService extends Service implements SensorEventListener, AudioMa
 		super.onDestroy();
 		sharedInstance = null;
 		FileLog.e("(5) set sharedInstance = null");
+		// Do not leave a failed incoming-call hand-off blocking future calls.
+		callIShouldHavePutIntoIntent = null;
 		Arrays.fill(mySource, 0);
 		cancelGroupCheckShortPoll();
 		AndroidUtilities.runOnUIThread(() -> NotificationCenter.getGlobalInstance().postNotificationName(NotificationCenter.didEndCall));

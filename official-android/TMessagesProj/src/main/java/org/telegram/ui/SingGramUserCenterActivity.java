@@ -121,6 +121,8 @@ public class SingGramUserCenterActivity extends BaseFragment {
         addHeader(context, contentContainer, LocaleController.getString(R.string.SingGramUserCenterManage));
         LinearLayout manage = addSection(context, contentContainer);
         addActionRow(context, manage, R.drawable.settings_account, LocaleController.getString(R.string.SingGramAccountProfiles), LocaleController.getString(R.string.SingGramAccountProfilesInfo), true, v -> presentFragment(new SingGramAccountProfilesActivity()));
+        addDivider(context, manage);
+        addActionRow(context, manage, R.drawable.settings_devices, LocaleController.getString(R.string.SessionsTitle), LocaleController.getString(R.string.SessionsSettingsInfo), !SingGramBotAuth.isBotAccount(UserConfig.selectedAccount), v -> presentFragment(new SessionsActivity(0)));
         addInfo(context, contentContainer, LocaleController.getString(R.string.SingGramUserCenterInfo));
     }
 
