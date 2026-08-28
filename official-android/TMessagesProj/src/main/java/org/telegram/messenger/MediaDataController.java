@@ -6242,6 +6242,14 @@ public class MediaDataController extends BaseController {
     }
 
     public void loadReplyMessagesForMessages(ArrayList<MessageObject> messages, long dialogId, int mode, long threadMessageId, Runnable callback, int classGuid, Timer logLogger) {
+        // Bot accounts cannot use the user-only message lookup methods. Updates already
+        // contain everything needed for the visible message, so keep reply enrichment local.
+        if (SingGramBotAuth.isBotAccount(currentAccount)) {
+            if (callback != null) {
+                AndroidUtilities.runOnUIThread(callback);
+            }
+            return;
+        }
         final boolean scheduled = mode == ChatActivity.MODE_SCHEDULED;
         if (DialogObject.isEncryptedDialog(dialogId)) {
             Timer.Task t1 = Timer.start(logLogger, "loadReplyMessagesForMessages: (encrypted) finding messages to load");

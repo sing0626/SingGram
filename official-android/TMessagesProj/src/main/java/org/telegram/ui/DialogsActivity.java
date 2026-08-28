@@ -125,6 +125,7 @@ import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.NotificationsController;
 import org.telegram.messenger.R;
 import org.telegram.messenger.SharedConfig;
+import org.telegram.messenger.SingGramBotAuth;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.UserObject;
 import org.telegram.messenger.Utilities;
@@ -2893,8 +2894,10 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         }
 
         loadDialogs(getAccountInstance());
-        getMessagesController().getStoriesController().loadAllStories();
-        getMessagesController().loadPinnedDialogs(folderId, 0, null);
+        if (!SingGramBotAuth.isBotAccount(currentAccount)) {
+            getMessagesController().getStoriesController().loadAllStories();
+            getMessagesController().loadPinnedDialogs(folderId, 0, null);
+        }
         if (databaseMigrationHint != null && !getMessagesStorage().isDatabaseMigrationInProgress()) {
             View localView = databaseMigrationHint;
             if (localView.getParent() != null) {
@@ -2902,19 +2905,21 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
             }
             databaseMigrationHint = null;
         }
-        if (isArchive()) {
-            getMessagesController().getStoriesController().loadHiddenStories();
-        } else {
-            getMessagesController().getStoriesController().loadStories();
+        if (!SingGramBotAuth.isBotAccount(currentAccount)) {
+            if (isArchive()) {
+                getMessagesController().getStoriesController().loadHiddenStories();
+            } else {
+                getMessagesController().getStoriesController().loadStories();
+            }
+
+            getContactsController().loadGlobalPrivacySetting();
+
+            if (getMessagesController().savedViewAsChats) {
+                getMessagesController().getSavedMessagesController().preloadDialogs(true);
+            }
+
+            BirthdayController.getInstance(currentAccount).check();
         }
-
-        getContactsController().loadGlobalPrivacySetting();
-
-        if (getMessagesController().savedViewAsChats) {
-            getMessagesController().getSavedMessagesController().preloadDialogs(true);
-        }
-
-        BirthdayController.getInstance(currentAccount).check();
         additionNavigationBarHeight = hasMainTabs ? dp(MAIN_TABS_HEIGHT_WITH_MARGINS) : 0;
         additionFloatingButtonOffset = hasMainTabs ? dp(DialogsActivity.MAIN_TABS_HEIGHT + DialogsActivity.MAIN_TABS_MARGIN) : 0;
 
@@ -2925,6 +2930,12 @@ public class DialogsActivity extends BaseFragment implements NotificationCenter.
         int currentAccount = accountInstance.getCurrentAccount();
         if (!dialogsLoaded[currentAccount]) {
             MessagesController messagesController = accountInstance.getMessagesController();
+            if (SingGramBotAuth.isBotAccount(currentAccount)) {
+                messagesController.loadDialogs(0, 0, 100, true);
+                messagesController.loadBotUpdates();
+                dialogsLoaded[currentAccount] = true;
+                return;
+            }
             messagesController.loadGlobalNotificationsSettings();
             messagesController.loadDialogs(0, 0, 100, true);
             messagesController.loadHintDialogs();

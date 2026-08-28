@@ -835,7 +835,13 @@ public class MessagesStorage extends BaseController {
             cleanupInternal(true);
             openDatabase(1);
             if (isLogin) {
-                Utilities.stageQueue.postRunnable(() -> getMessagesController().getDifference());
+                Utilities.stageQueue.postRunnable(() -> {
+                    if (SingGramBotAuth.isBotAccount(currentAccount)) {
+                        getMessagesController().loadBotUpdates();
+                    } else {
+                        getMessagesController().getDifference();
+                    }
+                });
             }
         });
     }
@@ -16156,6 +16162,7 @@ public class MessagesStorage extends BaseController {
                         }
                         dialog.ttl_period = cursor.intValue(21);
                         dialog.unread_poll_votes_count = cursor.intValue(22);
+                        DialogObject.ensureDialogPeer(dialog);
                         dialogs.dialogs.add(dialog);
 
                         if (draftsDialogIds != null) {
@@ -16176,12 +16183,26 @@ public class MessagesStorage extends BaseController {
                                 }
                                 message.send_state = cursor.intValue(7);
                                 message.dialog_id = dialog.id;
-                                dialogs.messages.add(message);
-
-                                addUsersAndChatsFromMessage(message, usersToLoad, chatsToLoad, emojiToLoad);
+                                if (message.peer_id == null) {
+                                    message.peer_id = DialogObject.getPeerFromDialogId(dialog.id, DialogObject.isChannel(dialog));
+                                }
+                                if (message.peer_id != null) {
+                                    if (dialog.peer == null) {
+                                        dialog.peer = message.peer_id;
+                                    }
+                                    if (message.entities == null) {
+                                        message.entities = new ArrayList<>();
+                                    }
+                                    dialogs.messages.add(message);
+                                    try {
+                                        addUsersAndChatsFromMessage(message, usersToLoad, chatsToLoad, emojiToLoad);
+                                    } catch (Throwable e) {
+                                        checkSQLException(e);
+                                    }
+                                }
 
                                 try {
-                                    if (message.reply_to != null && message.reply_to.reply_to_msg_id != 0 && isMessageActionTypeWithReply(message.action)) {
+                                    if (message.peer_id != null && message.reply_to != null && message.reply_to.reply_to_msg_id != 0 && isMessageActionTypeWithReply(message.action)) {
                                         if (!cursor.isNull(13)) {
                                             NativeByteBuffer data2 = cursor.byteBufferValue(13);
                                             if (data2 != null) {
@@ -16269,12 +16290,26 @@ public class MessagesStorage extends BaseController {
                                     }
                                     message.send_state = cursor.intValue(4);
                                     message.dialog_id = did;
-                                    dialogs.messages.add(message);
-
-                                    addUsersAndChatsFromMessage(message, usersToLoad, chatsToLoad, null);
+                                    if (message.peer_id == null) {
+                                        message.peer_id = DialogObject.getPeerFromDialogId(did, DialogObject.isChannel(dialog));
+                                    }
+                                    if (message.peer_id != null) {
+                                        if (dialog.peer == null) {
+                                            dialog.peer = message.peer_id;
+                                        }
+                                        if (message.entities == null) {
+                                            message.entities = new ArrayList<>();
+                                        }
+                                        dialogs.messages.add(message);
+                                        try {
+                                            addUsersAndChatsFromMessage(message, usersToLoad, chatsToLoad, null);
+                                        } catch (Throwable e) {
+                                            checkSQLException(e);
+                                        }
+                                    }
 
                                     try {
-                                        if (message.reply_to != null && message.reply_to.reply_to_msg_id != 0 && isMessageActionTypeWithReply(message.action)) {
+                                        if (message.peer_id != null && message.reply_to != null && message.reply_to.reply_to_msg_id != 0 && isMessageActionTypeWithReply(message.action)) {
                                             if (!cursor.isNull(7)) {
                                                 NativeByteBuffer data2 = cursor.byteBufferValue(7);
                                                 if (data2 != null) {

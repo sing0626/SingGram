@@ -47,7 +47,10 @@ public class SingGramBotWorkspaceActivity extends BaseFragment implements Notifi
         }
         getNotificationCenter().addObserver(this, NotificationCenter.dialogsNeedReload);
         getNotificationCenter().addObserver(this, NotificationCenter.mainUserInfoChanged);
-        getMessagesController().loadDialogs(0, 0, 50, false);
+        // The Bot workspace has no server-side dialogs endpoint. Restore conversations that
+        // were already cached locally before starting the update-based inbox sync.
+        getMessagesController().loadDialogs(0, 0, 100, true);
+        getMessagesController().loadBotUpdates();
         return true;
     }
 
@@ -180,16 +183,13 @@ public class SingGramBotWorkspaceActivity extends BaseFragment implements Notifi
     }
 
     private int addConversationRows(Context context, LinearLayout container) {
-        ArrayList<TLRPC.Dialog> dialogs = getMessagesController().getDialogs(0);
+        ArrayList<TLRPC.Dialog> dialogs = getWorkspaceDialogs();
         int added = 0;
         for (TLRPC.Dialog dialog : dialogs) {
             if (dialog == null || DialogObject.isFolderDialogId(dialog.id) || DialogObject.isEncryptedDialog(dialog.id)) {
                 continue;
             }
-            String name = DialogObject.getName(currentAccount, dialog.id);
-            if (TextUtils.isEmpty(name)) {
-                continue;
-            }
+            String name = getDialogTitle(dialog.id);
             if (added > 0) {
                 addDivider(context, container);
             }
@@ -208,12 +208,46 @@ public class SingGramBotWorkspaceActivity extends BaseFragment implements Notifi
 
     private int getConversationCount() {
         int count = 0;
-        for (TLRPC.Dialog dialog : getMessagesController().getDialogs(0)) {
+        for (TLRPC.Dialog dialog : getWorkspaceDialogs()) {
             if (dialog != null && !DialogObject.isFolderDialogId(dialog.id) && !DialogObject.isEncryptedDialog(dialog.id)) {
                 count++;
             }
         }
         return count;
+    }
+
+    private ArrayList<TLRPC.Dialog> getWorkspaceDialogs() {
+        ArrayList<TLRPC.Dialog> dialogs = null;
+        if (SingGramBotAuth.isBotAccount(currentAccount)) {
+            ArrayList<TLRPC.Dialog> allDialogs = getMessagesController().getAllDialogs();
+            if (allDialogs != null && !allDialogs.isEmpty()) {
+                dialogs = new ArrayList<>();
+                for (TLRPC.Dialog dialog : allDialogs) {
+                    if (dialog != null && dialog.folder_id == 0 && !DialogObject.isFolderDialogId(dialog.id) && !DialogObject.isEncryptedDialog(dialog.id)) {
+                        DialogObject.ensureDialogPeer(dialog);
+                        dialogs.add(dialog);
+                    }
+                }
+            }
+        }
+        if (dialogs == null || dialogs.isEmpty()) {
+            dialogs = getMessagesController().getDialogs(0);
+        }
+        if (dialogs == null || dialogs.isEmpty()) {
+            // Updates can create a dialog in allDialogs before the folder index is rebuilt.
+            dialogs = getMessagesController().getAllDialogs();
+        }
+        return dialogs == null ? new ArrayList<>() : new ArrayList<>(dialogs);
+    }
+
+    private String getDialogTitle(long dialogId) {
+        String name = DialogObject.getName(currentAccount, dialogId);
+        if (!TextUtils.isEmpty(name)) {
+            return name;
+        }
+        // A short bot update may only contain an id. Keep the row actionable until the peer
+        // details arrive in a later update instead of hiding the conversation altogether.
+        return dialogId > 0 ? "User " + dialogId : "Chat " + Math.abs(dialogId);
     }
 
     private void addEmptyState(Context context, LinearLayout container) {
@@ -237,7 +271,10 @@ public class SingGramBotWorkspaceActivity extends BaseFragment implements Notifi
         }
         refreshing = true;
         buildContent(getParentActivity());
-        getMessagesController().loadDialogs(0, 0, 50, false);
+        getMessagesController().loadDialogs(0, 0, 100, true);
+        // Older builds may have advanced a Bot update cursor before they could persist a
+        // conversation. Retry retained updates while leaving all existing cache intact.
+        getMessagesController().forceBotInboxResync();
     }
 
     private void openInbox() {

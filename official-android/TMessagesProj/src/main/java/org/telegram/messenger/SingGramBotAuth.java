@@ -10,6 +10,10 @@ import java.util.ArrayList;
 /** Logs a Bot API token into an unused native Telegram account slot through MTProto. */
 public final class SingGramBotAuth {
 
+    /* Keep the bot identity available while native session callbacks are still racing auth setup. */
+    private static final Object botAccountLock = new Object();
+    private static final boolean[] botAccountHints = new boolean[UserConfig.MAX_ACCOUNT_COUNT];
+
     public interface Callback {
         void onSuccess(int account, TLRPC.User bot);
 
@@ -31,6 +35,10 @@ public final class SingGramBotAuth {
             return;
         }
 
+        // Mark the slot before opening the network session. ConnectionsManager can notify
+        // onSessionCreated before the authorization callback reaches the UI thread.
+        markBotAccount(account);
+
         TLRPC.TL_auth_importBotAuthorization request = new TLRPC.TL_auth_importBotAuthorization();
         request.api_id = BuildVars.APP_ID;
         request.api_hash = BuildVars.APP_HASH;
@@ -39,18 +47,22 @@ public final class SingGramBotAuth {
             request.bot_auth_token = "";
             AndroidUtilities.runOnUIThread(() -> {
                 if (error != null) {
+                    clearBotAccount(account);
                     callbackError(callback, TextUtils.isEmpty(error.text) ? "BOT_LOGIN_FAILED" : error.text);
                     return;
                 }
                 if (!(response instanceof TLRPC.TL_auth_authorization)) {
+                    clearBotAccount(account);
                     callbackError(callback, "BOT_LOGIN_UNEXPECTED_RESPONSE");
                     return;
                 }
                 TLRPC.TL_auth_authorization authorization = (TLRPC.TL_auth_authorization) response;
                 if (authorization.user == null || !authorization.user.bot) {
+                    clearBotAccount(account);
                     callbackError(callback, "BOT_LOGIN_NOT_A_BOT");
                     return;
                 }
+                markBotAccount(account);
                 applyAuthorization(account, authorization);
                 if (callback != null) {
                     callback.onSuccess(account, authorization.user);
@@ -72,8 +84,38 @@ public final class SingGramBotAuth {
     }
 
     public static boolean isBotAccount(int account) {
-        TLRPC.User user = account >= 0 && account < UserConfig.MAX_ACCOUNT_COUNT ? UserConfig.getInstance(account).getCurrentUser() : null;
-        return user != null && user.bot;
+        if (account < 0 || account >= UserConfig.MAX_ACCOUNT_COUNT) {
+            return false;
+        }
+        TLRPC.User user = UserConfig.getInstance(account).getCurrentUser();
+        synchronized (botAccountLock) {
+            if (botAccountHints[account]) {
+                return true;
+            }
+            if (user != null) {
+                botAccountHints[account] = user.bot;
+                return user.bot;
+            }
+            return botAccountHints[account];
+        }
+    }
+
+    public static void markBotAccount(int account) {
+        if (account < 0 || account >= UserConfig.MAX_ACCOUNT_COUNT) {
+            return;
+        }
+        synchronized (botAccountLock) {
+            botAccountHints[account] = true;
+        }
+    }
+
+    public static void clearBotAccount(int account) {
+        if (account < 0 || account >= UserConfig.MAX_ACCOUNT_COUNT) {
+            return;
+        }
+        synchronized (botAccountLock) {
+            botAccountHints[account] = false;
+        }
     }
 
     public static boolean isValidToken(String token) {
@@ -95,6 +137,7 @@ public final class SingGramBotAuth {
     }
 
     private static void applyAuthorization(int account, TLRPC.TL_auth_authorization authorization) {
+        markBotAccount(account);
         MessagesController.getInstance(account).cleanup();
         ConnectionsManager.getInstance(account).setUserId(authorization.user.id);
         UserConfig.getInstance(account).clearConfig();
@@ -112,8 +155,8 @@ public final class SingGramBotAuth {
         ConnectionsManager.getInstance(account).updateDcSettings();
         MessagesController.getInstance(account).loadAppConfig();
         MessagesController.getInstance(account).checkPeerColors(false);
-        // Fetch the Bot inbox immediately after the account becomes authorized.
-        MessagesController.getInstance(account).loadDialogs(0, 0, 50, false);
+        // Bot accounts cannot use messages.getDialogs; synchronize their inbox through updates.
+        MessagesController.getInstance(account).loadBotUpdates();
         if (authorization.future_auth_token != null) {
             AuthTokensHelper.saveLogInToken(authorization);
         }

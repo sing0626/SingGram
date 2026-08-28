@@ -41,6 +41,7 @@ import org.telegram.messenger.MessagesController;
 import org.telegram.messenger.NotificationCenter;
 import org.telegram.messenger.PushListenerController;
 import org.telegram.messenger.SharedConfig;
+import org.telegram.messenger.SingGramBotAuth;
 import org.telegram.messenger.StatsController;
 import org.telegram.messenger.UserConfig;
 import org.telegram.messenger.Utilities;
@@ -795,7 +796,14 @@ public class ConnectionsManager extends BaseController {
     }
 
     public static void onSessionCreated(final int currentAccount) {
-        Utilities.stageQueue.postRunnable(() -> AccountInstance.getInstance(currentAccount).getMessagesController().getDifference());
+        Utilities.stageQueue.postRunnable(() -> {
+            MessagesController messagesController = AccountInstance.getInstance(currentAccount).getMessagesController();
+            if (SingGramBotAuth.isBotAccount(currentAccount)) {
+                messagesController.loadBotUpdates();
+            } else {
+                messagesController.getDifference();
+            }
+        });
     }
 
     public static void onConnectionStateChanged(final int state, final int currentAccount) {

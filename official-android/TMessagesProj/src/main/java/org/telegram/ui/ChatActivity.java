@@ -179,6 +179,7 @@ import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.SingGramAiClient;
 import org.telegram.messenger.SingGramChatNotesStore;
 import org.telegram.messenger.SingGramConfig;
+import org.telegram.messenger.SingGramBotAuth;
 import org.telegram.messenger.SingGramWorkspaceConfig;
 import org.telegram.messenger.SvgHelper;
 import org.telegram.messenger.Timer;
@@ -4120,7 +4121,7 @@ public class ChatActivity extends BaseFragment implements
         if (isReport()) {
             actionBar.setTitle(reportTitle);
             actionBar.setSubtitle(getString(R.string.ReportSelectMessages));
-        } else if (startLoadFromDate != 0) {
+        } else if (startLoadFromDate != 0 && !SingGramBotAuth.isBotAccount(currentAccount)) {
             final int date = startLoadFromDate;
             actionBar.setOnClickListener((v) -> {
                 jumpToDate(date);
@@ -20262,7 +20263,7 @@ public class ChatActivity extends BaseFragment implements
             }
 
             if (postponedScroll) {
-                if (load_type == 0 && isCache && messArr.size() < count) {
+                if (load_type == 0 && isCache && messArr.size() < count && !SingGramBotAuth.isBotAccount(currentAccount)) {
                     postponedScrollToLastMessageQueryIndex = lastLoadIndex;
                     waitingForLoad.add(lastLoadIndex);
                     getMessagesController().loadMessages(dialog_id, mergeDialogId, false, count, 0, 0, false, 0, classGuid, 0, 0, chatMode, threadMessageId, replyMaxReadId, lastLoadIndex++, isTopic);
@@ -20975,6 +20976,10 @@ public class ChatActivity extends BaseFragment implements
                 }
                 loadingForward = false;
             } else {
+                if (SingGramBotAuth.isBotAccount(currentAccount) && isCache && mode == MODE_DEFAULT && load_type == 0) {
+                    endReached[loadIndex] = true;
+                    cacheEndReached[loadIndex] = true;
+                }
                 if (messArr.size() < count && load_type != 3 && load_type != 4) {
                     if (isCache) {
                         if (currentEncryptedChat != null || loadIndex == 1 && mergeDialogId != 0 && isEnd) {

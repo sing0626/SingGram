@@ -349,6 +349,11 @@ public class MessagesController extends BaseController implements NotificationCe
     private boolean migratingDialogs;
     public boolean gettingDifference;
     private boolean getDifferenceFirstSync = true;
+    private long lastBotDifferenceRequestTime;
+    private boolean botStateInitialized;
+    private boolean botInitialDifferenceAttempted;
+    private TLRPC.TL_updates_state botInitialState;
+    private boolean botInboxResyncRequested;
     public boolean updatingState;
     public boolean firstGettingTask;
     public boolean registeringForPush;
@@ -1969,6 +1974,12 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     protected void loadFilterPeers(HashMap<Long, TLRPC.InputPeer> dialogsToLoadMap, HashMap<Long, TLRPC.InputPeer> usersToLoadMap, HashMap<Long, TLRPC.InputPeer> chatsToLoadMap, TLRPC.messages_Dialogs pinnedDialogs, TLRPC.messages_Dialogs pinnedRemoteDialogs, ArrayList<TLRPC.User> users, ArrayList<TLRPC.Chat> chats, ArrayList<DialogFilter> filtersToSave, SparseArray<DialogFilter> filtersToDelete, ArrayList<Integer> filtersOrder, HashMap<Integer, HashSet<Long>> filterDialogRemovals, HashSet<Integer> filtersUnreadCounterReset, Runnable onDone) {
+        if (SingGramBotAuth.isBotAccount(currentAccount)) {
+            if (onDone != null) {
+                AndroidUtilities.runOnUIThread(onDone);
+            }
+            return;
+        }
         Utilities.stageQueue.postRunnable(() -> {
             ArrayList<TLObject> requests = new ArrayList<>();
             TLRPC.TL_users_getUsers req = null;
@@ -6627,6 +6638,11 @@ public class MessagesController extends BaseController implements NotificationCe
         offlineSent = false;
         registeringForPush = false;
         getDifferenceFirstSync = true;
+        lastBotDifferenceRequestTime = 0;
+        botStateInitialized = false;
+        botInitialDifferenceAttempted = false;
+        botInitialState = null;
+        botInboxResyncRequested = false;
         uploadingAvatar = null;
         uploadingWallpaper = null;
         uploadingWallpaperInfo = null;
@@ -7330,6 +7346,9 @@ public class MessagesController extends BaseController implements NotificationCe
     private final long peerDialogRequestTimeout = 1000 * 60 * 4;
 
     private void reloadDialogsReadValue(ArrayList<TLRPC.Dialog> dialogs, long did) {
+        if (SingGramBotAuth.isBotAccount(currentAccount)) {
+            return;
+        }
         if (did == 0 && (dialogs == null || dialogs.isEmpty())) {
             return;
         }
@@ -9579,10 +9598,25 @@ public class MessagesController extends BaseController implements NotificationCe
 
     public ArrayList<TLRPC.Dialog> getDialogs(int folderId) {
         ArrayList<TLRPC.Dialog> dialogs = dialogsByFolder.get(folderId);
-        if (dialogs == null) {
-            return new ArrayList<>();
+        if (SingGramBotAuth.isBotAccount(currentAccount) && folderId == 0 && !allDialogs.isEmpty()) {
+            // Bot dialogs are created from incoming updates. During the short interval before
+            // sortDialogs rebuilds the folder index, expose the already-created inbox rows.
+            ArrayList<TLRPC.Dialog> fallback = new ArrayList<>();
+            for (int i = 0; i < allDialogs.size(); i++) {
+                TLRPC.Dialog dialog = allDialogs.get(i);
+                if (dialog != null && !DialogObject.isFolderDialogId(dialog.id) && dialog.folder_id == 0) {
+                    DialogObject.ensureDialogPeer(dialog);
+                    fallback.add(dialog);
+                }
+            }
+            if (!fallback.isEmpty()) {
+                return fallback;
+            }
         }
-        return dialogs;
+        if (dialogs != null && !dialogs.isEmpty()) {
+            return dialogs;
+        }
+        return dialogs == null ? new ArrayList<>() : dialogs;
     }
 
     public int getAllFoldersDialogsCount() {
@@ -10235,6 +10269,11 @@ public class MessagesController extends BaseController implements NotificationCe
         checkReadTasks();
 
         if (getUserConfig().isClientActivated()) {
+            if (SingGramBotAuth.isBotAccount(currentAccount)
+                    && !gettingDifference
+                    && currentTime - lastBotDifferenceRequestTime >= 5000) {
+                loadBotUpdates();
+            }
             if (!ignoreSetOnline && getConnectionsManager().getPauseTime() == 0 && ApplicationLoader.isScreenOn && !ApplicationLoader.mainInterfacePausedStageQueue) {
                 if (ApplicationLoader.mainInterfacePausedStageQueueTime != 0 && Math.abs(ApplicationLoader.mainInterfacePausedStageQueueTime - System.currentTimeMillis()) > 1000) {
                     if (statusSettingState != 1 && (lastStatusUpdateTime == 0 || Math.abs(System.currentTimeMillis() - lastStatusUpdateTime) >= 55000 || offlineSent)) {
@@ -10571,6 +10610,11 @@ public class MessagesController extends BaseController implements NotificationCe
     private long lastCheckPromoInfoTime;
 
     private void checkPromoInfoInternal(boolean reset) {
+        if (SingGramBotAuth.isBotAccount(currentAccount)) {
+            checkingPromoInfo = false;
+            checkingPromoInfoRequestId = 0;
+            return;
+        }
         if (reset && checkingPromoInfo) {
             checkingPromoInfo = false;
         }
@@ -11238,7 +11282,12 @@ public class MessagesController extends BaseController implements NotificationCe
         if (BuildVars.LOGS_ENABLED && loaderLogger == null && mode == 0) {
             loaderLogger = new Timer("MessageLoaderLogger dialogId=" + dialogId + " index=" + loadIndex + " count=" + count);
         }
-        if ((threadMessageId == 0 || isTopic || mode == ChatActivity.MODE_SUGGESTIONS || mode == ChatActivity.MODE_SAVED || mode == ChatActivity.MODE_QUICK_REPLIES) && mode != ChatActivity.MODE_PINNED && (fromCache || DialogObject.isEncryptedDialog(dialogId))) {
+        if (SingGramBotAuth.isBotAccount(currentAccount) && !fromCache) {
+            // Bot history cannot be fetched with messages.getHistory. Re-read the local cache
+            // and let the chat screen mark the cached range as complete.
+            fromCache = true;
+        }
+        if (SingGramBotAuth.isBotAccount(currentAccount) || ((threadMessageId == 0 || isTopic || mode == ChatActivity.MODE_SUGGESTIONS || mode == ChatActivity.MODE_SAVED || mode == ChatActivity.MODE_QUICK_REPLIES) && mode != ChatActivity.MODE_PINNED && (fromCache || DialogObject.isEncryptedDialog(dialogId)))) {
             getMessagesStorage().getMessages(dialogId, mergeDialogId, loadInfo, count, max_id, offset_date, minDate, classGuid, load_type, mode, threadMessageId, loadIndex, processMessages, isTopic, loaderLogger);
         } else {
             final TLRPC.Chat chat = dialogId < 0 ? getChat(-dialogId): null;
@@ -11717,10 +11766,14 @@ public class MessagesController extends BaseController implements NotificationCe
                     }
                 }
             }
-            final long finalHash = hash;
-            AndroidUtilities.runOnUIThread(() -> loadMessagesInternal(dialogId, mergeDialogId, false, count, load_type == LOAD_FROM_UNREAD && queryFromServer ? first_unread : max_id, offset_date, false, 0, classGuid, load_type, last_message_id, mode, threadMessageId, loadIndex, first_unread, unread_count, last_date, queryFromServer, mentionsCount, true, needProcess, isTopic, loaderLogger, finalHash));
-            if (messagesRes.messages.isEmpty()) {
-                return;
+            if (!SingGramBotAuth.isBotAccount(currentAccount)) {
+                final long finalHash = hash;
+                AndroidUtilities.runOnUIThread(() -> loadMessagesInternal(dialogId, mergeDialogId, false, count, load_type == LOAD_FROM_UNREAD && queryFromServer ? first_unread : max_id, offset_date, false, 0, classGuid, load_type, last_message_id, mode, threadMessageId, loadIndex, first_unread, unread_count, last_date, queryFromServer, mentionsCount, true, needProcess, isTopic, loaderLogger, finalHash));
+                if (messagesRes.messages.isEmpty()) {
+                    return;
+                }
+            } else if (SingGramBotAuth.isBotAccount(currentAccount)) {
+                isEnd = true;
             }
         }
         int size = messagesRes.messages.size();
@@ -11881,7 +11934,7 @@ public class MessagesController extends BaseController implements NotificationCe
                 getNotificationCenter().postNotificationName(NotificationCenter.scheduledMessagesUpdated, dialogId, objects.size(), false);
             }
 
-            if (!DialogObject.isEncryptedDialog(dialogId) && mode != ChatActivity.MODE_QUICK_REPLIES) {
+            if (!SingGramBotAuth.isBotAccount(currentAccount) && !DialogObject.isEncryptedDialog(dialogId) && mode != ChatActivity.MODE_QUICK_REPLIES) {
                 int finalFirst_unread_final = first_unread_final;
                 Timer.Task t5 = Timer.start(loaderLogger, "loadReplyMessagesForMessages");
                 getMediaDataController().loadReplyMessagesForMessages(objects, dialogId, mode, threadMessageId, () -> {
@@ -12137,6 +12190,17 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     public void loadDialogs(final int folderId, int offset, int count, boolean fromCache, Runnable onEmptyCallback) {
+        if (SingGramBotAuth.isBotAccount(currentAccount) && !fromCache) {
+            // Telegram does not expose messages.getDialogs to bots. Their dialog cache is
+            // populated from updates.getDifference instead.
+            loadingDialogs.put(folderId, false);
+            if (onEmptyCallback != null && getDialogs(folderId).isEmpty()) {
+                AndroidUtilities.runOnUIThread(onEmptyCallback);
+            }
+            getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
+            loadBotUpdates();
+            return;
+        }
         if (loadingDialogs.get(folderId) || resetingDialogs) {
             return;
         }
@@ -12410,6 +12474,12 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     protected void loadUnknownDialog(final TLRPC.InputPeer peer, long taskId) {
+        if (SingGramBotAuth.isBotAccount(currentAccount)) {
+            if (taskId != 0) {
+                getMessagesStorage().removePendingTask(taskId);
+            }
+            return;
+        }
         if (peer == null) {
             return;
         }
@@ -12517,6 +12587,9 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     private void resetDialogs(boolean query, int seq, int newPts, int date, int qts) {
+        if (SingGramBotAuth.isBotAccount(currentAccount)) {
+            return;
+        }
         if (query) {
             if (resetingDialogs) {
                 return;
@@ -12766,6 +12839,9 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     private void migrateDialogs(int offset, int offsetDate, long offsetUser, long offsetChat, long offsetChannel, long accessPeer) {
+        if (SingGramBotAuth.isBotAccount(currentAccount)) {
+            return;
+        }
         if (migratingDialogs || offset == -1) {
             return;
         }
@@ -13002,6 +13078,8 @@ public class MessagesController extends BaseController implements NotificationCe
                     } else if (dialogsLoadOffset[UserConfig.i_dialogsLoadOffsetId] == Integer.MAX_VALUE) {
                         dialogsEndReached.put(folderId, true);
                         serverDialogsEndReached.put(folderId, true);
+                    } else if (SingGramBotAuth.isBotAccount(currentAccount)) {
+                        loadBotUpdates();
                     } else {
                         loadDialogs(folderId, 0, count, false);
                     }
@@ -13041,6 +13119,24 @@ public class MessagesController extends BaseController implements NotificationCe
             ArrayList<MessageObject> newMessages = new ArrayList<>();
             for (int a = 0; a < dialogsRes.messages.size(); a++) {
                 TLRPC.Message message = dialogsRes.messages.get(a);
+                if (message == null) {
+                    continue;
+                }
+                if (message.peer_id == null) {
+                    long messageDialogId = message.dialog_id;
+                    if (messageDialogId == 0 && message.from_id != null) {
+                        messageDialogId = DialogObject.getPeerDialogId(message.from_id);
+                        message.dialog_id = messageDialogId;
+                    }
+                    TLRPC.Chat messageChat = messageDialogId < 0 ? chatsDict.get(-messageDialogId) : null;
+                    message.peer_id = DialogObject.getPeerFromDialogId(messageDialogId, messageChat != null && ChatObject.isChannel(messageChat));
+                }
+                if (message.peer_id == null) {
+                    continue;
+                }
+                if (message.entities == null) {
+                    message.entities = new ArrayList<>();
+                }
                 if (message.date == 0) {
                     continue;
                 }
@@ -13132,6 +13228,7 @@ public class MessagesController extends BaseController implements NotificationCe
             for (int a = 0; a < dialogsRes.dialogs.size(); a++) {
                 TLRPC.Dialog d = dialogsRes.dialogs.get(a);
                 DialogObject.initDialog(d);
+                DialogObject.ensureDialogPeer(d);
                 if (d.id == 0) {
                     continue;
                 }
@@ -13286,6 +13383,7 @@ public class MessagesController extends BaseController implements NotificationCe
                     }
                     ArrayList<MessageObject> newMsgs = new_dialogMessage.get(value.id);
                     if (currentDialog == null) {
+                        DialogObject.ensureDialogPeer(value);
                         added = true;
                         dialogs_dict.put(key, value);
                         dialogMessage.put(key, newMsgs);
@@ -13304,6 +13402,9 @@ public class MessagesController extends BaseController implements NotificationCe
                             getTranslateController().checkDialogMessageSure(key);
                         }
                     } else {
+                        if (currentDialog.peer == null) {
+                            currentDialog.peer = value.peer;
+                        }
                         if (loadType != DIALOGS_LOAD_TYPE_CACHE) {
                             currentDialog.notify_settings = value.notify_settings;
                         }
@@ -13609,6 +13710,12 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     protected void checkLastDialogMessage(TLRPC.Dialog dialog, TLRPC.InputPeer peer, long taskId) {
+        if (SingGramBotAuth.isBotAccount(currentAccount)) {
+            if (taskId != 0) {
+                getMessagesStorage().removePendingTask(taskId);
+            }
+            return;
+        }
         if (DialogObject.isEncryptedDialog(dialog.id) || checkingLastMessagesDialogs.indexOfKey(dialog.id) >= 0) {
             return;
         }
@@ -15537,6 +15644,7 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     public void performLogout(int type) {
+        SingGramBotAuth.clearBotAccount(currentAccount);
         if (type == 1) {
             unregistedPush();
             TLRPC.TL_auth_logOut req = new TLRPC.TL_auth_logOut();
@@ -15633,6 +15741,108 @@ public class MessagesController extends BaseController implements NotificationCe
         });
     }
 
+    /**
+     * Bot accounts do not have access to the user-only dialog and history APIs. Keep their
+     * local inbox current by polling the account update state instead.
+     */
+    public void loadBotUpdates() {
+        if (!SingGramBotAuth.isBotAccount(currentAccount) || getUserConfig().getClientUserId() == 0) {
+            return;
+        }
+        getMessagesStorage().getStorageQueue().postRunnable(() -> {
+            if (getMessagesStorage().getDatabase() == null) {
+                AndroidUtilities.runOnUIThread(this::loadBotUpdates, 500);
+                return;
+            }
+            Utilities.stageQueue.postRunnable(() -> {
+                if (!SingGramBotAuth.isBotAccount(currentAccount) || getUserConfig().getClientUserId() == 0) {
+                    return;
+                }
+                if (botInboxResyncRequested) {
+                    startBotInboxResyncIfPossible();
+                    return;
+                }
+                if (gettingDifference) {
+                    return;
+                }
+                // A persisted cursor means this account has already completed the initial
+                // synchronization. On a fresh Bot login, loadCurrentState first attempts a
+                // bounded catch-up before persisting the newest cursor.
+                if (!botStateInitialized) {
+                    botStateInitialized = getMessagesStorage().getLastDateValue() != 0
+                            || getMessagesStorage().getLastPtsValue() != 0
+                            || getMessagesStorage().getLastQtsValue() != 0
+                            || getMessagesStorage().getLastSeqValue() != 0;
+                }
+                if (!botStateInitialized) {
+                    loadCurrentState();
+                } else {
+                    lastBotDifferenceRequestTime = System.currentTimeMillis();
+                    getDifference();
+                }
+            });
+        });
+    }
+
+    /**
+     * Replays Telegram's retained Bot update stream without deleting the local inbox. This is
+     * deliberately manual: repeating it automatically whenever an inbox is empty could replay
+     * the same updates forever for a Bot that genuinely has no conversations.
+     */
+    public void forceBotInboxResync() {
+        if (!SingGramBotAuth.isBotAccount(currentAccount) || getUserConfig().getClientUserId() == 0) {
+            return;
+        }
+        Utilities.stageQueue.postRunnable(() -> {
+            botInboxResyncRequested = true;
+            startBotInboxResyncIfPossible();
+        });
+    }
+
+    // Must run on Utilities.stageQueue.
+    private void startBotInboxResyncIfPossible() {
+        if (!botInboxResyncRequested || !SingGramBotAuth.isBotAccount(currentAccount)
+                || getUserConfig().getClientUserId() == 0 || gettingDifference || updatingState) {
+            return;
+        }
+        botInboxResyncRequested = false;
+        lastBotDifferenceRequestTime = 0;
+        botStateInitialized = false;
+        botInitialDifferenceAttempted = false;
+        botInitialState = null;
+        updatesQueueSeq.clear();
+        updatesQueuePts.clear();
+        updatesQueueQts.clear();
+        getMessagesStorage().setLastSeqValue(0);
+        getMessagesStorage().setLastPtsValue(0);
+        getMessagesStorage().setLastDateValue(0);
+        getMessagesStorage().setLastQtsValue(0);
+        getMessagesStorage().saveDiffParams(0, 0, 0, 0);
+        loadBotUpdates();
+    }
+
+    private void applyBotInitialState(TLRPC.TL_updates_state state, int minimumPts) {
+        if (state == null) {
+            return;
+        }
+        getMessagesStorage().setLastDateValue(Math.max(getMessagesStorage().getLastDateValue(), state.date));
+        getMessagesStorage().setLastPtsValue(Math.max(Math.max(getMessagesStorage().getLastPtsValue(), state.pts), minimumPts));
+        getMessagesStorage().setLastSeqValue(Math.max(getMessagesStorage().getLastSeqValue(), state.seq));
+        getMessagesStorage().setLastQtsValue(Math.max(getMessagesStorage().getLastQtsValue(), state.qts));
+        botStateInitialized = true;
+        updatesQueueSeq.clear();
+        updatesQueuePts.clear();
+        updatesQueueQts.clear();
+        getMessagesStorage().saveDiffParams(getMessagesStorage().getLastSeqValue(), getMessagesStorage().getLastPtsValue(), getMessagesStorage().getLastDateValue(), getMessagesStorage().getLastQtsValue());
+    }
+
+    private void finishBotInitialCatchUp(int minimumPts) {
+        if (botInitialState != null) {
+            applyBotInitialState(botInitialState, minimumPts);
+            botInitialState = null;
+        }
+    }
+
     public void loadCurrentState() {
         if (updatingState) {
             return;
@@ -15641,18 +15851,41 @@ public class MessagesController extends BaseController implements NotificationCe
         TLRPC.TL_updates_getState req = new TLRPC.TL_updates_getState();
         getConnectionsManager().sendRequest(req, (response, error) -> {
             updatingState = false;
-            if (error == null) {
+            if (error == null && response instanceof TLRPC.TL_updates_state) {
                 TLRPC.TL_updates_state res = (TLRPC.TL_updates_state) response;
-                getMessagesStorage().setLastDateValue(res.date);
-                getMessagesStorage().setLastPtsValue(res.pts);
-                getMessagesStorage().setLastSeqValue(res.seq);
-                getMessagesStorage().setLastQtsValue(res.qts);
+                if (SingGramBotAuth.isBotAccount(currentAccount)) {
+                    if (botInboxResyncRequested) {
+                        startBotInboxResyncIfPossible();
+                        return;
+                    }
+                    if (!botStateInitialized && !botInitialDifferenceAttempted) {
+                        // Bot sessions have no dialog list endpoint. Ask for a bounded
+                        // difference from the retained message box before adopting the
+                        // newest state, so recent conversations can populate the inbox.
+                        botInitialDifferenceAttempted = true;
+                        botInitialState = res;
+                        botStateInitialized = true;
+                        getDifference(0, Math.max(1, res.date), 0, false);
+                        return;
+                    }
+                    // An update can arrive while getState is in flight. Do not move the
+                    // cursor backwards and then lose that already-persisted message.
+                    applyBotInitialState(res, 0);
+                } else {
+                    getMessagesStorage().setLastDateValue(res.date);
+                    getMessagesStorage().setLastPtsValue(res.pts);
+                    getMessagesStorage().setLastSeqValue(res.seq);
+                    getMessagesStorage().setLastQtsValue(res.qts);
+                }
                 for (int a = 0; a < 3; a++) {
                     processUpdatesQueue(a, 2);
                 }
                 getMessagesStorage().saveDiffParams(getMessagesStorage().getLastSeqValue(), getMessagesStorage().getLastPtsValue(), getMessagesStorage().getLastDateValue(), getMessagesStorage().getLastQtsValue());
+                if (SingGramBotAuth.isBotAccount(currentAccount)) {
+                    loadBotUpdates();
+                }
             } else {
-                if (error.code != 401) {
+                if (error == null || error.code != 401) {
                     loadCurrentState();
                 }
             }
@@ -15843,6 +16076,12 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     protected void loadUnknownChannel(final TLRPC.Chat channel, long taskId) {
+        if (SingGramBotAuth.isBotAccount(currentAccount)) {
+            if (taskId != 0) {
+                getMessagesStorage().removePendingTask(taskId);
+            }
+            return;
+        }
         if (!(channel instanceof TLRPC.TL_channel) || gettingUnknownChannels.indexOfKey(channel.id) >= 0) {
             return;
         }
@@ -16277,30 +16516,45 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     public void getDifference(int pts, int date, int qts, boolean slice) {
-        registerForPush(SharedConfig.pushType, SharedConfig.pushString);
-        if (getMessagesStorage().getLastPtsValue() == 0) {
-            loadCurrentState();
-            return;
+        final boolean botAccount = SingGramBotAuth.isBotAccount(currentAccount);
+        if (!botAccount) {
+            registerForPush(SharedConfig.pushType, SharedConfig.pushString);
         }
         if (!slice && gettingDifference) {
             return;
         }
+        if (botAccount && getUserConfig().getClientUserId() == 0) {
+            return;
+        }
+        if (botAccount && !botStateInitialized) {
+            loadCurrentState();
+            return;
+        }
+        if (!botAccount && getMessagesStorage().getLastPtsValue() == 0) {
+            loadCurrentState();
+            return;
+        }
         gettingDifference = true;
+        if (botAccount) {
+            lastBotDifferenceRequestTime = System.currentTimeMillis();
+        }
         TLRPC.TL_updates_getDifference req = new TLRPC.TL_updates_getDifference();
-        req.pts = pts;
-        req.date = date;
-        req.qts = qts;
+        req.pts = Math.max(0, pts);
+        req.date = Math.max(0, date);
+        req.qts = Math.max(0, qts);
         if (getDifferenceFirstSync) {
-            req.flags |= 1;
-            if (ApplicationLoader.isConnectedOrConnectingToWiFi()) {
-                req.pts_total_limit = 5000;
-            } else {
-                req.pts_total_limit = 1000;
+            if (!botAccount) {
+                req.flags |= 1;
+                if (ApplicationLoader.isConnectedOrConnectingToWiFi()) {
+                    req.pts_total_limit = 5000;
+                } else {
+                    req.pts_total_limit = 1000;
+                }
             }
             getDifferenceFirstSync = false;
         }
         if (req.date == 0) {
-            req.date = getConnectionsManager().getCurrentTime();
+            req.date = Math.max(1, getConnectionsManager().getCurrentTime());
         }
         if (BuildVars.LOGS_ENABLED) {
             FileLog.d("start getDifference with date = " + date + " pts = " + pts + " qts = " + qts);
@@ -16308,19 +16562,49 @@ public class MessagesController extends BaseController implements NotificationCe
         }
         getConnectionsManager().setIsUpdating(true);
         getConnectionsManager().sendRequest(req, (response, error) -> {
-            if (error == null) {
+            if (error == null && response instanceof TLRPC.updates_Difference) {
                 TLRPC.updates_Difference res = (TLRPC.updates_Difference) response;
                 if (res instanceof TLRPC.TL_updates_differenceTooLong) {
-                    AndroidUtilities.runOnUIThread(() -> {
-                        loadedFullUsers.clear();
-                        loadedFullChats.clear();
-                        resetDialogs(true, getMessagesStorage().getLastSeqValue(), res.pts, date, qts);
-                        getStoriesController().cleanup();
-                    });
-                } else {
-                    if (res instanceof TLRPC.TL_updates_differenceSlice) {
-                        getDifference(res.intermediate_state.pts, res.intermediate_state.date, res.intermediate_state.qts, true);
+                    if (botAccount) {
+                        // A bot cannot recover a too-large gap with messages.getDialogs. Advance
+                        // the update cursor and continue polling for messages received from now on.
+                        gettingDifference = false;
+                        if (botInitialState != null) {
+                            finishBotInitialCatchUp(res.pts);
+                        } else {
+                            int botDate = Math.max(1, getConnectionsManager().getCurrentTime());
+                            int botQts = getMessagesStorage().getLastQtsValue();
+                            updatesQueueSeq.clear();
+                            updatesQueuePts.clear();
+                            updatesQueueQts.clear();
+                            getMessagesStorage().setLastPtsValue(Math.max(getMessagesStorage().getLastPtsValue(), res.pts));
+                            getMessagesStorage().setLastDateValue(Math.max(getMessagesStorage().getLastDateValue(), botDate));
+                            getMessagesStorage().setLastQtsValue(botQts);
+                            getMessagesStorage().saveDiffParams(getMessagesStorage().getLastSeqValue(), getMessagesStorage().getLastPtsValue(), getMessagesStorage().getLastDateValue(), botQts);
+                        }
+                        botInitialState = null;
+                        getConnectionsManager().setIsUpdating(false);
+                        AndroidUtilities.runOnUIThread(() -> {
+                            loadedFullUsers.clear();
+                            loadedFullChats.clear();
+                            getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
+                        });
+                        refreshBotDialogsFromCache();
+                        if (botInboxResyncRequested) {
+                            startBotInboxResyncIfPossible();
+                        } else {
+                            Utilities.stageQueue.postRunnable(this::loadBotUpdates, 250);
+                        }
+                    } else {
+                        AndroidUtilities.runOnUIThread(() -> {
+                            loadedFullUsers.clear();
+                            loadedFullChats.clear();
+                            resetDialogs(true, getMessagesStorage().getLastSeqValue(), res.pts, date, qts);
+                            getStoriesController().cleanup();
+                        });
                     }
+                } else {
+                    final boolean differenceSlice = res instanceof TLRPC.TL_updates_differenceSlice;
 
                     LongSparseArray<TLRPC.User> usersDict = new LongSparseArray<>();
                     LongSparseArray<TLRPC.Chat> chatsDict = new LongSparseArray<>();
@@ -16395,109 +16679,213 @@ public class MessagesController extends BaseController implements NotificationCe
                                 LongSparseArray<ArrayList<MessageObject>> messages = new LongSparseArray<>();
                                 for (int b = 0; b < res.new_encrypted_messages.size(); b++) {
                                     TLRPC.EncryptedMessage encryptedMessage = res.new_encrypted_messages.get(b);
-                                    ArrayList<TLRPC.Message> decryptedMessages = getSecretChatHelper().decryptMessage(encryptedMessage);
-                                    if (decryptedMessages != null && !decryptedMessages.isEmpty()) {
-                                        res.new_messages.addAll(decryptedMessages);
+                                    try {
+                                        ArrayList<TLRPC.Message> decryptedMessages = getSecretChatHelper().decryptMessage(encryptedMessage);
+                                        if (decryptedMessages != null && !decryptedMessages.isEmpty()) {
+                                            res.new_messages.addAll(decryptedMessages);
+                                        }
+                                    } catch (Throwable e) {
+                                        FileLog.e(e);
                                     }
                                 }
 
-                                ImageLoader.saveMessagesThumbs(res.new_messages);
-
-                                ArrayList<MessageObject> pushMessages = new ArrayList<>();
-                                long clientUserId = getUserConfig().getClientUserId();
-                                for (int a = 0; a < res.new_messages.size(); a++) {
-                                    TLRPC.Message message = res.new_messages.get(a);
-                                    if (message instanceof TLRPC.TL_messageEmpty) {
-                                        continue;
+                                // Validate each message independently. A single malformed
+                                // constructor must never prevent the rest of the inbox from
+                                // being persisted or shown.
+                                ArrayList<TLRPC.Message> messagesToProcess = new ArrayList<>(res.new_messages.size());
+                                for (int i = 0; i < res.new_messages.size(); i++) {
+                                    TLRPC.Message message = res.new_messages.get(i);
+                                    try {
+                                        if (message == null || message instanceof TLRPC.TL_messageEmpty) {
+                                            continue;
+                                        }
+                                        if (message.peer_id == null && botAccount) {
+                                            long inferredDialogId = message.dialog_id;
+                                            if (inferredDialogId == 0 && message.from_id != null) {
+                                                inferredDialogId = DialogObject.getPeerDialogId(message.from_id);
+                                            }
+                                            message.peer_id = DialogObject.getPeerFromDialogId(inferredDialogId, false);
+                                        }
+                                        if (message.peer_id == null) {
+                                            continue;
+                                        }
+                                        if (message.entities == null) {
+                                            message.entities = new ArrayList<>();
+                                        }
+                                        if (botAccount) {
+                                            ensureBotPeersForMessage(message, usersDict, chatsDict);
+                                        }
+                                        if (MessageObject.getDialogId(message) == 0) {
+                                            continue;
+                                        }
+                                        messagesToProcess.add(message);
+                                    } catch (Throwable e) {
+                                        FileLog.e(e);
                                     }
-                                    MessageObject.getDialogId(message);
-
-                                    if (!DialogObject.isEncryptedDialog(message.dialog_id)) {
-                                        if (message.action instanceof TLRPC.TL_messageActionChatDeleteUser) {
-                                            TLRPC.User user = usersDict.get(message.action.user_id);
-                                            if (user != null && user.bot) {
-                                                message.reply_markup = new TLRPC.TL_replyKeyboardHide();
-                                                message.flags |= 64;
+                                }
+                                if (messagesToProcess.isEmpty()) {
+                                    getSecretChatHelper().processPendingEncMessages();
+                                } else {
+                                    try {
+                                        ImageLoader.saveMessagesThumbs(messagesToProcess);
+                                    } catch (Throwable e) {
+                                        FileLog.e(e);
+                                        for (int i = 0; i < messagesToProcess.size(); i++) {
+                                            ArrayList<TLRPC.Message> oneMessage = new ArrayList<>(1);
+                                            oneMessage.add(messagesToProcess.get(i));
+                                            try {
+                                                ImageLoader.saveMessagesThumbs(oneMessage);
+                                            } catch (Throwable ignored) {
+                                                FileLog.e(ignored);
                                             }
                                         }
-                                        if (message.action instanceof TLRPC.TL_messageActionChatMigrateTo || message.action instanceof TLRPC.TL_messageActionChannelCreate) {
+                                    }
+
+                                    ArrayList<MessageObject> pushMessages = new ArrayList<>();
+                                    long clientUserId = getUserConfig().getClientUserId();
+                                    for (int a = 0; a < messagesToProcess.size(); a++) {
+                                        TLRPC.Message message = messagesToProcess.get(a);
+
+                                        if (!DialogObject.isEncryptedDialog(message.dialog_id)) {
+                                            if (message.action instanceof TLRPC.TL_messageActionChatDeleteUser) {
+                                                TLRPC.User user = usersDict.get(message.action.user_id);
+                                                if (user != null && user.bot) {
+                                                    message.reply_markup = new TLRPC.TL_replyKeyboardHide();
+                                                    message.flags |= 64;
+                                                }
+                                            }
+                                            if (message.action instanceof TLRPC.TL_messageActionChatMigrateTo || message.action instanceof TLRPC.TL_messageActionChannelCreate) {
+                                                message.unread = false;
+                                                message.media_unread = false;
+                                            } else {
+                                                ConcurrentHashMap<Long, Integer> read_max = message.out ? dialogs_read_outbox_max : dialogs_read_inbox_max;
+                                                Integer value = read_max.get(message.dialog_id);
+                                                if (value == null) {
+                                                    value = getMessagesStorage().getDialogReadMax(message.out, message.dialog_id);
+                                                    read_max.put(message.dialog_id, value);
+                                                }
+                                                message.unread = value < message.id;
+                                            }
+                                        }
+                                        if (message.dialog_id == clientUserId) {
                                             message.unread = false;
                                             message.media_unread = false;
-                                        } else {
-                                            ConcurrentHashMap<Long, Integer> read_max = message.out ? dialogs_read_outbox_max : dialogs_read_inbox_max;
-                                            Integer value = read_max.get(message.dialog_id);
-                                            if (value == null) {
-                                                value = getMessagesStorage().getDialogReadMax(message.out, message.dialog_id);
-                                                read_max.put(message.dialog_id, value);
-                                            }
-                                            message.unread = value < message.id;
+                                            message.out = true;
                                         }
-                                    }
-                                    if (message.dialog_id == clientUserId) {
-                                        message.unread = false;
-                                        message.media_unread = false;
-                                        message.out = true;
+
+                                        boolean isDialogCreated = createdDialogIds.contains(message.dialog_id);
+                                        MessageObject obj = new MessageObject(currentAccount, message, usersDict, chatsDict, isDialogCreated, isDialogCreated);
+
+                                        if ((!obj.isOut() || obj.messageOwner.from_scheduled) && obj.isUnread()) {
+                                            pushMessages.add(obj);
+                                        }
+
+                                        ArrayList<MessageObject> arr = messages.get(message.dialog_id);
+                                        if (arr == null) {
+                                            arr = new ArrayList<>();
+                                            messages.put(message.dialog_id, arr);
+                                        }
+                                        arr.add(obj);
                                     }
 
-                                    boolean isDialogCreated = createdDialogIds.contains(message.dialog_id);
-                                    MessageObject obj = new MessageObject(currentAccount, message, usersDict, chatsDict, isDialogCreated, isDialogCreated);
+                                    getMessagesStorage().getStorageQueue().postRunnable(() -> {
+                                        if (!pushMessages.isEmpty()) {
+                                            AndroidUtilities.runOnUIThread(() -> getNotificationsController().processNewMessages(pushMessages, !(res instanceof TLRPC.TL_updates_differenceSlice), false, null));
+                                        }
+                                        if (botAccount) {
+                                            for (int i = 0; i < messagesToProcess.size(); i++) {
+                                                ArrayList<TLRPC.Message> oneMessage = new ArrayList<>(1);
+                                                oneMessage.add(messagesToProcess.get(i));
+                                                try {
+                                                    getMessagesStorage().putMessages(oneMessage, true, false, false, getDownloadController().getAutodownloadMask(), 0, 0);
+                                                } catch (Throwable e) {
+                                                    FileLog.e(e);
+                                                }
+                                            }
+                                        } else {
+                                            getMessagesStorage().putMessages(messagesToProcess, true, false, false, getDownloadController().getAutodownloadMask(), 0, 0);
+                                        }
 
-                                    if ((!obj.isOut() || obj.messageOwner.from_scheduled) && obj.isUnread()) {
-                                        pushMessages.add(obj);
-                                    }
-
-                                    ArrayList<MessageObject> arr = messages.get(message.dialog_id);
-                                    if (arr == null) {
-                                        arr = new ArrayList<>();
-                                        messages.put(message.dialog_id, arr);
-                                    }
-                                    arr.add(obj);
+                                        for (int a = 0; a < messages.size(); a++) {
+                                            long dialogId = messages.keyAt(a);
+                                            ArrayList<MessageObject> arr = messages.valueAt(a);
+                                            getMediaDataController().loadReplyMessagesForMessages(arr, dialogId, 0, 0, () -> {
+                                                AndroidUtilities.runOnUIThread(() -> {
+                                                    updateInterfaceWithMessages(dialogId, arr, 0);
+                                                    getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
+                                                });
+                                            }, 0, null);
+                                        }
+                                    });
                                 }
-
-                                getMessagesStorage().getStorageQueue().postRunnable(() -> {
-                                    if (!pushMessages.isEmpty()) {
-                                        AndroidUtilities.runOnUIThread(() -> getNotificationsController().processNewMessages(pushMessages, !(res instanceof TLRPC.TL_updates_differenceSlice), false, null));
-                                    }
-                                    getMessagesStorage().putMessages(res.new_messages, true, false, false, getDownloadController().getAutodownloadMask(), 0, 0);
-
-                                    for (int a = 0; a < messages.size(); a++) {
-                                        long dialogId = messages.keyAt(a);
-                                        ArrayList<MessageObject> arr = messages.valueAt(a);
-                                        getMediaDataController().loadReplyMessagesForMessages(arr, dialogId, 0, 0, () -> {
-                                            AndroidUtilities.runOnUIThread(() -> {
-                                                updateInterfaceWithMessages(dialogId, arr, 0);
-                                                getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
-                                            });
-                                        }, 0, null);
-                                    }
-                                });
 
                                 getSecretChatHelper().processPendingEncMessages();
                             }
 
                             if (!res.other_updates.isEmpty()) {
-                                processUpdateArray(res.other_updates, res.users, res.chats, true, 0);
+                                if (botAccount) {
+                                    for (int i = 0; i < res.other_updates.size(); i++) {
+                                        TLRPC.Update update = res.other_updates.get(i);
+                                        if (update == null) {
+                                            continue;
+                                        }
+                                        ArrayList<TLRPC.Update> singleUpdate = new ArrayList<>(1);
+                                        singleUpdate.add(update);
+                                        try {
+                                            processUpdateArray(singleUpdate, res.users, res.chats, true, 0);
+                                        } catch (Throwable e) {
+                                            FileLog.e(e);
+                                        }
+                                    }
+                                } else {
+                                    processUpdateArray(res.other_updates, res.users, res.chats, true, 0);
+                                }
                             }
 
                             if (res instanceof TLRPC.TL_updates_difference) {
                                 gettingDifference = false;
-                                getMessagesStorage().setLastSeqValue(res.state.seq);
-                                getMessagesStorage().setLastDateValue(res.state.date);
-                                getMessagesStorage().setLastPtsValue(res.state.pts);
-                                getMessagesStorage().setLastQtsValue(res.state.qts);
+                                if (botAccount) {
+                                    // A live update may have been handled while this request
+                                    // was in flight. Keep the most advanced cursor in that
+                                    // case so the next poll cannot rewind over it.
+                                    getMessagesStorage().setLastSeqValue(Math.max(getMessagesStorage().getLastSeqValue(), res.state.seq));
+                                    getMessagesStorage().setLastDateValue(Math.max(getMessagesStorage().getLastDateValue(), res.state.date));
+                                    getMessagesStorage().setLastPtsValue(Math.max(getMessagesStorage().getLastPtsValue(), res.state.pts));
+                                    getMessagesStorage().setLastQtsValue(Math.max(getMessagesStorage().getLastQtsValue(), res.state.qts));
+                                } else {
+                                    getMessagesStorage().setLastSeqValue(res.state.seq);
+                                    getMessagesStorage().setLastDateValue(res.state.date);
+                                    getMessagesStorage().setLastPtsValue(res.state.pts);
+                                    getMessagesStorage().setLastQtsValue(res.state.qts);
+                                }
+                                if (botAccount) {
+                                    botInitialState = null;
+                                }
                                 FileLog.d("received difference: isUpdating = false");
                                 getConnectionsManager().setIsUpdating(false);
                                 for (int a = 0; a < 3; a++) {
                                     processUpdatesQueue(a, 1);
                                 }
                             } else if (res instanceof TLRPC.TL_updates_differenceSlice) {
-                                getMessagesStorage().setLastDateValue(res.intermediate_state.date);
-                                getMessagesStorage().setLastPtsValue(res.intermediate_state.pts);
-                                getMessagesStorage().setLastQtsValue(res.intermediate_state.qts);
+                                if (botAccount) {
+                                    getMessagesStorage().setLastDateValue(Math.max(getMessagesStorage().getLastDateValue(), res.intermediate_state.date));
+                                    getMessagesStorage().setLastPtsValue(Math.max(getMessagesStorage().getLastPtsValue(), res.intermediate_state.pts));
+                                    getMessagesStorage().setLastQtsValue(Math.max(getMessagesStorage().getLastQtsValue(), res.intermediate_state.qts));
+                                } else {
+                                    getMessagesStorage().setLastDateValue(res.intermediate_state.date);
+                                    getMessagesStorage().setLastPtsValue(res.intermediate_state.pts);
+                                    getMessagesStorage().setLastQtsValue(res.intermediate_state.qts);
+                                }
                             } else if (res instanceof TLRPC.TL_updates_differenceEmpty) {
                                 gettingDifference = false;
-                                getMessagesStorage().setLastSeqValue(res.seq);
-                                getMessagesStorage().setLastDateValue(res.date);
+                                if (botAccount) {
+                                    getMessagesStorage().setLastSeqValue(Math.max(getMessagesStorage().getLastSeqValue(), res.seq));
+                                    getMessagesStorage().setLastDateValue(Math.max(getMessagesStorage().getLastDateValue(), res.date));
+                                    finishBotInitialCatchUp(0);
+                                } else {
+                                    getMessagesStorage().setLastSeqValue(res.seq);
+                                    getMessagesStorage().setLastDateValue(res.date);
+                                }
                                 getConnectionsManager().setIsUpdating(false);
                                 FileLog.d("received differenceEmpty: isUpdating = false");
                                 for (int a = 0; a < 3; a++) {
@@ -16505,6 +16893,16 @@ public class MessagesController extends BaseController implements NotificationCe
                                 }
                             }
                             getMessagesStorage().saveDiffParams(getMessagesStorage().getLastSeqValue(), getMessagesStorage().getLastPtsValue(), getMessagesStorage().getLastDateValue(), getMessagesStorage().getLastQtsValue());
+                            if (botAccount && !differenceSlice) {
+                                refreshBotDialogsFromCache();
+                                startBotInboxResyncIfPossible();
+                            }
+                            if (differenceSlice) {
+                                // Serialize slices. Starting the next request only after this
+                                // slice has advanced the local cursor prevents out-of-order
+                                // responses from hiding messages in the cache.
+                                getDifference(res.intermediate_state.pts, res.intermediate_state.date, res.intermediate_state.qts, true);
+                            }
                             if (BuildVars.LOGS_ENABLED) {
                                 FileLog.d("received difference with date = " + getMessagesStorage().getLastDateValue() + " pts = " + getMessagesStorage().getLastPtsValue() + " seq = " + getMessagesStorage().getLastSeqValue() + " messages = " + res.new_messages.size() + " users = " + res.users.size() + " chats = " + res.chats.size() + " other updates = " + res.other_updates.size());
                             }
@@ -16514,7 +16912,18 @@ public class MessagesController extends BaseController implements NotificationCe
             } else {
                 gettingDifference = false;
                 getConnectionsManager().setIsUpdating(false);
-                FileLog.d("received: isUpdating = false");
+                if (botAccount && botInitialState != null) {
+                    // Some Bot accounts do not retain a fetchable update history. Keep the
+                    // connection usable by accepting the state gathered before the attempt.
+                    finishBotInitialCatchUp(0);
+                }
+                if (botAccount) {
+                    refreshBotDialogsFromCache();
+                    startBotInboxResyncIfPossible();
+                }
+                if (BuildVars.LOGS_ENABLED) {
+                    FileLog.d("received getDifference error: " + (error == null ? "unexpected response" : error.text));
+                }
             }
         });
     }
@@ -16574,6 +16983,9 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     public void loadUnreadDialogs() {
+        if (SingGramBotAuth.isBotAccount(currentAccount)) {
+            return;
+        }
         if (loadingUnreadDialogs || getUserConfig().unreadDialogsLoaded) {
             return;
         }
@@ -16750,6 +17162,9 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     public void loadPinnedDialogs(final int folderId, long newDialogId, ArrayList<Long> order) {
+        if (SingGramBotAuth.isBotAccount(currentAccount)) {
+            return;
+        }
         if (loadingPinnedDialogs.indexOfKey(folderId) >= 0 || getUserConfig().isPinnedDialogsLoaded(folderId)) {
             return;
         }
@@ -17205,6 +17620,174 @@ public class MessagesController extends BaseController implements NotificationCe
         }
     }
 
+    private TLRPC.User ensureBotUser(long userId, ConcurrentHashMap<Long, TLRPC.User> usersDict) {
+        if (userId == 0) {
+            return null;
+        }
+        TLRPC.User user = usersDict.get(userId);
+        if (user == null) {
+            user = getUser(userId);
+            if (user != null) {
+                usersDict.put(userId, user);
+            }
+        }
+        if (user == null) {
+            TLRPC.TL_user placeholder = new TLRPC.TL_user();
+            placeholder.id = userId;
+            placeholder.first_name = "User " + userId;
+            placeholder.flags |= TLObject.FLAG_1;
+            user = placeholder;
+            usersDict.put(userId, user);
+            putUser(user, true);
+            getMessagesStorage().putUsersAndChats(Collections.singletonList(user), null, true, true);
+        }
+        return user;
+    }
+
+    private TLRPC.User ensureBotUser(long userId, LongSparseArray<TLRPC.User> usersDict) {
+        if (userId == 0) {
+            return null;
+        }
+        TLRPC.User user = usersDict.get(userId);
+        if (user == null) {
+            user = getUser(userId);
+            if (user != null) {
+                usersDict.put(userId, user);
+            }
+        }
+        if (user == null) {
+            TLRPC.TL_user placeholder = new TLRPC.TL_user();
+            placeholder.id = userId;
+            placeholder.first_name = "User " + userId;
+            placeholder.flags |= TLObject.FLAG_1;
+            user = placeholder;
+            usersDict.put(userId, user);
+            putUser(user, true);
+            getMessagesStorage().putUsersAndChats(Collections.singletonList(user), null, true, true);
+        }
+        return user;
+    }
+
+    private TLRPC.Chat ensureBotChat(long chatId, boolean channel, ConcurrentHashMap<Long, TLRPC.Chat> chatsDict) {
+        if (chatId == 0) {
+            return null;
+        }
+        TLRPC.Chat chat = chatsDict.get(chatId);
+        if (chat == null) {
+            chat = getChat(chatId);
+            if (chat != null) {
+                chatsDict.put(chatId, chat);
+            }
+        }
+        if (chat == null) {
+            if (channel) {
+                TLRPC.TL_channel placeholder = new TLRPC.TL_channel();
+                placeholder.id = chatId;
+                placeholder.title = "Channel " + chatId;
+                placeholder.megagroup = true;
+                placeholder.photo = new TLRPC.TL_chatPhotoEmpty();
+                chat = placeholder;
+            } else {
+                TLRPC.TL_chat placeholder = new TLRPC.TL_chat();
+                placeholder.id = chatId;
+                placeholder.title = "Chat " + chatId;
+                placeholder.photo = new TLRPC.TL_chatPhotoEmpty();
+                chat = placeholder;
+            }
+            chatsDict.put(chatId, chat);
+            putChat(chat, true);
+            getMessagesStorage().putUsersAndChats(null, Collections.singletonList(chat), true, true);
+        }
+        return chat;
+    }
+
+    private TLRPC.Chat ensureBotChat(long chatId, boolean channel, LongSparseArray<TLRPC.Chat> chatsDict) {
+        if (chatId == 0) {
+            return null;
+        }
+        TLRPC.Chat chat = chatsDict.get(chatId);
+        if (chat == null) {
+            chat = getChat(chatId);
+            if (chat != null) {
+                chatsDict.put(chatId, chat);
+            }
+        }
+        if (chat == null) {
+            if (channel) {
+                TLRPC.TL_channel placeholder = new TLRPC.TL_channel();
+                placeholder.id = chatId;
+                placeholder.title = "Channel " + chatId;
+                placeholder.megagroup = true;
+                placeholder.photo = new TLRPC.TL_chatPhotoEmpty();
+                chat = placeholder;
+            } else {
+                TLRPC.TL_chat placeholder = new TLRPC.TL_chat();
+                placeholder.id = chatId;
+                placeholder.title = "Chat " + chatId;
+                placeholder.photo = new TLRPC.TL_chatPhotoEmpty();
+                chat = placeholder;
+            }
+            chatsDict.put(chatId, chat);
+            putChat(chat, true);
+            getMessagesStorage().putUsersAndChats(null, Collections.singletonList(chat), true, true);
+        }
+        return chat;
+    }
+
+    private void ensureBotPeersForMessage(TLRPC.Message message, ConcurrentHashMap<Long, TLRPC.User> usersDict, ConcurrentHashMap<Long, TLRPC.Chat> chatsDict) {
+        if (!SingGramBotAuth.isBotAccount(currentAccount) || message == null || message.peer_id == null) {
+            return;
+        }
+        if (message.peer_id instanceof TLRPC.TL_peerUser) {
+            ensureBotUser(message.peer_id.user_id, usersDict);
+        } else if (message.peer_id instanceof TLRPC.TL_peerChannel) {
+            ensureBotChat(message.peer_id.channel_id, true, chatsDict);
+        } else if (message.peer_id instanceof TLRPC.TL_peerChat) {
+            ensureBotChat(message.peer_id.chat_id, false, chatsDict);
+        }
+        if (message.from_id instanceof TLRPC.TL_peerUser) {
+            ensureBotUser(message.from_id.user_id, usersDict);
+        } else if (message.from_id instanceof TLRPC.TL_peerChannel) {
+            ensureBotChat(message.from_id.channel_id, true, chatsDict);
+        } else if (message.from_id instanceof TLRPC.TL_peerChat) {
+            ensureBotChat(message.from_id.chat_id, false, chatsDict);
+        }
+    }
+
+    private void ensureBotPeersForMessage(TLRPC.Message message, LongSparseArray<TLRPC.User> usersDict, LongSparseArray<TLRPC.Chat> chatsDict) {
+        if (!SingGramBotAuth.isBotAccount(currentAccount) || message == null || message.peer_id == null) {
+            return;
+        }
+        if (message.peer_id instanceof TLRPC.TL_peerUser) {
+            ensureBotUser(message.peer_id.user_id, usersDict);
+        } else if (message.peer_id instanceof TLRPC.TL_peerChannel) {
+            ensureBotChat(message.peer_id.channel_id, true, chatsDict);
+        } else if (message.peer_id instanceof TLRPC.TL_peerChat) {
+            ensureBotChat(message.peer_id.chat_id, false, chatsDict);
+        }
+        if (message.from_id instanceof TLRPC.TL_peerUser) {
+            ensureBotUser(message.from_id.user_id, usersDict);
+        } else if (message.from_id instanceof TLRPC.TL_peerChannel) {
+            ensureBotChat(message.from_id.channel_id, true, chatsDict);
+        } else if (message.from_id instanceof TLRPC.TL_peerChat) {
+            ensureBotChat(message.from_id.chat_id, false, chatsDict);
+        }
+    }
+
+    private void refreshBotDialogsFromCache() {
+        if (!SingGramBotAuth.isBotAccount(currentAccount)) {
+            return;
+        }
+        AndroidUtilities.runOnUIThread(() -> {
+            if (!SingGramBotAuth.isBotAccount(currentAccount)) {
+                return;
+            }
+            loadingDialogs.put(0, false);
+            loadDialogs(0, 0, 100, true);
+            getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
+        });
+    }
+
     public static long getUpdateChannelId(TLRPC.Update update) {
         if (update instanceof TLRPC.TL_updateNewChannelMessage) {
             return ((TLRPC.TL_updateNewChannelMessage) update).message.peer_id.channel_id;
@@ -17254,8 +17837,111 @@ public class MessagesController extends BaseController implements NotificationCe
         }
     }
 
+    /**
+     * Bot sessions can receive ordinary update envelopes without the contiguous pts/seq
+     * boundaries expected by the user-session queue. Process those updates as an inbox
+     * stream, while still persisting the highest cursor seen so getDifference can continue
+     * from it after a reconnect.
+     */
+    private void processBotUpdates(TLRPC.Updates updates) {
+        if (updates == null) {
+            return;
+        }
+
+        ArrayList<TLRPC.Update> updateArray = new ArrayList<>();
+        ArrayList<TLRPC.User> usersArr = null;
+        ArrayList<TLRPC.Chat> chatsArr = null;
+        int date = 0;
+        int seq = 0;
+        if (updates instanceof TLRPC.TL_updates || updates instanceof TLRPC.TL_updatesCombined) {
+            if (updates.updates != null) {
+                updateArray.addAll(updates.updates);
+            }
+            usersArr = updates.users;
+            chatsArr = updates.chats;
+            date = updates.date;
+            seq = updates.seq;
+        } else if (updates instanceof TLRPC.TL_updateShort) {
+            if (updates.update != null) {
+                updateArray.add(updates.update);
+            }
+            date = updates.date;
+        } else {
+            return;
+        }
+
+        if (usersArr != null || chatsArr != null) {
+            // Keep peer details available both to the current UI and to the next app start.
+            getMessagesStorage().putUsersAndChats(usersArr, chatsArr, true, true);
+        }
+
+        boolean processed = true;
+        if (!updateArray.isEmpty()) {
+            // Keep each update isolated. Bot envelopes may contain an optional update that is
+            // newer than this client; it must not prevent later message updates in the same
+            // envelope from reaching the local inbox.
+            for (int i = 0; i < updateArray.size(); i++) {
+                TLRPC.Update update = updateArray.get(i);
+                if (update == null) {
+                    continue;
+                }
+                ArrayList<TLRPC.Update> singleUpdate = new ArrayList<>(1);
+                singleUpdate.add(update);
+                try {
+                    if (!processUpdateArray(singleUpdate, usersArr, chatsArr, true, date)) {
+                        processed = false;
+                    }
+                } catch (Throwable e) {
+                    // A malformed optional update must not strand the Bot inbox in a loading
+                    // state or discard otherwise valid messages in this response.
+                    FileLog.e(e);
+                    processed = false;
+                }
+            }
+        }
+
+        int currentPts = getMessagesStorage().getLastPtsValue();
+        int currentQts = getMessagesStorage().getLastQtsValue();
+        int maxPts = currentPts;
+        int maxQts = currentQts;
+        for (int a = 0; a < updateArray.size(); a++) {
+            TLRPC.Update update = updateArray.get(a);
+            if (update == null) {
+                continue;
+            }
+            maxPts = Math.max(maxPts, getUpdatePts(update));
+            maxQts = Math.max(maxQts, getUpdateQts(update));
+        }
+        if (maxPts != currentPts) {
+            getMessagesStorage().setLastPtsValue(maxPts);
+        }
+        if (maxQts != currentQts) {
+            getMessagesStorage().setLastQtsValue(maxQts);
+        }
+        if (date > getMessagesStorage().getLastDateValue()) {
+            getMessagesStorage().setLastDateValue(date);
+        }
+        if (seq > getMessagesStorage().getLastSeqValue()) {
+            getMessagesStorage().setLastSeqValue(seq);
+        }
+        getMessagesStorage().saveDiffParams(getMessagesStorage().getLastSeqValue(), getMessagesStorage().getLastPtsValue(), getMessagesStorage().getLastDateValue(), getMessagesStorage().getLastQtsValue());
+        botStateInitialized = true;
+        if (!updateArray.isEmpty()) {
+            refreshBotDialogsFromCache();
+        }
+        getSecretChatHelper().processPendingEncMessages();
+        if (BuildVars.LOGS_ENABLED) {
+            FileLog.d("processed bot updates: " + updateArray.size() + " pts=" + maxPts + " seq=" + getMessagesStorage().getLastSeqValue() + " processed=" + processed);
+        }
+    }
+
     // must be run from Utilities.stageQueue
     public void processUpdates(final TLRPC.Updates updates, boolean fromQueue) {
+        if (SingGramBotAuth.isBotAccount(currentAccount)
+                && (updates instanceof TLRPC.TL_updates || updates instanceof TLRPC.TL_updatesCombined || updates instanceof TLRPC.TL_updateShort)) {
+            processBotUpdates(updates);
+            return;
+        }
         ArrayList<Long> needGetChannelsDiff = null;
         boolean needGetDiff = false;
         boolean needReceivedQueue = false;
@@ -17265,6 +17951,7 @@ public class MessagesController extends BaseController implements NotificationCe
             arr.add(updates.update);
             processUpdateArray(arr, null, null, false, updates.date);
         } else if (updates instanceof TLRPC.TL_updateShortChatMessage || updates instanceof TLRPC.TL_updateShortMessage) {
+            final boolean botAccount = SingGramBotAuth.isBotAccount(currentAccount);
             long userId = updates instanceof TLRPC.TL_updateShortChatMessage ? updates.from_id : updates.user_id;
             TLRPC.User user = getUser(userId);
             TLRPC.User user2 = null;
@@ -17278,6 +17965,16 @@ public class MessagesController extends BaseController implements NotificationCe
                     user = null;
                 }
                 putUser(user, true);
+            }
+            if (botAccount && user == null) {
+                // Short bot updates do not carry a peer object. Keep the message instead of
+                // dropping it while waiting for a user-only peer lookup that bots cannot use.
+                user = new TLRPC.TL_user();
+                user.id = userId;
+                user.first_name = "User " + userId;
+                user.flags |= TLObject.FLAG_1;
+                putUser(user, true);
+                getMessagesStorage().putUsersAndChats(Collections.singletonList(user), null, true, true);
             }
 
             boolean needFwdUser = false;
@@ -17325,9 +18022,17 @@ public class MessagesController extends BaseController implements NotificationCe
                     chat = getMessagesStorage().getChatSync(updates.chat_id);
                     putChat(chat, true);
                 }
+                if (botAccount && chat == null) {
+                    chat = new TLRPC.TL_chat();
+                    chat.id = updates.chat_id;
+                    chat.title = "Chat " + updates.chat_id;
+                    chat.photo = new TLRPC.TL_chatPhotoEmpty();
+                    putChat(chat, true);
+                    getMessagesStorage().putUsersAndChats(null, Collections.singletonList(chat), true, true);
+                }
                 missingData = chat == null || user == null || needFwdUser && user2 == null && channel == null || needBotUser && user3 == null;
             }
-            if (!missingData && !updates.entities.isEmpty()) {
+            if (!botAccount && !missingData && !updates.entities.isEmpty()) {
                 for (int a = 0; a < updates.entities.size(); a++) {
                     TLRPC.MessageEntity entity = updates.entities.get(a);
                     if (entity instanceof TLRPC.TL_messageEntityMentionName) {
@@ -17352,10 +18057,10 @@ public class MessagesController extends BaseController implements NotificationCe
                 updateStatus = true;
             }
 
-            if (missingData) {
+            if (missingData && !botAccount) {
                 needGetDiff = true;
             } else {
-                if (getMessagesStorage().getLastPtsValue() + updates.pts_count == updates.pts) {
+                if (botAccount || getMessagesStorage().getLastPtsValue() + updates.pts_count == updates.pts) {
                     TLRPC.TL_message message = new TLRPC.TL_message();
                     message.id = updates.id;
                     long clientUserId = getUserConfig().getClientUserId();
@@ -17405,7 +18110,12 @@ public class MessagesController extends BaseController implements NotificationCe
                         message.out = true;
                     }
 
-                    getMessagesStorage().setLastPtsValue(updates.pts);
+                    getMessagesStorage().setLastPtsValue(Math.max(getMessagesStorage().getLastPtsValue(), updates.pts));
+                    if (botAccount) {
+                        getMessagesStorage().setLastDateValue(Math.max(getMessagesStorage().getLastDateValue(), updates.date));
+                        botStateInitialized = true;
+                    }
+                    getMessagesStorage().saveDiffParams(getMessagesStorage().getLastSeqValue(), getMessagesStorage().getLastPtsValue(), getMessagesStorage().getLastDateValue(), getMessagesStorage().getLastQtsValue());
                     boolean isDialogCreated = createdDialogIds.contains(message.dialog_id);
                     MessageObject obj = new MessageObject(currentAccount, message, isDialogCreated, isDialogCreated);
                     ArrayList<MessageObject> objArr = new ArrayList<>();
@@ -17873,6 +18583,7 @@ public class MessagesController extends BaseController implements NotificationCe
 
         int interfaceUpdateMask = 0;
         long clientUserId = getUserConfig().getClientUserId();
+        final boolean botAccount = SingGramBotAuth.isBotAccount(currentAccount);
 
         for (int c = 0, size3 = updates.size(); c < size3; c++) {
             TLRPC.Update baseUpdate = updates.get(c);
@@ -17887,15 +18598,28 @@ public class MessagesController extends BaseController implements NotificationCe
                     message = ((TLRPC.TL_updateNewScheduledMessage) baseUpdate).message;
                 } else {
                     message = ((TLRPC.TL_updateNewChannelMessage) baseUpdate).message;
-                    if (BuildVars.LOGS_ENABLED) {
-                        FileLog.d(baseUpdate + " channelId = " + message.peer_id.channel_id + " message_id = " + message.id);
+                    if (message != null && BuildVars.LOGS_ENABLED) {
+                        FileLog.d(baseUpdate + " channelId = " + (message.peer_id == null ? 0 : message.peer_id.channel_id) + " message_id = " + message.id);
                     }
-                    if (!message.out && message.from_id instanceof TLRPC.TL_peerUser && message.from_id.user_id == getUserConfig().getClientUserId()) {
+                    if (message != null && !message.out && message.from_id instanceof TLRPC.TL_peerUser && message.from_id.user_id == getUserConfig().getClientUserId()) {
                         message.out = true;
                     }
                 }
-                if (message instanceof TLRPC.TL_messageEmpty) {
+                if (message == null || message instanceof TLRPC.TL_messageEmpty) {
                     continue;
+                }
+                if (botAccount && message.peer_id == null) {
+                    long inferredDialogId = message.dialog_id;
+                    if (inferredDialogId == 0 && message.from_id != null && !(baseUpdate instanceof TLRPC.TL_updateNewChannelMessage)) {
+                        inferredDialogId = DialogObject.getPeerDialogId(message.from_id);
+                    }
+                    message.peer_id = DialogObject.getPeerFromDialogId(inferredDialogId, baseUpdate instanceof TLRPC.TL_updateNewChannelMessage);
+                }
+                if (message.peer_id == null) {
+                    continue;
+                }
+                if (message.entities == null) {
+                    message.entities = new ArrayList<>();
                 }
                 if (newMessageCallback != null && newMessageCallback.onMessageReceived(message)) {
                     newMessageCallback = null;
@@ -17909,6 +18633,9 @@ public class MessagesController extends BaseController implements NotificationCe
                     chatId = message.peer_id.chat_id;
                 } else if (message.peer_id.user_id != 0) {
                     userId = message.peer_id.user_id;
+                }
+                if (botAccount) {
+                    ensureBotPeersForMessage(message, usersDict, chatsDict);
                 }
                 if (chatId != 0) {
                     chat = chatsDict.get(chatId);
@@ -19101,7 +19828,21 @@ public class MessagesController extends BaseController implements NotificationCe
 
         if (messagesArr != null) {
             getStatsController().incrementReceivedItemsCount(ApplicationLoader.getCurrentNetworkType(), StatsController.TYPE_MESSAGES, messagesArr.size());
-            getMessagesStorage().putMessages(messagesArr, true, true, false, getDownloadController().getAutodownloadMask(), 0, 0);
+            if (botAccount) {
+                // One malformed Bot update must not prevent unrelated conversations in the
+                // same envelope from reaching the cache.
+                for (int a = 0; a < messagesArr.size(); a++) {
+                    TLRPC.Message message = messagesArr.get(a);
+                    if (message == null) {
+                        continue;
+                    }
+                    ArrayList<TLRPC.Message> oneMessage = new ArrayList<>(1);
+                    oneMessage.add(message);
+                    getMessagesStorage().putMessages(oneMessage, true, true, false, getDownloadController().getAutodownloadMask(), 0, 0);
+                }
+            } else {
+                getMessagesStorage().putMessages(messagesArr, true, true, false, getDownloadController().getAutodownloadMask(), 0, 0);
+            }
         }
         if (editingMessages != null) {
             for (int b = 0, size = editingMessages.size(); b < size; b++) {
@@ -20596,6 +21337,9 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     private void checkUnreadReactionsInternal2(long dialogId, long topicId, boolean needReload, boolean changed, int newUnreadCount, ArrayList<Integer> newUnreadMessages) {
+        if (SingGramBotAuth.isBotAccount(currentAccount)) {
+            return;
+        }
         if (needReload) {
             if (topicId == 0) {
                 TLRPC.TL_messages_getPeerDialogs req = new TLRPC.TL_messages_getPeerDialogs();
@@ -20680,6 +21424,9 @@ public class MessagesController extends BaseController implements NotificationCe
     }
 
     private void checkUnreadPollVotesInternal2(long dialogId, long topicId, boolean needReload, boolean changed, int newUnreadCount, ArrayList<Integer> newUnreadMessages) {
+        if (SingGramBotAuth.isBotAccount(currentAccount)) {
+            return;
+        }
         if (needReload) {
             if (topicId == 0) {
                 TLRPC.TL_messages_getPeerDialogs req = new TLRPC.TL_messages_getPeerDialogs();
@@ -21115,6 +21862,16 @@ public class MessagesController extends BaseController implements NotificationCe
         if (!scheduled && !quickReplies) {
             for (int a = 0; a < messages.size(); a++) {
                 MessageObject message = messages.get(a);
+                if (message == null || message.messageOwner == null) {
+                    continue;
+                }
+                if (message.messageOwner.peer_id == null) {
+                    boolean channel = dialogId < 0 && ChatObject.isChannel(getChat(-dialogId));
+                    message.messageOwner.peer_id = DialogObject.getPeerFromDialogId(dialogId, channel);
+                }
+                if (message.messageOwner.peer_id == null) {
+                    continue;
+                }
                 if (lastMessage == null || (!isEncryptedChat && message.getId() > lastMessage.getId() || (isEncryptedChat || message.getId() < 0 && lastMessage.getId() < 0) && message.getId() < lastMessage.getId()) || message.messageOwner.date > lastMessage.messageOwner.date) {
                     lastMessage = message;
                     if (message.messageOwner.peer_id.channel_id != 0) {
@@ -21217,7 +21974,14 @@ public class MessagesController extends BaseController implements NotificationCe
 
         if (dialog == null) {
             TLRPC.Chat chat = getChat(channelId);
-            if (channelId != 0 && chat == null || chat != null && (ChatObject.isNotInChat(chat) || chat.min)) {
+            if (SingGramBotAuth.isBotAccount(currentAccount) && dialogId < 0 && chat == null) {
+                long chatId = channelId != 0 ? channelId : -dialogId;
+                boolean isChannel = channelId != 0 || lastMessage.messageOwner.peer_id instanceof TLRPC.TL_peerChannel;
+                if (chatId != 0) {
+                    chat = ensureBotChat(chatId, isChannel, chats);
+                }
+            }
+            if (!SingGramBotAuth.isBotAccount(currentAccount) && (channelId != 0 && chat == null || chat != null && (ChatObject.isNotInChat(chat) || chat.min))) {
                 return false;
             }
             if (BuildVars.LOGS_ENABLED) {
@@ -21229,6 +21993,15 @@ public class MessagesController extends BaseController implements NotificationCe
             int mid = dialog.top_message = lastMessage.getId();
             dialog.last_message_date = lastMessage.messageOwner.date;
             dialog.flags = ChatObject.isChannel(chat) ? 1 : 0;
+            if (SingGramBotAuth.isBotAccount(currentAccount)) {
+                // An incoming private Bot message has peer_id = the Bot itself. The dialog,
+                // however, belongs to the sender, so derive its peer from dialogId.
+                dialog.peer = DialogObject.getPeerFromDialogId(dialogId, ChatObject.isChannel(chat));
+            } else {
+                dialog.peer = lastMessage.messageOwner.peer_id != null
+                        ? lastMessage.messageOwner.peer_id
+                        : DialogObject.getPeerFromDialogId(dialogId, ChatObject.isChannel(chat));
+            }
             if (pendingUnreadCounter.get(dialogId, 0) > 0) {
                 dialog.unread_count = pendingUnreadCounter.get(dialogId);
                 pendingUnreadCounter.delete(dialogId);
@@ -21282,6 +22055,13 @@ public class MessagesController extends BaseController implements NotificationCe
                 }
             });
         } else {
+            if (SingGramBotAuth.isBotAccount(currentAccount)) {
+                dialog.peer = DialogObject.getPeerFromDialogId(dialogId, DialogObject.isChannel(dialog));
+            } else if (dialog.peer == null) {
+                dialog.peer = lastMessage.messageOwner.peer_id != null
+                        ? lastMessage.messageOwner.peer_id
+                        : DialogObject.getPeerFromDialogId(dialogId, DialogObject.isChannel(dialog));
+            }
             if ((dialog.top_message > 0 && lastMessage.getId() > 0 && lastMessage.getId() > dialog.top_message) ||
                     (dialog.top_message < 0 && lastMessage.getId() < 0 && lastMessage.getId() < dialog.top_message) ||
                     dialogMessage.indexOfKey(dialogId) < 0 || dialog.top_message < 0 || dialog.last_message_date <= lastMessage.messageOwner.date) {
@@ -21502,7 +22282,9 @@ public class MessagesController extends BaseController implements NotificationCe
                         }
                     }
                     if (maxDate > Integer.MIN_VALUE) {
-                        if (maxDate < dialogsLoadedTillDate) {
+                        // Bot inboxes are populated from updates rather than the server dialog
+                        // list, so there is no initial dialogsLoadedTillDate boundary to honor.
+                        if (!SingGramBotAuth.isBotAccount(currentAccount) && maxDate < dialogsLoadedTillDate) {
                             continue;
                         }
                     }

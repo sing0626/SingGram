@@ -35,8 +35,38 @@ public class DialogObject {
         return (dialogId & 0x2000000000000000L) != 0 && (dialogId & 0x8000000000000000L) == 0;
     }
 
+    /** Rebuilds the lightweight peer object used by cached dialogs. */
+    public static TLRPC.Peer getPeerFromDialogId(long dialogId, boolean channel) {
+        if (dialogId == 0 || isEncryptedDialog(dialogId) || isFolderDialogId(dialogId)) {
+            return null;
+        }
+        if (dialogId > 0) {
+            TLRPC.TL_peerUser peer = new TLRPC.TL_peerUser();
+            peer.user_id = dialogId;
+            return peer;
+        }
+        if (channel) {
+            TLRPC.TL_peerChannel peer = new TLRPC.TL_peerChannel();
+            peer.channel_id = -dialogId;
+            return peer;
+        }
+        TLRPC.TL_peerChat peer = new TLRPC.TL_peerChat();
+        peer.chat_id = -dialogId;
+        return peer;
+    }
+
+    public static void ensureDialogPeer(TLRPC.Dialog dialog) {
+        if (dialog instanceof TLRPC.TL_dialog && dialog.peer == null && dialog.id != 0) {
+            dialog.peer = getPeerFromDialogId(dialog.id, isChannel(dialog));
+        }
+    }
+
     public static void initDialog(TLRPC.Dialog dialog) {
-        if (dialog == null || dialog.id != 0) {
+        if (dialog == null) {
+            return;
+        }
+        if (dialog.id != 0) {
+            ensureDialogPeer(dialog);
             return;
         }
         if (dialog instanceof TLRPC.TL_dialog) {
