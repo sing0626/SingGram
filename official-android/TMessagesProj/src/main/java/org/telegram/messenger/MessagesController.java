@@ -349,11 +349,13 @@ public class MessagesController extends BaseController implements NotificationCe
     private boolean migratingDialogs;
     public boolean gettingDifference;
     private boolean getDifferenceFirstSync = true;
+    private static final long BOT_UPDATE_POLL_INTERVAL_MS = 30_000L;
     private long lastBotDifferenceRequestTime;
     private boolean botStateInitialized;
     private boolean botInitialDifferenceAttempted;
     private TLRPC.TL_updates_state botInitialState;
-    private boolean botInboxResyncRequested;
+    private volatile boolean botInboxResyncRequested;
+    private volatile boolean botInboxResyncInFlight;
     public boolean updatingState;
     public boolean firstGettingTask;
     public boolean registeringForPush;
@@ -6643,6 +6645,7 @@ public class MessagesController extends BaseController implements NotificationCe
         botInitialDifferenceAttempted = false;
         botInitialState = null;
         botInboxResyncRequested = false;
+        botInboxResyncInFlight = false;
         uploadingAvatar = null;
         uploadingWallpaper = null;
         uploadingWallpaperInfo = null;
@@ -10271,7 +10274,7 @@ public class MessagesController extends BaseController implements NotificationCe
         if (getUserConfig().isClientActivated()) {
             if (SingGramBotAuth.isBotAccount(currentAccount)
                     && !gettingDifference
-                    && currentTime - lastBotDifferenceRequestTime >= 5000) {
+                    && currentTime - lastBotDifferenceRequestTime >= BOT_UPDATE_POLL_INTERVAL_MS) {
                 loadBotUpdates();
             }
             if (!ignoreSetOnline && getConnectionsManager().getPauseTime() == 0 && ApplicationLoader.isScreenOn && !ApplicationLoader.mainInterfacePausedStageQueue) {
@@ -12190,13 +12193,15 @@ public class MessagesController extends BaseController implements NotificationCe
     public void loadDialogs(final int folderId, int offset, int count, boolean fromCache, Runnable onEmptyCallback) {
         if (SingGramBotAuth.isBotAccount(currentAccount) && !fromCache) {
             // Telegram does not expose messages.getDialogs to bots. Their dialog cache is
-            // populated from updates.getDifference instead.
+            // populated from updates.getDifference instead. Do not start that sync from this
+            // generic dialog-loader callback: cache processing may invoke it again and form a
+            // refresh loop. Bot lifecycle and the explicit Workspace Refresh action invoke the
+            // update sync directly.
             loadingDialogs.put(folderId, false);
             if (onEmptyCallback != null && getDialogs(folderId).isEmpty()) {
                 AndroidUtilities.runOnUIThread(onEmptyCallback);
             }
             getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
-            loadBotUpdates();
             return;
         }
         if (loadingDialogs.get(folderId) || resetingDialogs) {
@@ -13077,7 +13082,12 @@ public class MessagesController extends BaseController implements NotificationCe
                         dialogsEndReached.put(folderId, true);
                         serverDialogsEndReached.put(folderId, true);
                     } else if (SingGramBotAuth.isBotAccount(currentAccount)) {
-                        loadBotUpdates();
+                        // A Bot has no messages.getDialogs fallback. Calling loadBotUpdates()
+                        // from an empty cache response creates a cache -> difference -> cache
+                        // feedback loop, so mark the local page complete and wait for a real
+                        // update (or an explicit manual refresh) instead.
+                        dialogsEndReached.put(folderId, true);
+                        serverDialogsEndReached.put(folderId, true);
                     } else {
                         loadDialogs(folderId, 0, count, false);
                     }
@@ -15763,6 +15773,9 @@ public class MessagesController extends BaseController implements NotificationCe
                 if (gettingDifference) {
                     return;
                 }
+                if (updatingState) {
+                    return;
+                }
                 // A persisted cursor means this account has already completed the initial
                 // synchronization. On a fresh Bot login, loadCurrentState first attempts a
                 // bounded catch-up before persisting the newest cursor.
@@ -15804,6 +15817,7 @@ public class MessagesController extends BaseController implements NotificationCe
             return;
         }
         botInboxResyncRequested = false;
+        botInboxResyncInFlight = true;
         lastBotDifferenceRequestTime = 0;
         botStateInitialized = false;
         botInitialDifferenceAttempted = false;
@@ -15817,6 +15831,24 @@ public class MessagesController extends BaseController implements NotificationCe
         getMessagesStorage().setLastQtsValue(0);
         getMessagesStorage().saveDiffParams(0, 0, 0, 0);
         loadBotUpdates();
+    }
+
+    /** Returns true only while an explicit Bot Workspace refresh is still running. */
+    public boolean isBotInboxResyncInProgress() {
+        return botInboxResyncRequested || botInboxResyncInFlight;
+    }
+
+    // Must run on Utilities.stageQueue.
+    private void finishBotInboxResync() {
+        if (!botInboxResyncInFlight) {
+            return;
+        }
+        botInboxResyncInFlight = false;
+        AndroidUtilities.runOnUIThread(() -> {
+            if (SingGramBotAuth.isBotAccount(currentAccount)) {
+                getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
+            }
+        });
     }
 
     private void applyBotInitialState(TLRPC.TL_updates_state state, int minimumPts) {
@@ -15846,6 +15878,9 @@ public class MessagesController extends BaseController implements NotificationCe
             return;
         }
         updatingState = true;
+        if (SingGramBotAuth.isBotAccount(currentAccount)) {
+            lastBotDifferenceRequestTime = System.currentTimeMillis();
+        }
         TLRPC.TL_updates_getState req = new TLRPC.TL_updates_getState();
         getConnectionsManager().sendRequest(req, (response, error) -> {
             updatingState = false;
@@ -15883,7 +15918,14 @@ public class MessagesController extends BaseController implements NotificationCe
                     loadBotUpdates();
                 }
             } else {
-                if (error == null || error.code != 401) {
+                if (SingGramBotAuth.isBotAccount(currentAccount)) {
+                    // Bot accounts must not retry updates.getState synchronously on an API
+                    // error: that can rapidly rebuild the workspace forever. The timer will
+                    // make the next bounded poll after the normal interval.
+                    lastBotDifferenceRequestTime = System.currentTimeMillis();
+                    finishBotInboxResync();
+                    startBotInboxResyncIfPossible();
+                } else if (error == null || error.code != 401) {
                     loadCurrentState();
                 }
             }
@@ -16587,11 +16629,9 @@ public class MessagesController extends BaseController implements NotificationCe
                             loadedFullChats.clear();
                             getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
                         });
-                        refreshBotDialogsFromCache();
+                        finishBotInboxResync();
                         if (botInboxResyncRequested) {
                             startBotInboxResyncIfPossible();
-                        } else {
-                            Utilities.stageQueue.postRunnable(this::loadBotUpdates, 250);
                         }
                     } else {
                         AndroidUtilities.runOnUIThread(() -> {
@@ -16603,6 +16643,8 @@ public class MessagesController extends BaseController implements NotificationCe
                     }
                 } else {
                     final boolean differenceSlice = res instanceof TLRPC.TL_updates_differenceSlice;
+                    final boolean botDifferenceHasChanges = botAccount
+                            && (!res.new_messages.isEmpty() || !res.other_updates.isEmpty());
 
                     LongSparseArray<TLRPC.User> usersDict = new LongSparseArray<>();
                     LongSparseArray<TLRPC.Chat> chatsDict = new LongSparseArray<>();
@@ -16892,7 +16934,10 @@ public class MessagesController extends BaseController implements NotificationCe
                             }
                             getMessagesStorage().saveDiffParams(getMessagesStorage().getLastSeqValue(), getMessagesStorage().getLastPtsValue(), getMessagesStorage().getLastDateValue(), getMessagesStorage().getLastQtsValue());
                             if (botAccount && !differenceSlice) {
-                                refreshBotDialogsFromCache();
+                                if (botDifferenceHasChanges) {
+                                    refreshBotDialogsFromCache();
+                                }
+                                finishBotInboxResync();
                                 startBotInboxResyncIfPossible();
                             }
                             if (differenceSlice) {
@@ -16916,7 +16961,7 @@ public class MessagesController extends BaseController implements NotificationCe
                     finishBotInitialCatchUp(0);
                 }
                 if (botAccount) {
-                    refreshBotDialogsFromCache();
+                    finishBotInboxResync();
                     startBotInboxResyncIfPossible();
                 }
                 if (BuildVars.LOGS_ENABLED) {
@@ -17782,7 +17827,6 @@ public class MessagesController extends BaseController implements NotificationCe
             }
             loadingDialogs.put(0, false);
             loadDialogs(0, 0, 100, true);
-            getNotificationCenter().postNotificationName(NotificationCenter.dialogsNeedReload);
         });
     }
 

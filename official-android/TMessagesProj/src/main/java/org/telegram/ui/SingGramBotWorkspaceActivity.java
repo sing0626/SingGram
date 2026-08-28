@@ -100,7 +100,12 @@ public class SingGramBotWorkspaceActivity extends BaseFragment implements Notifi
             return;
         }
         if (id == NotificationCenter.dialogsNeedReload) {
-            refreshing = false;
+            // A regular live update can arrive while an explicit refresh is still catching up.
+            // Keep the action in its loading state until MessagesController reports that the
+            // one-shot resync has actually finished.
+            if (!getMessagesController().isBotInboxResyncInProgress()) {
+                refreshing = false;
+            }
             buildContent(getParentActivity());
         } else if (id == NotificationCenter.mainUserInfoChanged) {
             buildContent(getParentActivity());
@@ -271,7 +276,6 @@ public class SingGramBotWorkspaceActivity extends BaseFragment implements Notifi
         }
         refreshing = true;
         buildContent(getParentActivity());
-        getMessagesController().loadDialogs(0, 0, 100, true);
         // Older builds may have advanced a Bot update cursor before they could persist a
         // conversation. Retry retained updates while leaving all existing cache intact.
         getMessagesController().forceBotInboxResync();
