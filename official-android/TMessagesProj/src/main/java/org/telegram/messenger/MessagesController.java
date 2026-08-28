@@ -20538,7 +20538,15 @@ public class MessagesController extends BaseController implements NotificationCe
                                 // Never let that stale marker reject a new incoming call.
                                 VoIPService.callIShouldHavePutIntoIntent = null;
                             }
-                            if (svc != null || pendingCallForSameId || !callStateIsIdle) {
+                            // A matching marker means the service launch is already in progress. Do not
+                            // reject that same call as busy while Android is handing the intent off.
+                            if (pendingCallForSameId) {
+                                if (BuildVars.LOGS_ENABLED) {
+                                    FileLog.d("Incoming call " + call.id + " is already pending service handoff");
+                                }
+                                continue;
+                            }
+                            if (svc != null || !callStateIsIdle) {
                                 if (svc != null && svc.getAccount() != currentAccount && svc.getUser() != null && svc.getUser().id == getUserConfig().getClientUserId()) {
                                     // calling from the same device, don't discard
                                     continue;
