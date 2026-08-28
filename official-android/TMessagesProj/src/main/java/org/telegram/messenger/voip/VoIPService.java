@@ -1108,7 +1108,7 @@ public class VoIPService extends Service implements SensorEventListener, AudioMa
 				reqCall.protocol.udp_reflector = true;
 				reqCall.protocol.min_layer = CALL_MIN_LAYER;
 				reqCall.protocol.max_layer = Instance.getConnectionMaxLayer();
-				Collections.addAll(reqCall.protocol.library_versions, NativeInstance.getAllVersions());
+				Collections.addAll(reqCall.protocol.library_versions, NativeInstance.getCallVersions());
 				VoIPService.this.g_a = g_a;
 				reqCall.g_a_hash = Utilities.computeSHA256(g_a, 0, g_a.length);
 				reqCall.random_id = Utilities.random.nextInt();
@@ -1874,7 +1874,7 @@ public class VoIPService extends Service implements SensorEventListener, AudioMa
 		req.protocol.max_layer = Instance.getConnectionMaxLayer();
 		req.protocol.min_layer = CALL_MIN_LAYER;
 		req.protocol.udp_p2p = req.protocol.udp_reflector = true;
-		Collections.addAll(req.protocol.library_versions, NativeInstance.getAllVersions());
+		Collections.addAll(req.protocol.library_versions, NativeInstance.getCallVersions());
 		ConnectionsManager.getInstance(currentAccount).sendRequest(req, (response, error) -> AndroidUtilities.runOnUIThread(() -> {
 			if (error != null) {
 				callFailed();
@@ -4368,7 +4368,7 @@ public class VoIPService extends Service implements SensorEventListener, AudioMa
 				req1.protocol.udp_p2p = req1.protocol.udp_reflector = true;
 				req1.protocol.min_layer = CALL_MIN_LAYER;
 				req1.protocol.max_layer = Instance.getConnectionMaxLayer();
-				Collections.addAll(req1.protocol.library_versions, NativeInstance.getAllVersions());
+				Collections.addAll(req1.protocol.library_versions, NativeInstance.getCallVersions());
 				ConnectionsManager.getInstance(currentAccount).sendRequest(req1, (response1, error1) -> AndroidUtilities.runOnUIThread(() -> {
 					if (error1 == null) {
 						if (BuildVars.LOGS_ENABLED) {
