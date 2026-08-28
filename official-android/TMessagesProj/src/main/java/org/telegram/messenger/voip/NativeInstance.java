@@ -9,7 +9,6 @@ import org.webrtc.ContextUtils;
 import org.webrtc.VideoSink;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
 
 public class NativeInstance {
@@ -239,25 +238,8 @@ public class NativeInstance {
     public native void setConferenceCallId(long call_id);
     public static native String[] getAllVersions();
 
-    /**
-     * Keep private calls on the mature tgvoip implementations. The newer V2
-     * versions are registered in native code for group-call experiments, but
-     * are not complete enough for phone calls (notably their error reporting
-     * is empty), so advertising them can make Telegram select a broken stack.
-     */
+    /** Keep private calls on the legacy tgvoip audio/network controller. */
     public static String[] getCallVersions() {
-        String[] available = getAllVersions();
-        ArrayList<String> result = new ArrayList<>(2);
-        if (available != null) {
-            for (String version : available) {
-                if ("5.0.0".equals(version) || "2.7.7".equals(version)) {
-                    result.add(version);
-                }
-            }
-        }
-        if (result.isEmpty()) {
-            result.add("2.7.7");
-        }
-        return result.toArray(new String[0]);
+        return new String[] {"2.4.4"};
     }
 }
