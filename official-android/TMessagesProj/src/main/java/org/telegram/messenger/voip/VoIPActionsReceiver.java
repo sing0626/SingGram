@@ -11,6 +11,11 @@ import android.content.Intent;
 public class VoIPActionsReceiver extends BroadcastReceiver {
 	@Override
 	public void onReceive(Context context, Intent intent) {
+		// Android can deliver an old notification action after a newer call has arrived.
+		// Never let that stale action decline or end the current call.
+		if (intent.hasExtra("call_id") && !isMatchingCall(intent.getLongExtra("call_id", 0))) {
+			return;
+		}
 		if (!intent.hasExtra("group_call_invite_msg_id") && VoIPService.getSharedInstance() != null) {
 			VoIPService.getSharedInstance().handleNotificationAction(intent);
 		} else {
@@ -41,5 +46,17 @@ public class VoIPActionsReceiver extends BroadcastReceiver {
 				}
 			}
 		}
+	}
+
+	private boolean isMatchingCall(long callId) {
+		if (callId == 0) {
+			return true;
+		}
+		VoIPService service = VoIPService.getSharedInstance();
+		if (service != null) {
+			return service.getCallID() == callId;
+		}
+		return VoIPPreNotificationService.pendingCall != null
+				&& VoIPPreNotificationService.pendingCall.id == callId;
 	}
 }
