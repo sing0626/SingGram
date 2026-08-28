@@ -11772,8 +11772,6 @@ public class MessagesController extends BaseController implements NotificationCe
                 if (messagesRes.messages.isEmpty()) {
                     return;
                 }
-            } else if (SingGramBotAuth.isBotAccount(currentAccount)) {
-                isEnd = true;
             }
         }
         int size = messagesRes.messages.size();
