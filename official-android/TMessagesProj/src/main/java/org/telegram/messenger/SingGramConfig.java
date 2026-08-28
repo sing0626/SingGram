@@ -469,7 +469,15 @@ public class SingGramConfig {
     public static void setLiquidGlassEnabled(boolean enabled) {
         SharedPreferences preferences = prefs();
         if (preferences != null) {
-            preferences.edit().putBoolean(KEY_LIQUID_GLASS, enabled).apply();
+            SharedPreferences.Editor editor = preferences.edit().putBoolean(KEY_LIQUID_GLASS, enabled);
+            // A deliberate enable must take precedence over a stale crash-safe flag.
+            // Otherwise the UI immediately reads this feature as disabled again.
+            if (enabled) {
+                editor.putBoolean(KEY_CRASH_SAFE_MODE, false)
+                        .remove(KEY_LAST_CRASH_TIME)
+                        .remove(KEY_LAST_CRASH_REASON);
+            }
+            editor.apply();
         }
     }
 
