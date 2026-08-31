@@ -317,6 +317,7 @@ public class ApplicationLoader extends Application {
         if (applicationContext == null) {
             applicationContext = getApplicationContext();
         }
+        SingGramFontManager.install(this);
         SingGramConfig.installCrashSafeHandler();
 
         NativeLoader.initNativeLibs(ApplicationLoader.applicationContext);

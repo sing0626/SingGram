@@ -35,10 +35,12 @@ import org.telegram.messenger.SingGramChatNotesStore;
 import org.telegram.messenger.SingGramConfig;
 import org.telegram.messenger.SingGramDownloadStats;
 import org.telegram.messenger.SingGramEventLog;
+import org.telegram.messenger.SingGramFontManager;
 import org.telegram.messenger.SingGramPushDiagnostics;
 import org.telegram.messenger.SingGramWorkspaceConfig;
 import org.telegram.messenger.SharedConfig;
 import org.telegram.messenger.UserConfig;
+import org.telegram.messenger.Utilities;
 import org.telegram.ui.ActionBar.ActionBar;
 import org.telegram.ui.ActionBar.AlertDialog;
 import org.telegram.ui.ActionBar.BaseFragment;
@@ -61,6 +63,7 @@ public class SingGramSettingsActivity extends BaseFragment {
     private static final int MODE_DIAGNOSTICS = 6;
     private static final int MODE_WORKSPACE = 7;
     private static final int MODE_CALL_HEALTH = 8;
+    private static final int REQUEST_CUSTOM_FONT = 7421;
 
     private final int mode;
 
@@ -272,6 +275,17 @@ public class SingGramSettingsActivity extends BaseFragment {
         addDivider(context, appearanceSection);
         addActionCell(context, appearanceSection, LocaleController.getString(R.string.SingGramLiquidGlassStudio), liquidGlassStudioValue(), true, v -> presentFragment(new SingGramLiquidGlassStudioActivity()));
         addInfo(context, container, LocaleController.getString(R.string.SingGramLiquidGlassInfo));
+
+        addHeader(context, container, LocaleController.getString(R.string.SingGramGlobalFont));
+        LinearLayout fontSection = addSection(context, container);
+        addActionCell(context, fontSection, LocaleController.getString(R.string.SingGramGlobalFontCurrent), globalFontValue(), false, null);
+        addDivider(context, fontSection);
+        addActionCell(context, fontSection, LocaleController.getString(R.string.SingGramGlobalFontImport), LocaleController.getString(R.string.SingGramGlobalFontImportInfo), true, v -> chooseGlobalFont());
+        if (SingGramFontManager.isEnabled()) {
+            addDivider(context, fontSection);
+            addActionCell(context, fontSection, LocaleController.getString(R.string.SingGramGlobalFontReset), LocaleController.getString(R.string.SingGramGlobalFontResetInfo), true, v -> resetGlobalFont());
+        }
+        addInfo(context, container, LocaleController.getString(R.string.SingGramGlobalFontInfo));
 
         if (SingGramConfig.isAiEnabled()) {
             addHeader(context, container, LocaleController.getString(R.string.SingGramAITestLab));
@@ -732,6 +746,62 @@ public class SingGramSettingsActivity extends BaseFragment {
         }
         contentContainer.removeAllViews();
         buildContent(getParentActivity(), contentContainer);
+    }
+
+    @Override
+    public void onActivityResultFragment(int requestCode, int resultCode, Intent data) {
+        super.onActivityResultFragment(requestCode, resultCode, data);
+        if (requestCode != REQUEST_CUSTOM_FONT || resultCode != android.app.Activity.RESULT_OK || data == null || data.getData() == null) {
+            return;
+        }
+        Uri uri = data.getData();
+        Utilities.globalQueue.postRunnable(() -> {
+            SingGramFontManager.ImportResult result = SingGramFontManager.importFont(ApplicationLoader.applicationContext, uri);
+            AndroidUtilities.runOnUIThread(() -> {
+                if (getParentActivity() == null) {
+                    return;
+                }
+                if (result.success) {
+                    SingGramFontManager.applyToActivity(getParentActivity());
+                    Toast.makeText(getParentActivity(), LocaleController.getString(R.string.SingGramGlobalFontApplied), Toast.LENGTH_SHORT).show();
+                    rebuildSettingsPage();
+                } else {
+                    Toast.makeText(getParentActivity(), globalFontError(result.error), Toast.LENGTH_LONG).show();
+                }
+            });
+        });
+    }
+
+    private void chooseGlobalFont() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        intent.addCategory(Intent.CATEGORY_OPENABLE);
+        intent.setType("*/*");
+        intent.putExtra(Intent.EXTRA_MIME_TYPES, new String[] {"font/ttf", "font/otf", "application/font-sfnt", "application/x-font-ttf", "application/x-font-opentype"});
+        startActivityForResult(Intent.createChooser(intent, LocaleController.getString(R.string.SingGramGlobalFontImport)), REQUEST_CUSTOM_FONT);
+    }
+
+    private void resetGlobalFont() {
+        SingGramFontManager.resetFont(ApplicationLoader.applicationContext);
+        if (getParentActivity() != null) {
+            getParentActivity().recreate();
+        }
+    }
+
+    private String globalFontValue() {
+        return SingGramFontManager.isEnabled()
+                ? SingGramFontManager.getDisplayName()
+                : LocaleController.getString(R.string.SingGramGlobalFontSystem);
+    }
+
+    private String globalFontError(String error) {
+        if ("unsupported".equals(error)) {
+            return LocaleController.getString(R.string.SingGramGlobalFontUnsupported);
+        } else if ("too_large".equals(error)) {
+            return LocaleController.getString(R.string.SingGramGlobalFontTooLarge);
+        } else if ("invalid".equals(error)) {
+            return LocaleController.getString(R.string.SingGramGlobalFontInvalid);
+        }
+        return LocaleController.getString(R.string.SingGramGlobalFontImportFailed);
     }
 
     @Override

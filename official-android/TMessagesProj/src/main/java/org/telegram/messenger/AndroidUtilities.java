@@ -263,7 +263,10 @@ public class AndroidUtilities {
 
     public static Typeface bold() {
         if (mediumTypeface == null) {
-            if (SharedConfig.useSystemBoldFont && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            Typeface customTypeface = SingGramFontManager.getCustomTypeface();
+            if (customTypeface != null) {
+                mediumTypeface = Typeface.create(customTypeface, Typeface.BOLD);
+            } else if (SharedConfig.useSystemBoldFont && Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                 mediumTypeface = Typeface.create(null, 500, false);
             } else {
                 mediumTypeface = getTypeface(TYPEFACE_ROBOTO_MEDIUM);
@@ -273,6 +276,13 @@ public class AndroidUtilities {
     }
 
     private static final Hashtable<String, Typeface> typefaceCache = new Hashtable<>();
+
+    public static void invalidateTypefaceCache() {
+        synchronized (typefaceCache) {
+            typefaceCache.clear();
+        }
+        mediumTypeface = null;
+    }
     public static float touchSlop;
     private static int prevOrientation = -10;
     private static boolean waitingForSms = false;
@@ -2404,8 +2414,8 @@ public class AndroidUtilities {
         synchronized (typefaceCache) {
             if (!typefaceCache.containsKey(assetPath)) {
                 try {
-                    Typeface t;
-                    if (Build.VERSION.SDK_INT >= 26) {
+                    Typeface t = SingGramFontManager.getTypefaceForAsset(assetPath);
+                    if (t == null && Build.VERSION.SDK_INT >= 26) {
                         Typeface.Builder builder = new Typeface.Builder(ApplicationLoader.applicationContext.getAssets(), assetPath);
                         if (assetPath.contains("rextrabold")) {
                             builder.setWeight(800);
@@ -2417,7 +2427,7 @@ public class AndroidUtilities {
                             builder.setItalic(true);
                         }
                         t = builder.build();
-                    } else {
+                    } else if (t == null) {
                         t = Typeface.createFromAsset(ApplicationLoader.applicationContext.getAssets(), assetPath);
                     }
                     typefaceCache.put(assetPath, t);
