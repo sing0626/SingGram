@@ -631,6 +631,17 @@ public class SingGramSettingsActivity extends BaseFragment {
         addDivider(context, appearanceSection);
         addActionCell(context, appearanceSection, LocaleController.getString(R.string.SingGramLiquidGlassStudio), liquidGlassStudioValue(), true, v -> presentFragment(new SingGramLiquidGlassStudioActivity()));
         addInfo(context, container, LocaleController.getString(R.string.SingGramLiquidGlassInfo));
+
+        addHeader(context, container, LocaleController.getString(R.string.SingGramGlobalFont));
+        LinearLayout fontSection = addSection(context, container);
+        addActionCell(context, fontSection, LocaleController.getString(R.string.SingGramGlobalFontCurrent), globalFontValue(), false, null);
+        addDivider(context, fontSection);
+        addActionCell(context, fontSection, LocaleController.getString(R.string.SingGramGlobalFontImport), LocaleController.getString(R.string.SingGramGlobalFontImportInfo), true, v -> chooseGlobalFont());
+        if (SingGramFontManager.isEnabled()) {
+            addDivider(context, fontSection);
+            addActionCell(context, fontSection, LocaleController.getString(R.string.SingGramGlobalFontReset), LocaleController.getString(R.string.SingGramGlobalFontResetInfo), true, v -> resetGlobalFont());
+        }
+        addInfo(context, container, LocaleController.getString(R.string.SingGramGlobalFontInfo));
     }
 
     private void buildDiagnosticsPage(Context context, LinearLayout container) {
