@@ -6,7 +6,7 @@ This branch uses the official Telegram Android source as the base UI and client 
 
 - Upstream: `https://github.com/DrKLO/Telegram`
 - Imported under: `official-android/`
-- Imported upstream metadata: `62b56a07ca7e30e39f7fd00a6728d6bbd716ca1c` / Telegram Android `12.10.1` / version code `7038`
+- Imported upstream metadata: `163356809fa4bd81e64969700753e0a15664a288` / Telegram Android `12.10.2` / version code `7086`
 - License: GPL-2.0 or later, as shipped by upstream.
 
 Production work should target `official-android/`.
