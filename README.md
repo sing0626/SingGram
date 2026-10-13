@@ -5,7 +5,7 @@ SingGram is an Android fork based on the official Telegram Android source. The p
 ## What This Fork Is
 
 - Base: official Telegram Android source from `https://github.com/DrKLO/Telegram`
-- Current imported upstream: Telegram Android `12.10.6` / version code `7112`
+- Current imported upstream: Telegram Android `13.0.2` / version code `7175`
 - Package name: `com.sing.singgram`
 - Target build: arm64 Android APK
 - License: GPL-2.0-or-later, following upstream Telegram Android
