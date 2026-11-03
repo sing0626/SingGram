@@ -1,6 +1,5 @@
 import Foundation
 import UIKit
-import SwiftUI
 import Display
 import ComponentFlow
 import ComponentDisplayAdapters
@@ -47,62 +46,6 @@ private final class ContentContainer: UIView {
         
         if let subview = subview as? GlassBackgroundView.ContentView {
             subview.tintMask.removeFromSuperview()
-        }
-    }
-}
-
-@available(iOS 26.0, *)
-private final class SingGramGlassModel: ObservableObject {
-    @Published var isEnabled = false
-    @Published var isCapsule = true
-    @Published var cornerRadius: CGFloat = 0
-}
-
-@available(iOS 26.0, *)
-private struct SingGramGlassPlate: View {
-    @ObservedObject var model: SingGramGlassModel
-
-    var body: some View {
-        if self.model.isCapsule {
-            Color.clear
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .glassEffect(.regular.interactive(), in: Capsule(style: .continuous), isEnabled: self.model.isEnabled)
-        } else {
-            Color.clear
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: self.model.cornerRadius, style: .continuous), isEnabled: self.model.isEnabled)
-        }
-    }
-}
-
-@available(iOS 26.0, *)
-private final class SingGramSwiftUIGlassHost {
-    let model: SingGramGlassModel
-    let controller: UIHostingController<SingGramGlassPlate>
-
-    init() {
-        let model = SingGramGlassModel()
-        self.model = model
-        self.controller = UIHostingController(rootView: SingGramGlassPlate(model: model))
-        self.controller.view.backgroundColor = .clear
-        self.controller.view.isUserInteractionEnabled = false
-        self.controller.sizingOptions = []
-        self.controller.safeAreaRegions = []
-        self.controller.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
-    }
-
-    func update(isEnabled: Bool, isCapsule: Bool, cornerRadius: CGFloat, animated: Bool) {
-        let apply = {
-            self.model.isEnabled = isEnabled
-            self.model.isCapsule = isCapsule
-            self.model.cornerRadius = cornerRadius
-        }
-        if animated {
-            withAnimation(.smooth(duration: 0.5), apply)
-        } else {
-            var transaction = Transaction()
-            transaction.disablesAnimations = true
-            withTransaction(transaction, apply)
         }
     }
 }
@@ -953,12 +896,12 @@ public class GlassBackgroundView: UIView {
             self.singGramSwiftUIGlass = host
         }
         let contentView = nativeView.contentView
-        if host.controller.view.superview !== contentView {
-            contentView.insertSubview(host.controller.view, at: 0)
+        if host.view.superview !== contentView {
+            contentView.insertSubview(host.view, at: 0)
         } else {
-            contentView.sendSubviewToBack(host.controller.view)
+            contentView.sendSubviewToBack(host.view)
         }
-        host.controller.view.frame = contentView.bounds
+        host.view.frame = contentView.bounds
         let animated = previousLiquidLevel != -1 && previousLiquidLevel != liquidLevel && !UIAccessibility.isReduceMotionEnabled
         host.update(
             isEnabled: isVisible && liquidLevel > 0,
@@ -981,7 +924,7 @@ public class GlassBackgroundView: UIView {
     override public func layoutSubviews() {
         super.layoutSubviews()
         if #available(iOS 26.0, *), let host = self.singGramSwiftUIGlass as? SingGramSwiftUIGlassHost, let nativeView = self.nativeView {
-            host.controller.view.frame = nativeView.contentView.bounds
+            host.view.frame = nativeView.contentView.bounds
         }
     }
 
