@@ -15,6 +15,8 @@ private enum SingGramSettingsEntry: ItemListNodeEntry {
     case disableReadReceipts(PresentationTheme, Bool)
     case hideTyping(PresentationTheme, Bool)
     case hidePhone(PresentationTheme, Bool)
+    case addGhostChat(PresentationTheme, Int)
+    case clearGhostChats(PresentationTheme)
     case ghostInfo(PresentationTheme)
 
     case protectionHeader(PresentationTheme)
@@ -34,6 +36,7 @@ private enum SingGramSettingsEntry: ItemListNodeEntry {
     case aiModel(PresentationTheme, String)
     case aiBaseUrl(PresentationTheme, String)
     case aiApiKey(PresentationTheme, Bool)
+    case testAi(PresentationTheme)
 
     case appearanceHeader(PresentationTheme)
     case liquidGlass(PresentationTheme, String)
@@ -41,20 +44,21 @@ private enum SingGramSettingsEntry: ItemListNodeEntry {
     case diagnosticsHeader(PresentationTheme)
     case diagnosticsVisible(PresentationTheme, Bool)
     case crashSafeMode(PresentationTheme, Bool)
+    case diagnosticsReport(PresentationTheme)
 
     var section: ItemListSectionId {
         switch self {
-        case .ghostHeader, .ghostEnabled, .ghostSelectedChats, .disableReadReceipts, .hideTyping, .hidePhone, .ghostInfo:
+        case .ghostHeader, .ghostEnabled, .ghostSelectedChats, .disableReadReceipts, .hideTyping, .hidePhone, .addGhostChat, .clearGhostChats, .ghostInfo:
             return 0
         case .protectionHeader, .keepDeleted, .keepEdits, .protectionInfo:
             return 1
         case .toolsHeader, .aiContextMenu, .aiTranslate, .replyIdeas, .insertResult:
             return 2
-        case .aiHeader, .aiEnabled, .preferCantonese, .aiModel, .aiBaseUrl, .aiApiKey:
+        case .aiHeader, .aiEnabled, .preferCantonese, .aiModel, .aiBaseUrl, .aiApiKey, .testAi:
             return 3
         case .appearanceHeader, .liquidGlass:
             return 4
-        case .diagnosticsHeader, .diagnosticsVisible, .crashSafeMode:
+        case .diagnosticsHeader, .diagnosticsVisible, .crashSafeMode, .diagnosticsReport:
             return 5
         }
     }
@@ -67,27 +71,31 @@ private enum SingGramSettingsEntry: ItemListNodeEntry {
         case .disableReadReceipts: return 3
         case .hideTyping: return 4
         case .hidePhone: return 5
-        case .ghostInfo: return 6
-        case .protectionHeader: return 7
-        case .keepDeleted: return 8
-        case .keepEdits: return 9
-        case .protectionInfo: return 10
-        case .toolsHeader: return 11
-        case .aiContextMenu: return 12
-        case .aiTranslate: return 13
-        case .replyIdeas: return 14
-        case .insertResult: return 15
-        case .aiHeader: return 16
-        case .aiEnabled: return 17
-        case .preferCantonese: return 18
-        case .aiModel: return 19
-        case .aiBaseUrl: return 20
-        case .aiApiKey: return 21
-        case .appearanceHeader: return 22
-        case .liquidGlass: return 23
-        case .diagnosticsHeader: return 24
-        case .diagnosticsVisible: return 25
-        case .crashSafeMode: return 26
+        case .addGhostChat: return 6
+        case .clearGhostChats: return 7
+        case .ghostInfo: return 8
+        case .protectionHeader: return 9
+        case .keepDeleted: return 10
+        case .keepEdits: return 11
+        case .protectionInfo: return 12
+        case .toolsHeader: return 13
+        case .aiContextMenu: return 14
+        case .aiTranslate: return 15
+        case .replyIdeas: return 16
+        case .insertResult: return 17
+        case .aiHeader: return 18
+        case .aiEnabled: return 19
+        case .preferCantonese: return 20
+        case .aiModel: return 21
+        case .aiBaseUrl: return 22
+        case .aiApiKey: return 23
+        case .testAi: return 24
+        case .appearanceHeader: return 25
+        case .liquidGlass: return 26
+        case .diagnosticsHeader: return 27
+        case .diagnosticsVisible: return 28
+        case .crashSafeMode: return 29
+        case .diagnosticsReport: return 30
         }
     }
 
@@ -120,8 +128,16 @@ private enum SingGramSettingsEntry: ItemListNodeEntry {
             return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: "在設定隱藏電話號碼", value: value, sectionId: self.section, style: .blocks, updated: { updated in
                 actions?.setHidePhone(updated)
             })
+        case let .addGhostChat(_, count):
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: "加入指定聊天", label: "\(count)", sectionId: self.section, style: .blocks, action: {
+                actions?.addGhostChat()
+            })
+        case .clearGhostChats:
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: "清除指定聊天", label: "", sectionId: self.section, style: .blocks, action: {
+                actions?.clearGhostChats()
+            })
         case .ghostInfo:
-            return ItemListTextItem(presentationData: presentationData, text: .plain("開咗隱身模式之後，先會停已讀回條同輸入狀態。指定聊天選擇器暫時未有，開啟「只在指定聊天隱身」後唔會套用到任何聊天。"), sectionId: self.section)
+            return ItemListTextItem(presentationData: presentationData, text: .plain("開咗隱身模式之後，先會停已讀回條同輸入狀態。可以喺度加入指定聊天，或者喺聊天長按選單入面對呢個聊天隱身。"), sectionId: self.section)
         case .protectionHeader:
             return ItemListSectionHeaderItem(presentationData: presentationData, text: "訊息保護", sectionId: self.section)
         case let .keepDeleted(_, value):
@@ -133,7 +149,7 @@ private enum SingGramSettingsEntry: ItemListNodeEntry {
                 actions?.setKeepEdits(updated)
             })
         case .protectionInfo:
-            return ItemListTextItem(presentationData: presentationData, text: .plain("對方刪訊息時，部機會繼續留低原訊息。編輯前內容暫時只會記住開關。"), sectionId: self.section)
+            return ItemListTextItem(presentationData: presentationData, text: .plain("對方刪訊息或者改訊息時，部機會留低原本嗰版。"), sectionId: self.section)
         case .toolsHeader:
             return ItemListSectionHeaderItem(presentationData: presentationData, text: "聊天工具", sectionId: self.section)
         case let .aiContextMenu(_, value):
@@ -174,6 +190,10 @@ private enum SingGramSettingsEntry: ItemListNodeEntry {
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: "API 金鑰", label: configured ? "已設定" : "未設定", sectionId: self.section, style: .blocks, action: {
                 actions?.editText(title: "API 金鑰", value: SingGramSettings.aiApiKey) { SingGramSettings.aiApiKey = $0 }
             })
+        case .testAi:
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: "測試連線", label: "", sectionId: self.section, style: .blocks, action: {
+                actions?.testAi()
+            })
         case .appearanceHeader:
             return ItemListSectionHeaderItem(presentationData: presentationData, text: "外觀", sectionId: self.section)
         case let .liquidGlass(_, value):
@@ -190,18 +210,28 @@ private enum SingGramSettingsEntry: ItemListNodeEntry {
             return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: "閃退安全模式", value: value, sectionId: self.section, style: .blocks, updated: { updated in
                 actions?.setCrashSafe(updated)
             })
+        case .diagnosticsReport:
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: "查看診斷", label: "", sectionId: self.section, style: .blocks, action: {
+                actions?.showDiagnostics()
+            })
         }
     }
 }
 
 private func singGramSettingsEntries(theme: PresentationTheme) -> [SingGramSettingsEntry] {
-    return [
+    var entries: [SingGramSettingsEntry] = [
         .ghostHeader(theme),
         .ghostEnabled(theme, SingGramSettings.isGhostModeEnabled),
         .ghostSelectedChats(theme, SingGramSettings.isGhostSelectedChatsOnly),
         .disableReadReceipts(theme, SingGramSettings.isDisableReadReceiptsEnabled),
         .hideTyping(theme, SingGramSettings.isHideTypingStatusEnabled),
         .hidePhone(theme, SingGramSettings.shouldHidePhoneInSettings),
+        .addGhostChat(theme, SingGramSettings.ghostChatCount)
+    ]
+    if SingGramSettings.ghostChatCount > 0 {
+        entries.append(.clearGhostChats(theme))
+    }
+    entries.append(contentsOf: [
         .ghostInfo(theme),
         .protectionHeader(theme),
         .keepDeleted(theme, SingGramSettings.shouldKeepDeletedMessages),
@@ -218,19 +248,26 @@ private func singGramSettingsEntries(theme: PresentationTheme) -> [SingGramSetti
         .aiModel(theme, SingGramSettings.aiModel),
         .aiBaseUrl(theme, SingGramSettings.aiBaseUrl),
         .aiApiKey(theme, !SingGramSettings.aiApiKey.isEmpty),
+        .testAi(theme),
         .appearanceHeader(theme),
         .liquidGlass(theme, SingGramSettings.liquidGlassLevelName),
         .diagnosticsHeader(theme),
         .diagnosticsVisible(theme, SingGramSettings.isDiagnosticsEnabled),
         .crashSafeMode(theme, SingGramSettings.isCrashSafeModeEnabled)
-    ]
+    ])
+    if SingGramSettings.isDiagnosticsEnabled {
+        entries.append(.diagnosticsReport(theme))
+    }
+    return entries
 }
 
 private final class SingGramSettingsActions {
     weak var controller: ViewController?
+    let context: AccountContext
     let changed: () -> Void
 
-    init(changed: @escaping () -> Void) {
+    init(context: AccountContext, changed: @escaping () -> Void) {
+        self.context = context
         self.changed = changed
     }
 
@@ -248,11 +285,65 @@ private final class SingGramSettingsActions {
     func setAiEnabled(_ value: Bool) { SingGramSettings.isAiEnabled = value; self.changed() }
     func setCantonese(_ value: Bool) { SingGramSettings.shouldAiPreferCantonese = value; self.changed() }
     func setDiagnostics(_ value: Bool) { SingGramSettings.isDiagnosticsEnabled = value; self.changed() }
-    func setCrashSafe(_ value: Bool) { SingGramSettings.isCrashSafeModeEnabled = value; self.changed() }
+    func setCrashSafe(_ value: Bool) {
+        if value {
+            SingGramSettings.applyCrashRecovery()
+        } else {
+            SingGramSettings.isCrashSafeModeEnabled = false
+        }
+        self.changed()
+    }
 
     func cycleLiquidGlass() {
-        SingGramSettings.liquidGlassLevel = (SingGramSettings.liquidGlassLevel + 1) % 3
+        let next = (SingGramSettings.liquidGlassLevel + 1) % 3
+        SingGramSettings.liquidGlassLevel = next
+        if next > 0 {
+            SingGramSettings.isCrashSafeModeEnabled = false
+        }
         self.changed()
+    }
+
+    func addGhostChat() {
+        let picker = self.context.sharedContext.makePeerSelectionController(PeerSelectionControllerParams(context: self.context, filter: [.excludeSavedMessages, .doNotSearchMessages], title: "指定聊天", hasCreation: false))
+        picker.peerSelected = { [weak self] peer, _ in
+            guard let self, peer.id != self.context.account.peerId else {
+                return
+            }
+            SingGramSettings.enableGhostChat(peer.id)
+            self.changed()
+            if let navigationController = picker.navigationController as? NavigationController {
+                navigationController.popViewController(animated: true)
+            }
+        }
+        (self.controller?.navigationController as? NavigationController)?.pushViewController(picker)
+    }
+
+    func clearGhostChats() {
+        SingGramSettings.clearGhostChats()
+        self.changed()
+    }
+
+    func testAi() {
+        SingGramAi.run(action: .testConnection, input: "Reply with OK only.") { [weak self] result in
+            let text: String
+            switch result {
+            case let .success(value):
+                text = value
+            case let .failure(error):
+                text = error
+            }
+            guard let self, let controller = self.controller else {
+                return
+            }
+            controller.present(textAlertController(context: self.context, title: "測試連線", text: text, actions: [TextAlertAction(type: .defaultAction, title: "確定", action: {})]), in: .window(.root))
+        }
+    }
+
+    func showDiagnostics() {
+        guard let controller = self.controller else {
+            return
+        }
+        controller.present(textAlertController(context: self.context, title: "診斷", text: SingGramSettings.diagnosticsText(), actions: [TextAlertAction(type: .defaultAction, title: "確定", action: {})], actionLayout: .vertical), in: .window(.root))
     }
 
     func editText(title: String, value: String, save: @escaping (String) -> Void) {
@@ -273,7 +364,7 @@ private final class SingGramSettingsActions {
 func singGramSettingsController(context: AccountContext) -> ViewController {
     let version = ValuePromise<Int>(0, ignoreRepeated: true)
     var currentVersion = 0
-    let actions = SingGramSettingsActions(changed: {
+    let actions = SingGramSettingsActions(context: context, changed: {
         currentVersion += 1
         version.set(currentVersion)
     })

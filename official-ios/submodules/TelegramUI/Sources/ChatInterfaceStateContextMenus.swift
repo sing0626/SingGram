@@ -1199,6 +1199,8 @@ func contextMenuForChatPresentationInterfaceState(chatPresentationInterfaceState
                 })
             })))
         }
+
+        appendSingGramMessageActions(actions: &actions, messages: messages, context: context, controllerInteraction: controllerInteraction, interfaceInteraction: interfaceInteraction)
         
         if data.messageActions.options.contains(.sendGift), !message.id.peerId.isTelegramNotifications {
             let sendGiftTitle: String

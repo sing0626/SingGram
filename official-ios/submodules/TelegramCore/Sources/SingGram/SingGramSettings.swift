@@ -112,7 +112,12 @@ public enum SingGramSettings {
     }
 
     public static var liquidGlassLevel: Int {
-        get { min(max(defaults.integer(forKey: Key.liquidGlassLevel), 0), 2) }
+        get {
+            if defaults.object(forKey: Key.liquidGlassLevel) == nil {
+                return 1
+            }
+            return min(max(defaults.integer(forKey: Key.liquidGlassLevel), 0), 2)
+        }
         set { defaults.set(min(max(newValue, 0), 2), forKey: Key.liquidGlassLevel) }
     }
 
@@ -126,8 +131,16 @@ public enum SingGramSettings {
         set { defaults.set(newValue, forKey: Key.crashSafeMode) }
     }
 
+    public static var isAiActive: Bool {
+        return isAiEnabled && !isCrashSafeModeEnabled
+    }
+
+    public static var effectiveLiquidGlassLevel: Int {
+        return isCrashSafeModeEnabled ? 0 : liquidGlassLevel
+    }
+
     public static var liquidGlassLevelName: String {
-        switch liquidGlassLevel {
+        switch effectiveLiquidGlassLevel {
         case 1:
             return "標準"
         case 2:
@@ -135,6 +148,63 @@ public enum SingGramSettings {
         default:
             return "關閉"
         }
+    }
+
+    public static var ghostChatCount: Int {
+        return dialogIds(Key.ghostDialogIds).count
+    }
+
+    public static func isGhostChat(_ peerId: PeerId) -> Bool {
+        return dialogIds(Key.ghostDialogIds).contains(peerId.toInt64())
+    }
+
+    public static func setGhostChat(_ peerId: PeerId, enabled: Bool) {
+        updateDialogIds(Key.ghostDialogIds, peerId: peerId, included: enabled)
+    }
+
+    public static func clearGhostChats() {
+        defaults.removeObject(forKey: Key.ghostDialogIds)
+    }
+
+    public static func allowsReadReceipts(_ peerId: PeerId) -> Bool {
+        return dialogIds(Key.readReceiptsAllowedDialogIds).contains(peerId.toInt64())
+    }
+
+    public static func setReadReceiptsAllowed(_ peerId: PeerId, allowed: Bool) {
+        updateDialogIds(Key.readReceiptsAllowedDialogIds, peerId: peerId, included: allowed)
+    }
+
+    public static func enableGhostChat(_ peerId: PeerId) {
+        isGhostModeEnabled = true
+        isGhostSelectedChatsOnly = true
+        setGhostChat(peerId, enabled: true)
+        setReadReceiptsAllowed(peerId, allowed: false)
+    }
+
+    public static func applyCrashRecovery() {
+        isCrashSafeModeEnabled = true
+        isAiEnabled = false
+        liquidGlassLevel = 0
+    }
+
+    public static func diagnosticsText() -> String {
+        return [
+            "隱身模式: \(isGhostModeEnabled)",
+            "只限指定聊天: \(isGhostSelectedChatsOnly)",
+            "指定聊天: \(ghostChatCount)",
+            "阻止已讀: \(isDisableReadReceiptsEnabled)",
+            "隱藏輸入: \(isHideTypingStatusEnabled)",
+            "隱藏電話: \(shouldHidePhoneInSettings)",
+            "保留已刪訊息: \(shouldKeepDeletedMessages)",
+            "保留編輯前內容: \(shouldKeepOriginalEdits)",
+            "AI: \(isAiActive)",
+            "模型: \(aiModel)",
+            "API: \(aiBaseUrl.isEmpty ? "未設定" : aiBaseUrl)",
+            "粵語: \(shouldAiPreferCantonese)",
+            "玻璃: \(liquidGlassLevelName)",
+            "診斷: \(isDiagnosticsEnabled)",
+            "閃退安全模式: \(isCrashSafeModeEnabled)"
+        ].joined(separator: "\n")
     }
 
     public static func shouldDisableReadReceipts(peerId: PeerId) -> Bool {
@@ -164,5 +234,15 @@ public enum SingGramSettings {
     private static func dialogIds(_ key: String) -> Set<Int64> {
         let values = defaults.stringArray(forKey: key) ?? []
         return Set(values.compactMap(Int64.init))
+    }
+
+    private static func updateDialogIds(_ key: String, peerId: PeerId, included: Bool) {
+        var ids = dialogIds(key)
+        if included {
+            ids.insert(peerId.toInt64())
+        } else {
+            ids.remove(peerId.toInt64())
+        }
+        defaults.set(ids.map { String($0) }, forKey: key)
     }
 }

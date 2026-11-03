@@ -4670,6 +4670,9 @@ func replayFinalState(
                     invalidateGroupStats.insert(Namespaces.PeerGroup.archive)
                 }
             case let .EditMessage(id, message):
+                if SingGramSettings.shouldKeepOriginalEdits && message.flags.contains(.Incoming) {
+                    break
+                }
                 var generatedEvent: (reactionAuthor: Peer, reaction: MessageReaction.Reaction, message: Message, timestamp: Int32)?
                 transaction.updateMessage(id, update: { previousMessage in
                     let peers: [PeerId:Peer] = previousMessage.peers.reduce([:], { current, value in
