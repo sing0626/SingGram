@@ -312,7 +312,7 @@ private final class SingGramSettingsActions {
             SingGramSettings.enableGhostChat(peer.id)
             self.changed()
             if let navigationController = picker.navigationController as? NavigationController {
-                navigationController.popViewController(animated: true)
+                _ = navigationController.popViewController(animated: true)
             }
         }
         (self.controller?.navigationController as? NavigationController)?.pushViewController(picker)
