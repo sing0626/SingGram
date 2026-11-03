@@ -1,7 +1,6 @@
 import Foundation
 import UIKit
 import Display
-import Postbox
 import TelegramCore
 import AccountContext
 import ContextUI
@@ -14,7 +13,7 @@ import UndoUI
 import AppBundle
 import PresentationDataUtils
 
-func appendSingGramMessageActions(actions: inout [ContextMenuItem], messages: [Message], context: AccountContext, controllerInteraction: ChatControllerInteraction, interfaceInteraction: ChatPanelInterfaceInteraction) {
+func appendSingGramMessageActions(actions: inout [ContextMenuItem], messages: [EngineRawMessage], context: AccountContext, controllerInteraction: ChatControllerInteraction, interfaceInteraction: ChatPanelInterfaceInteraction) {
     guard let message = messages.first, messages.count == 1 else {
         return
     }
