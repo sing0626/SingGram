@@ -31,7 +31,7 @@ SingGram keeps each official client's architecture and patches that client's own
 
 - SingGram branding on the Android and iOS clients
 - Native Telegram UI on each platform, patched in place
-- Liquid Glass on Android's blur pipeline, and iOS `UIGlassEffect` with SwiftUI `.smooth` level changes
+- Liquid Glass on Android's blur pipeline, and iOS SwiftUI `.glassEffect(.regular.interactive(), in: Capsule(style: .continuous))`
 - Traditional Chinese and Cantonese-oriented settings polish
 - SingGram settings on both clients: ghost mode, kept messages, AI actions, diagnostics, and crash-safe mode
 - Android and iOS GitHub Actions builds

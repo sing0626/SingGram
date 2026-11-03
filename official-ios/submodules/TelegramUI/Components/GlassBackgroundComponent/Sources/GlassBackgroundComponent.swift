@@ -51,17 +51,59 @@ private final class ContentContainer: UIView {
     }
 }
 
-private func singGramAnimateLiquidGlass(animated: Bool, _ changes: @escaping () -> Void) {
-    guard animated, !UIAccessibility.isReduceMotionEnabled else {
-        changes()
-        return
-    }
-    if #available(iOS 18.0, *) {
-        UIView.animate(.smooth(duration: 0.5)) {
-            changes()
+@available(iOS 26.0, *)
+private final class SingGramGlassModel: ObservableObject {
+    @Published var isEnabled = false
+    @Published var isCapsule = true
+    @Published var cornerRadius: CGFloat = 0
+}
+
+@available(iOS 26.0, *)
+private struct SingGramGlassPlate: View {
+    @ObservedObject var model: SingGramGlassModel
+
+    var body: some View {
+        if self.model.isCapsule {
+            Color.clear
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .glassEffect(.regular.interactive(), in: Capsule(style: .continuous), isEnabled: self.model.isEnabled)
+        } else {
+            Color.clear
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: self.model.cornerRadius, style: .continuous), isEnabled: self.model.isEnabled)
         }
-    } else {
-        UIView.animate(withDuration: 0.5, delay: 0.0, options: [.allowUserInteraction, .curveEaseInOut], animations: changes)
+    }
+}
+
+@available(iOS 26.0, *)
+private final class SingGramSwiftUIGlassHost {
+    let model: SingGramGlassModel
+    let controller: UIHostingController<SingGramGlassPlate>
+
+    init() {
+        let model = SingGramGlassModel()
+        self.model = model
+        self.controller = UIHostingController(rootView: SingGramGlassPlate(model: model))
+        self.controller.view.backgroundColor = .clear
+        self.controller.view.isUserInteractionEnabled = false
+        self.controller.sizingOptions = []
+        self.controller.safeAreaRegions = []
+        self.controller.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+    }
+
+    func update(isEnabled: Bool, isCapsule: Bool, cornerRadius: CGFloat, animated: Bool) {
+        let apply = {
+            self.model.isEnabled = isEnabled
+            self.model.isCapsule = isCapsule
+            self.model.cornerRadius = cornerRadius
+        }
+        if animated {
+            withAnimation(.smooth(duration: 0.5), apply)
+        } else {
+            var transaction = Transaction()
+            transaction.disablesAnimations = true
+            withTransaction(transaction, apply)
+        }
     }
 }
 
@@ -547,6 +589,7 @@ public class GlassBackgroundView: UIView {
 
     private var singGramAppliedLevel: Int = -1
     private var singGramLayout: (CGSize, Shape, Bool, TintColor, Bool, Bool)?
+    private var singGramSwiftUIGlass: AnyObject?
     
     private let foregroundView: UIImageView?
     private let shadowView: UIImageView?
@@ -867,48 +910,11 @@ public class GlassBackgroundView: UIView {
                 //foregroundView.image = nil
                 #endif
                 transition.setAlpha(view: foregroundView, alpha: isVisible ? 1.0 : 0.0)
-            } else {
-                if let nativeView = self.nativeView {
-                    if #available(iOS 26.0, *) {
-                        var glassEffect: UIGlassEffect?
-                        
-                        if isVisible && liquidLevel > 0 {
-                            let nativeTint = tintColor.nativeEffect(isDark: isDark)
-                            let glassEffectValue = UIGlassEffect(style: nativeTint.isClear ? .clear : .regular)
-                            glassEffectValue.tintColor = nativeTint.color
-                            glassEffectValue.isInteractive = isInteractive
-                            glassEffect = glassEffectValue
-                        }
-                        
-                        let resolvedEffect: UIVisualEffect?
-                        if let glassEffect {
-                            resolvedEffect = glassEffect
-                        } else if #available(iOS 26.1, *) {
-                            resolvedEffect = nil
-                        } else {
-                            resolvedEffect = UIVisualEffect()
-                        }
-                        let currentEffect = nativeView.effect as? UIGlassEffect
-                        let sameGlass = glassEffect != nil && currentEffect?.tintColor == glassEffect?.tintColor && currentEffect?.isInteractive == glassEffect?.isInteractive && previousLiquidLevel == liquidLevel
-                        if !sameGlass {
-                            if previousLiquidLevel != -1 && previousLiquidLevel != liquidLevel {
-                                singGramAnimateLiquidGlass(animated: true) {
-                                    nativeView.effect = resolvedEffect
-                                    self.singGramApplyLiquidBlurRadius(liquidLevel)
-                                }
-                            } else if transition.animation.isImmediate {
-                                nativeView.effect = resolvedEffect
-                                self.singGramApplyLiquidBlurRadius(liquidLevel)
-                            } else {
-                                transition.animateView {
-                                    nativeView.effect = resolvedEffect
-                                }
-                                self.singGramApplyLiquidBlurRadius(liquidLevel)
-                            }
-                        }
-                    }
-                }
             }
+        }
+
+        if #available(iOS 26.0, *), let nativeView = self.nativeView {
+            self.singGramSyncSwiftUIGlass(nativeView: nativeView, size: size, shape: shape, isVisible: isVisible, liquidLevel: liquidLevel, previousLiquidLevel: previousLiquidLevel)
         }
 
         if let nativeParamsView = self.nativeParamsView {
@@ -929,10 +935,53 @@ public class GlassBackgroundView: UIView {
         super.willMove(toWindow: newWindow)
     }
 
-    private func singGramApplyLiquidBlurRadius(_ liquidLevel: Int) {
-        let radius: CGFloat? = liquidLevel >= 2 ? 40.0 : nil
-        if self.nativeBlurRadius != radius {
-            self.nativeBlurRadius = radius
+    private func singGramShapeIsCapsule(size: CGSize, shape: Shape) -> Bool {
+        let shorter = min(size.width, size.height)
+        guard shorter > 0.5 else {
+            return true
+        }
+        return shape.maximumCornerRadius(for: size) >= shorter * 0.5 - 0.5
+    }
+
+    @available(iOS 26.0, *)
+    private func singGramSyncSwiftUIGlass(nativeView: UIVisualEffectView, size: CGSize, shape: Shape, isVisible: Bool, liquidLevel: Int, previousLiquidLevel: Int) {
+        let host: SingGramSwiftUIGlassHost
+        if let current = self.singGramSwiftUIGlass as? SingGramSwiftUIGlassHost {
+            host = current
+        } else {
+            host = SingGramSwiftUIGlassHost()
+            self.singGramSwiftUIGlass = host
+        }
+        let contentView = nativeView.contentView
+        if host.controller.view.superview !== contentView {
+            contentView.insertSubview(host.controller.view, at: 0)
+        } else {
+            contentView.sendSubviewToBack(host.controller.view)
+        }
+        host.controller.view.frame = contentView.bounds
+        let animated = previousLiquidLevel != -1 && previousLiquidLevel != liquidLevel && !UIAccessibility.isReduceMotionEnabled
+        host.update(
+            isEnabled: isVisible && liquidLevel > 0,
+            isCapsule: self.singGramShapeIsCapsule(size: size, shape: shape),
+            cornerRadius: shape.maximumCornerRadius(for: size),
+            animated: animated
+        )
+        if self.nativeBlurRadius != nil {
+            self.nativeBlurRadius = nil
+        }
+        if nativeView.effect is UIGlassEffect {
+            if #available(iOS 26.1, *) {
+                nativeView.effect = nil
+            } else {
+                nativeView.effect = UIVisualEffect()
+            }
+        }
+    }
+
+    override public func layoutSubviews() {
+        super.layoutSubviews()
+        if #available(iOS 26.0, *), let host = self.singGramSwiftUIGlass as? SingGramSwiftUIGlassHost, let nativeView = self.nativeView {
+            host.controller.view.frame = nativeView.contentView.bounds
         }
     }
 
@@ -1100,7 +1149,6 @@ public final class GlassBackgroundContainerView: UIView {
         }
     }
 
-    private var singGramAppliedLevel: Int = -1
     private var singGramLayout: (CGSize, Bool)?
 
     private func applyNativeBlurRadius() {
@@ -1116,28 +1164,10 @@ public final class GlassBackgroundContainerView: UIView {
     }
 
     public func update(size: CGSize, isDark: Bool, transition: ComponentTransition) {
-        let liquidLevel = SingGramLiquidGlass.level()
-        let previousLiquidLevel = self.singGramAppliedLevel
         self.singGramLayout = (size, isDark)
         if let nativeParamsView = self.nativeParamsView, let nativeView = self.nativeView {
-            if #available(iOS 26.0, *) {
-                if previousLiquidLevel != liquidLevel {
-                    self.singGramAppliedLevel = liquidLevel
-                    let animated = previousLiquidLevel != -1
-                    singGramAnimateLiquidGlass(animated: animated) {
-                        if liquidLevel == 0 {
-                            nativeView.effect = nil
-                        } else if !(nativeView.effect is UIGlassContainerEffect) {
-                            let effect = UIGlassContainerEffect()
-                            effect.spacing = self.spacing
-                            nativeView.effect = effect
-                        }
-                        let radius: CGFloat? = liquidLevel >= 2 ? 40.0 : nil
-                        if self.nativeBlurRadius != radius {
-                            self.nativeBlurRadius = radius
-                        }
-                    }
-                }
+            if self.nativeBlurRadius != nil {
+                self.nativeBlurRadius = nil
             }
             nativeParamsView.lumaMin = isDark ? 0.0 : 0.8
             nativeParamsView.lumaMax = isDark ? 0.15 : 0.801
