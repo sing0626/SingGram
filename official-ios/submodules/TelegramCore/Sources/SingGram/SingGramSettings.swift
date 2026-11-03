@@ -118,7 +118,10 @@ public enum SingGramSettings {
             }
             return min(max(defaults.integer(forKey: Key.liquidGlassLevel), 0), 2)
         }
-        set { defaults.set(min(max(newValue, 0), 2), forKey: Key.liquidGlassLevel) }
+        set {
+            defaults.set(min(max(newValue, 0), 2), forKey: Key.liquidGlassLevel)
+            NotificationCenter.default.post(name: Notification.Name("SingGramLiquidGlassChanged"), object: nil)
+        }
     }
 
     public static var isDiagnosticsEnabled: Bool {
@@ -128,7 +131,10 @@ public enum SingGramSettings {
 
     public static var isCrashSafeModeEnabled: Bool {
         get { defaults.bool(forKey: Key.crashSafeMode) }
-        set { defaults.set(newValue, forKey: Key.crashSafeMode) }
+        set {
+            defaults.set(newValue, forKey: Key.crashSafeMode)
+            NotificationCenter.default.post(name: Notification.Name("SingGramLiquidGlassChanged"), object: nil)
+        }
     }
 
     public static var isAiActive: Bool {

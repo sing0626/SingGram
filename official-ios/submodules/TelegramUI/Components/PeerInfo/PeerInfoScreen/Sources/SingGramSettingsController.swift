@@ -197,7 +197,7 @@ private enum SingGramSettingsEntry: ItemListNodeEntry {
         case .appearanceHeader:
             return ItemListSectionHeaderItem(presentationData: presentationData, text: "外觀", sectionId: self.section)
         case let .liquidGlass(_, value):
-            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: "玻璃模式", label: value, sectionId: self.section, style: .blocks, action: {
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: "Liquid Glass", label: value, sectionId: self.section, style: .blocks, action: {
                 actions?.cycleLiquidGlass()
             })
         case .diagnosticsHeader:

@@ -50,6 +50,21 @@ private final class ContentContainer: UIView {
     }
 }
 
+enum SingGramLiquidGlass {
+    static let changed = Notification.Name("SingGramLiquidGlassChanged")
+
+    static func level() -> Int {
+        let defaults = UserDefaults(suiteName: "singgram")
+        if defaults?.bool(forKey: "crash_safe_mode") == true {
+            return 0
+        }
+        if defaults?.object(forKey: "liquid_glass_level") == nil {
+            return 1
+        }
+        return min(max(defaults?.integer(forKey: "liquid_glass_level") ?? 1, 0), 2)
+    }
+}
+
 public class GlassBackgroundView: UIView {
     public protocol ContentView: UIView {
         var tintMask: UIView { get }
@@ -514,6 +529,9 @@ public class GlassBackgroundView: UIView {
             }
         }
     }
+
+    private var singGramAppliedLevel: Int = -1
+    private var singGramLayout: (CGSize, Shape, Bool, TintColor, Bool, Bool)?
     
     private let foregroundView: UIImageView?
     private let shadowView: UIImageView?
@@ -637,6 +655,18 @@ public class GlassBackgroundView: UIView {
         if let legacyHighlightContainerView = self.legacyHighlightContainerView {
             self.addSubview(legacyHighlightContainerView)
         }
+        NotificationCenter.default.addObserver(self, selector: #selector(self.singGramLiquidGlassDidChange), name: SingGramLiquidGlass.changed, object: nil)
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    @objc private func singGramLiquidGlassDidChange() {
+        guard let layout = self.singGramLayout else {
+            return
+        }
+        self.update(size: layout.0, shape: layout.1, isDark: layout.2, tintColor: layout.3, isInteractive: layout.4, isVisible: layout.5, transition: .immediate)
     }
     
     required public init?(coder: NSCoder) {
@@ -679,6 +709,8 @@ public class GlassBackgroundView: UIView {
     }
 
     func update(size: CGSize, shape: Shape, isDark: Bool, tintColor: TintColor, isInteractive: Bool = false, isVisible: Bool = true, transition: ComponentTransition) {
+        let liquidLevel = SingGramLiquidGlass.level()
+        self.singGramLayout = (size, shape, isDark, tintColor, isInteractive, isVisible)
         
         if let glassHighlightRecognizer = self.glassHighlightRecognizer {
             glassHighlightRecognizer.isEnabled = isInteractive
@@ -772,7 +804,8 @@ public class GlassBackgroundView: UIView {
         }
         
         let params = Params(shape: shape, isDark: isDark, tintColor: tintColor, isInteractive: isInteractive, isVisible: isVisible)
-        if self.params != params {
+        if self.params != params || self.singGramAppliedLevel != liquidLevel {
+            self.singGramAppliedLevel = liquidLevel
             self.params = params
             
             if let shadowView = self.shadowView {
@@ -823,7 +856,7 @@ public class GlassBackgroundView: UIView {
                     if #available(iOS 26.0, *) {
                         var glassEffect: UIGlassEffect?
                         
-                        if isVisible {
+                        if isVisible && liquidLevel > 0 {
                             let nativeTint = tintColor.nativeEffect(isDark: isDark)
                             let glassEffectValue = UIGlassEffect(style: nativeTint.isClear ? .clear : .regular)
                             glassEffectValue.tintColor = nativeTint.color
@@ -865,6 +898,13 @@ public class GlassBackgroundView: UIView {
                         }
                     }
                 }
+            }
+        }
+
+        if self.nativeView != nil {
+            let radius: CGFloat? = liquidLevel >= 2 ? 40.0 : nil
+            if self.nativeBlurRadius != radius {
+                self.nativeBlurRadius = radius
             }
         }
         
@@ -964,6 +1004,18 @@ public final class GlassBackgroundContainerView: UIView {
         } else if let legacyView = self.legacyView {
             self.addSubview(legacyView)
         }
+        NotificationCenter.default.addObserver(self, selector: #selector(self.singGramLiquidGlassDidChange), name: SingGramLiquidGlass.changed, object: nil)
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    @objc private func singGramLiquidGlassDidChange() {
+        guard let layout = self.singGramLayout else {
+            return
+        }
+        self.update(size: layout.0, isDark: layout.1, transition: .immediate)
     }
     
     required public init?(coder: NSCoder) {
@@ -1038,6 +1090,8 @@ public final class GlassBackgroundContainerView: UIView {
         }
     }
 
+    private var singGramLayout: (CGSize, Bool)?
+
     private func applyNativeBlurRadius() {
         guard let nativeParamsView = self.nativeParamsView else {
             return
@@ -1051,7 +1105,22 @@ public final class GlassBackgroundContainerView: UIView {
     }
 
     public func update(size: CGSize, isDark: Bool, transition: ComponentTransition) {
+        let liquidLevel = SingGramLiquidGlass.level()
+        self.singGramLayout = (size, isDark)
         if let nativeParamsView = self.nativeParamsView, let nativeView = self.nativeView {
+            if #available(iOS 26.0, *) {
+                if liquidLevel == 0 {
+                    nativeView.effect = nil
+                } else if !(nativeView.effect is UIGlassContainerEffect) {
+                    let effect = UIGlassContainerEffect()
+                    effect.spacing = self.spacing
+                    nativeView.effect = effect
+                }
+            }
+            let radius: CGFloat? = liquidLevel >= 2 ? 40.0 : nil
+            if self.nativeBlurRadius != radius {
+                self.nativeBlurRadius = radius
+            }
             nativeParamsView.lumaMin = isDark ? 0.0 : 0.8
             nativeParamsView.lumaMax = isDark ? 0.15 : 0.801
             nativeView.overrideUserInterfaceStyle = isDark ? .dark : .light

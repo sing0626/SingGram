@@ -4,17 +4,6 @@ import AsyncDisplayKit
 
 private var sharedIsReduceTransparencyEnabled = UIAccessibility.isReduceTransparencyEnabled
 
-private func singGramNavigationGlassLevel() -> Int {
-    let defaults = UserDefaults(suiteName: "singgram")
-    if defaults?.bool(forKey: "crash_safe_mode") == true {
-        return 0
-    }
-    if defaults?.object(forKey: "liquid_glass_level") == nil {
-        return 1
-    }
-    return min(max(defaults?.integer(forKey: "liquid_glass_level") ?? 1, 0), 2)
-}
-
 public final class NavigationBackgroundNode: ASDisplayNode {
     private var _color: UIColor
 
@@ -75,8 +64,7 @@ public final class NavigationBackgroundNode: ASDisplayNode {
             self.scheduledUpdate = true
             return
         }
-        let glassLevel = singGramNavigationGlassLevel()
-        if glassLevel > 0 && self.enableBlur && !sharedIsReduceTransparencyEnabled && ((self._color.alpha > .ulpOfOne && self._color.alpha < 0.95) || forceKeepBlur) {
+        if self.enableBlur && !sharedIsReduceTransparencyEnabled && ((self._color.alpha > .ulpOfOne && self._color.alpha < 0.95) || forceKeepBlur) {
             if self.effectView == nil {
                 let effectView = UIVisualEffectView(effect: UIBlurEffect(style: .light))
 
@@ -103,11 +91,8 @@ public final class NavigationBackgroundNode: ASDisplayNode {
                         if !allowedKeys.contains(filterName) {
                             return false
                         }
-                        if filterName == "gaussianBlur" {
-                            let radius = self.customBlurRadius ?? (glassLevel >= 2 ? 30.0 : nil)
-                            if let radius = radius {
-                                filter.setValue(radius as NSNumber, forKey: "inputRadius")
-                            }
+                        if let customBlurRadius = self.customBlurRadius, filterName == "gaussianBlur" {
+                            filter.setValue(customBlurRadius as NSNumber, forKey: "inputRadius")
                         }
                         return true
                     }
@@ -138,7 +123,7 @@ public final class NavigationBackgroundNode: ASDisplayNode {
         self.enableBlur = effectiveEnableBlur
         self.enableSaturation = effectiveEnableSaturation
 
-        if sharedIsReduceTransparencyEnabled || singGramNavigationGlassLevel() == 0 {
+        if sharedIsReduceTransparencyEnabled {
             transition.updateBackgroundColor(node: self.backgroundNode, color: self._color.withAlphaComponent(1.0))
         } else {
             transition.updateBackgroundColor(node: self.backgroundNode, color: self._color)
@@ -230,8 +215,7 @@ open class BlurredBackgroundView: UIView {
     }
     
     private func updateBackgroundBlur(forceKeepBlur: Bool) {
-        let glassLevel = singGramNavigationGlassLevel()
-        if let color = self._color, glassLevel > 0 && self.enableBlur && !sharedIsReduceTransparencyEnabled && ((color.alpha > .ulpOfOne && color.alpha < 0.95) || forceKeepBlur) {
+        if let color = self._color, self.enableBlur && !sharedIsReduceTransparencyEnabled && ((color.alpha > .ulpOfOne && color.alpha < 0.95) || forceKeepBlur) {
             if self.effectView == nil {
                 let effectView = UIVisualEffectView(effect: UIBlurEffect(style: .light))
 
@@ -257,11 +241,8 @@ open class BlurredBackgroundView: UIView {
                         if !allowedKeys.contains(filterName) {
                             return false
                         }
-                        if filterName == "gaussianBlur" {
-                            let radius = self.customBlurRadius ?? (glassLevel >= 2 ? 30.0 : nil)
-                            if let radius = radius {
-                                filter.setValue(radius as NSNumber, forKey: "inputRadius")
-                            }
+                        if let customBlurRadius = self.customBlurRadius, filterName == "gaussianBlur" {
+                            filter.setValue(customBlurRadius as NSNumber, forKey: "inputRadius")
                         }
                         return true
                     }
@@ -290,7 +271,7 @@ open class BlurredBackgroundView: UIView {
         self._color = color
         self.enableBlur = effectiveEnableBlur
 
-        if sharedIsReduceTransparencyEnabled || singGramNavigationGlassLevel() == 0 {
+        if sharedIsReduceTransparencyEnabled {
             transition.updateBackgroundColor(layer: self.backgroundView.layer, color: color.withAlphaComponent(1.0))
         } else {
             transition.updateBackgroundColor(layer: self.backgroundView.layer, color: color)
