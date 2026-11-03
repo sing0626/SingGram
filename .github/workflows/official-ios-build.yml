@@ -7,6 +7,7 @@ on:
       - telegram-ios
     paths:
       - .github/workflows/official-ios-build.yml
+      - official-ios/build-system/fake-codesigning/profiles/**
 
 permissions:
   contents: read
