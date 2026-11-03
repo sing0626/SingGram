@@ -1,0 +1,68 @@
+name: Build SingGram iOS
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: xcode-27
+    timeout-minutes: 360
+
+    env:
+      TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
+      TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
+      # fake-codesigning profiles are issued for this id and team.
+      # Re-sign the downloaded IPA locally as com.sing.singgram.
+      SINGGRAM_IOS_BUNDLE_ID: ph.telegra.Telegraph
+      SINGGRAM_IOS_TEAM_ID: C67CF9S4VU
+      SINGGRAM_IOS_APPSTORE_BUILD: "true"
+      SINGGRAM_IOS_ENABLE_SIRI: "true"
+      SINGGRAM_IOS_ENABLE_ICLOUD: "true"
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Select Xcode
+        working-directory: official-ios
+        run: |
+          set -euo pipefail
+          XCODE_VERSION="$(python3 -c 'import json; print(json.load(open("versions.json"))["xcode"])')"
+          sudo xcode-select -s "/Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer"
+          xcodebuild -version
+          df -h
+
+      - name: Fetch iOS submodules
+        run: scripts/fetch_official_ios_submodules.sh
+
+      - name: Write SingGram build configuration
+        run: scripts/write_singgram_ios_configuration.sh
+
+      - name: Build arm64 IPA
+        working-directory: official-ios
+        run: |
+          set -euo pipefail
+          python3 build-system/Make/ImportCertificates.py --path build-system/fake-codesigning/certs
+          BUILD_NUMBER_OFFSET="$(tr -d '[:space:]' < build_number_offset)"
+          COMMIT_COUNT="$(git -C "$GITHUB_WORKSPACE" rev-list --count HEAD)"
+          BUILD_NUMBER="$((COMMIT_COUNT + BUILD_NUMBER_OFFSET))"
+          echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
+          python3 -u build-system/Make/Make.py \
+            --bazelUserRoot="/private/var/tmp/_bazel_singgram" \
+            build \
+            --configurationPath="build-system/singgram-configuration.json" \
+            --codesigningInformationPath=build-system/fake-codesigning \
+            --configuration=release_arm64 \
+            --buildNumber="$BUILD_NUMBER" \
+            --outputBuildArtifactsPath="$GITHUB_WORKSPACE/ios-artifacts"
+          mv "$GITHUB_WORKSPACE/ios-artifacts/Telegram.ipa" "$GITHUB_WORKSPACE/ios-artifacts/SingGram-unsigned.ipa"
+
+      - name: Upload unsigned IPA
+        uses: actions/upload-artifact@v7
+        with:
+          name: SingGram-ios-unsigned
+          path: ios-artifacts/SingGram-unsigned.ipa
+          if-no-files-found: error

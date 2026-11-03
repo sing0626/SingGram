@@ -23,6 +23,12 @@ captures/
 *.so.dbg
 *.hprof
 *.log
+!official-ios/**/*.log
+!official-ios/**/build/
+!official-ios/**/build/**
+
+# Generated at build time from TELEGRAM_API_ID and TELEGRAM_API_HASH.
+official-ios/build-system/singgram-configuration.json
 
 # Keep public GitHub releases clean. Restore these in CI from secrets.
 google-services.json

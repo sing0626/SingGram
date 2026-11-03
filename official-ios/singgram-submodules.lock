@@ -1,0 +1,13 @@
+build-system/bazel-rules/apple_support	https://github.com/bazelbuild/apple_support.git	872de7149cfbcaaf854c7867e98b6d4798ba0d27
+build-system/bazel-rules/rules_apple	https://github.com/ali-fareed/rules_apple.git	485016eb5b0948cc17307064e7977a6d68e94046
+build-system/bazel-rules/rules_swift	https://github.com/bazelbuild/rules_swift.git	dd10a2497a691237eb9716586acee1a9c4fe3e59
+build-system/bazel-rules/rules_xcodeproj	https://github.com/MobileNativeFoundation/rules_xcodeproj.git	f6a54168d19f917d0630e7d4efa8f2f9fa0ddc36
+submodules/TgVoipWebrtc/tgcalls	https://github.com/TelegramMessenger/tgcalls.git	8d6dd4c61e62965cb574c29e39327a4686066381
+submodules/rlottie/rlottie	https://github.com/TelegramMessenger/rlottie.git	53c9679069eb6b6513ccc3c892ef4f4a760658da
+submodules/tlottie/tlottie	https://github.com/dkaraush/tlottie.git	92df98dc209bc39b1e567ec74a8c86a0af5239de
+third-party/dav1d/dav1d	https://github.com/ali-fareed/dav1d.git	330e20672e85f9de1678dccd6957845898ef57a1
+third-party/libvpx/libvpx	https://github.com/webmproject/libvpx.git	e7bfd8b6c230a6824e7fd1efa2378a7322986128
+third-party/mtproto-engine	https://github.com/TelegramMessenger/mtproto-engine.git	da4b2170210aab0430c4ff18c032991f3030cf45
+third-party/td/td	https://github.com/tdlib/td.git	e894536b2f46caad93f997448d2daff9431b19dd
+third-party/wallet-engine/wallet-engine	https://github.com/i582/wallet-engine.git	e59e0d89d7ee90c388bf36e3334c5b276f396697
+third-party/webrtc/webrtc	https://github.com/ali-fareed/webrtc.git	6513c71d6c80311d69a0a6b9c09fcf32cfbeb247

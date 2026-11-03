@@ -1,8 +1,15 @@
 # SingGram
 
-SingGram is an Android fork based on the official Telegram Android source. The production app lives in `official-android/`.
+SingGram is one repository with two official Telegram clients.
+
+- Android: `official-android/`
+- iOS: `official-ios/`
+
+`telegram-ios` is a branch of this repository, not a separate iOS repo. The Android tree stays beside the iOS tree because this branch merges back into `android-official-fork`.
 
 ## What This Fork Is
+
+Android:
 
 - Base: official Telegram Android source from `https://github.com/DrKLO/Telegram`
 - Current imported upstream: Telegram Android `13.1.1` / version code `7237`
@@ -10,25 +17,37 @@ SingGram is an Android fork based on the official Telegram Android source. The p
 - Target build: arm64 Android APK
 - License: GPL-2.0-or-later, following upstream Telegram Android
 
-SingGram keeps Telegram's native Android client architecture and patches the official app surfaces directly instead of rebuilding Telegram in a separate UI stack.
+iOS:
+
+- Base: official Telegram iOS source from `https://github.com/TelegramMessenger/Telegram-iOS`
+- Current imported upstream: Telegram iOS `13.1.2` at `279f89e4d4f63f17227bf877dc3d8990f22ecd58`
+- Re-sign the Actions IPA locally as `com.sing.singgram`
+- Same `TELEGRAM_API_ID` and `TELEGRAM_API_HASH` as the Android app
+- License: GPL-2.0-or-later, following upstream Telegram iOS
+
+SingGram keeps each official client's architecture and patches that client's own UI, instead of rebuilding Telegram in a separate stack.
 
 ## SingGram Changes
 
-- SingGram branding and package configuration
-- Native Telegram Android UI as the base client
-- Liquid Glass enabled through Telegram's native glass/blur pipeline
+- SingGram branding on the Android and iOS clients
+- Native Telegram UI on each platform, patched in place
+- Liquid Glass on Android's blur pipeline, and iOS SwiftUI `.glassEffect(.regular.interactive(), in: Capsule(style: .continuous))`
 - Traditional Chinese and Cantonese-oriented settings polish
-- SingGram settings, diagnostics, and push notification checks
-- Android build scripts for local and GitHub Actions builds
+- SingGram settings on both clients: ghost mode, kept messages, AI actions, diagnostics, and crash-safe mode
+- Android and iOS GitHub Actions builds
 - Upstream sync helper for pulling newer Telegram Android releases
 
 ## Repository Layout
 
 ```text
 official-android/                         Official Telegram Android fork
+official-ios/                             Official Telegram iOS fork
 scripts/build_official_android.sh         Local arm64 release build
 scripts/sync_official_android_upstream.sh Sync helper for Telegram upstream
+scripts/fetch_official_ios_submodules.sh  Fetch pinned Telegram iOS submodules
+scripts/write_singgram_ios_configuration.sh
 .github/workflows/official-android-build.yml
+.github/workflows/official-ios-build.yml
 docs/official-android-fork.md             Fork, build, update, and release notes
 ```
 
@@ -136,6 +155,20 @@ Recommended checks after every upstream update:
 
 More details are in `docs/official-android-fork.md`.
 
+## iOS
+
+`official-ios/` is Telegram iOS `13.1.2` imported from `TelegramMessenger/Telegram-iOS` at `279f89e4d4f63f17227bf877dc3d8990f22ecd58`. The home-screen name in the Bazel app plist is SingGram. Submodule checkouts are not stored in this repository; fetch the pinned commits before building:
+
+```bash
+scripts/fetch_official_ios_submodules.sh
+TELEGRAM_API_ID=123456 TELEGRAM_API_HASH=your_hash SINGGRAM_IOS_TEAM_ID=YOURTEAM \
+  scripts/write_singgram_ios_configuration.sh
+```
+
+The configuration file stays untracked. It reuses the same `TELEGRAM_API_ID` and `TELEGRAM_API_HASH` as the Android build.
+
+GitHub Actions workflow `Build SingGram iOS` runs on the `xcode-27` runner. It signs with the upstream fake certificates so the IPA can be downloaded and re-signed locally. That fake profile matches bundle id `ph.telegra.Telegraph` and team `C67CF9S4VU`, so the workflow keeps those two values. Change the bundle id to `com.sing.singgram` when re-signing. APNs still needs a paid Apple Developer membership and an APNs certificate uploaded for this `api_id` at https://my.telegram.org.
+
 ## Security Notes
 
 Do not commit:
@@ -150,4 +183,4 @@ The public repository should contain source only. Credentials and Firebase confi
 
 ## License
 
-Telegram Android is GPL-2.0-or-later. SingGram keeps that license inheritance for the forked Android source. If public APKs are distributed, publish the matching SingGram source for that release and keep private credentials/signing keys out of the repository.
+Telegram Android and Telegram iOS are GPL-2.0-or-later. SingGram keeps that license for both trees in this repository. If public APKs or IPAs are distributed, publish the matching SingGram source for that release and keep private credentials and signing keys out of the repository.
