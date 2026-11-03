@@ -1288,6 +1288,9 @@ extension ChatControllerImpl {
         }
         self.chatDisplayNode.updateTypingActivity = { [weak self] value in
             if let strongSelf = self {
+                if value, let peerId = strongSelf.chatLocation.peerId, SingGramSettings.shouldHideTypingStatus(peerId: peerId) {
+                    return
+                }
                 if value {
                     strongSelf.typingActivityPromise.set(Signal<Bool, NoError>.single(true)
                     |> then(

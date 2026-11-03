@@ -253,6 +253,9 @@ private func validatePeerReadState(network: Network, postbox: Postbox, stateMana
 
 private func pushPeerReadState(network: Network, postbox: Postbox, stateManager: AccountStateManager, peerId: PeerId, readState: PeerReadState) -> Signal<PeerReadState, PeerReadStateValidationError> {
     if peerId.namespace == Namespaces.Peer.SecretChat {
+        if SingGramSettings.shouldDisableReadReceipts(peerId: peerId) {
+            return .single(readState)
+        }
         // Decide whether a request is needed before looking the peer up: inputSecretChat goes
         // through loadedPeerWithId, which never emits when the peer row is missing and fails
         // with .retry when it is not a TelegramSecretChat. Either would strand or respin an
@@ -290,12 +293,17 @@ private func pushPeerReadState(network: Network, postbox: Postbox, stateManager:
                 let (channelId, accessHash) = (inputPeerChannelData.channelId, inputPeerChannelData.accessHash)
                 switch readState {
                 case let .idBased(maxIncomingReadId, _, _, _, markedUnread):
-                    var pushSignal: Signal<Void, NoError> = network.request(Api.functions.channels.readHistory(channel: Api.InputChannel.inputChannel(.init(channelId: channelId, accessHash: accessHash)), maxId: maxIncomingReadId))
-                    |> `catch` { _ -> Signal<Api.Bool, NoError> in
-                        return .complete()
-                    }
-                    |> mapToSignal { _ -> Signal<Void, NoError> in
-                        return .complete()
+                    var pushSignal: Signal<Void, NoError>
+                    if SingGramSettings.shouldDisableReadReceipts(peerId: peerId) {
+                        pushSignal = .complete()
+                    } else {
+                        pushSignal = network.request(Api.functions.channels.readHistory(channel: Api.InputChannel.inputChannel(.init(channelId: channelId, accessHash: accessHash)), maxId: maxIncomingReadId))
+                        |> `catch` { _ -> Signal<Api.Bool, NoError> in
+                            return .complete()
+                        }
+                        |> mapToSignal { _ -> Signal<Void, NoError> in
+                            return .complete()
+                        }
                     }
                     if markedUnread {
                         pushSignal = pushSignal
@@ -320,20 +328,25 @@ private func pushPeerReadState(network: Network, postbox: Postbox, stateManager:
             default:
                 switch readState {
                 case let .idBased(maxIncomingReadId, _, _, _, markedUnread):
-                    var pushSignal: Signal<Void, NoError> = network.request(Api.functions.messages.readHistory(peer: inputPeer, maxId: maxIncomingReadId))
-                    |> map(Optional.init)
-                    |> `catch` { _ -> Signal<Api.messages.AffectedMessages?, NoError> in
-                        return .single(nil)
-                    }
-                    |> mapToSignal { result -> Signal<Void, NoError> in
-                        if let result = result {
-                            switch result {
-                                case let .affectedMessages(affectedMessagesData):
-                                    let (pts, ptsCount) = (affectedMessagesData.pts, affectedMessagesData.ptsCount)
-                                    stateManager.addUpdateGroups([.updatePts(pts: pts, ptsCount: ptsCount)])
-                            }
+                    var pushSignal: Signal<Void, NoError>
+                    if SingGramSettings.shouldDisableReadReceipts(peerId: peerId) {
+                        pushSignal = .complete()
+                    } else {
+                        pushSignal = network.request(Api.functions.messages.readHistory(peer: inputPeer, maxId: maxIncomingReadId))
+                        |> map(Optional.init)
+                        |> `catch` { _ -> Signal<Api.messages.AffectedMessages?, NoError> in
+                            return .single(nil)
                         }
-                        return .complete()
+                        |> mapToSignal { result -> Signal<Void, NoError> in
+                            if let result = result {
+                                switch result {
+                                    case let .affectedMessages(affectedMessagesData):
+                                        let (pts, ptsCount) = (affectedMessagesData.pts, affectedMessagesData.ptsCount)
+                                        stateManager.addUpdateGroups([.updatePts(pts: pts, ptsCount: ptsCount)])
+                                }
+                            }
+                            return .complete()
+                        }
                     }
 
                     if markedUnread {
