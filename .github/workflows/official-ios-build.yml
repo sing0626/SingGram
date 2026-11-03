@@ -2,6 +2,11 @@ name: Build SingGram iOS
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - telegram-ios
+    paths:
+      - .github/workflows/official-ios-build.yml
 
 permissions:
   contents: read
