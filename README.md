@@ -26,9 +26,13 @@ SingGram keeps Telegram's native Android client architecture and patches the off
 
 ```text
 official-android/                         Official Telegram Android fork
+official-ios/                             Official Telegram iOS fork
 scripts/build_official_android.sh         Local arm64 release build
 scripts/sync_official_android_upstream.sh Sync helper for Telegram upstream
+scripts/fetch_official_ios_submodules.sh  Fetch pinned Telegram iOS submodules
+scripts/write_singgram_ios_configuration.sh
 .github/workflows/official-android-build.yml
+.github/workflows/official-ios-build.yml
 docs/official-android-fork.md             Fork, build, update, and release notes
 ```
 
@@ -135,6 +139,20 @@ Recommended checks after every upstream update:
 6. Liquid Glass surfaces
 
 More details are in `docs/official-android-fork.md`.
+
+## iOS
+
+`official-ios/` is Telegram iOS `13.1.2` imported from `TelegramMessenger/Telegram-iOS` at `279f89e4d4f63f17227bf877dc3d8990f22ecd58`. The home-screen name in the Bazel app plist is SingGram. Submodule checkouts are not stored in this repository; fetch the pinned commits before building:
+
+```bash
+scripts/fetch_official_ios_submodules.sh
+TELEGRAM_API_ID=123456 TELEGRAM_API_HASH=your_hash SINGGRAM_IOS_TEAM_ID=YOURTEAM \
+  scripts/write_singgram_ios_configuration.sh
+```
+
+The configuration file stays untracked. It reuses the same `TELEGRAM_API_ID` and `TELEGRAM_API_HASH` as the Android build.
+
+GitHub Actions workflow `Build SingGram iOS` runs on the `xcode-27` runner. It signs with the upstream fake certificates so the IPA can be downloaded and re-signed locally. That fake profile matches bundle id `ph.telegra.Telegraph` and team `C67CF9S4VU`, so the workflow keeps those two values. Change the bundle id to `com.sing.singgram` when re-signing. APNs still needs a paid Apple Developer membership and an APNs certificate uploaded for this `api_id` at https://my.telegram.org.
 
 ## Security Notes
 

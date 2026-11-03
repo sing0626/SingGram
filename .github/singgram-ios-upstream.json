@@ -1,0 +1,9 @@
+{
+  "upstream": "https://github.com/TelegramMessenger/Telegram-iOS.git",
+  "ref": "master",
+  "importedCommit": "279f89e4d4f63f17227bf877dc3d8990f22ecd58",
+  "importedVersion": "13.1.2",
+  "xcode": "27.1",
+  "bazel": "9.2.0",
+  "macos": "27"
+}
