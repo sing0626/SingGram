@@ -41,23 +41,31 @@ public enum SingGramAiAction: Int {
     }
 }
 
+public struct SingGramAiFailure: Error {
+    public let message: String
+
+    public init(_ message: String) {
+        self.message = message
+    }
+}
+
 public enum SingGramAi {
-    public static func run(action: SingGramAiAction, input: String, completion: @escaping (Result<String, String>) -> Void) {
+    public static func run(action: SingGramAiAction, input: String, completion: @escaping (Result<String, SingGramAiFailure>) -> Void) {
         let text = input.trimmingCharacters(in: .whitespacesAndNewlines)
         if !SingGramSettings.isAiActive {
-            completion(.failure("AI 未啟用，或者閃退安全模式開咗。"))
+            completion(.failure(SingGramAiFailure("AI 未啟用，或者閃退安全模式開咗。")))
             return
         }
         if SingGramSettings.aiBaseUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-            completion(.failure("未設定 API 位址。"))
+            completion(.failure(SingGramAiFailure("未設定 API 位址。")))
             return
         }
         if text.isEmpty {
-            completion(.failure("冇文字可以處理。"))
+            completion(.failure(SingGramAiFailure("冇文字可以處理。")))
             return
         }
         guard let url = URL(string: endpoint(SingGramSettings.aiBaseUrl)) else {
-            completion(.failure("API 位址唔正確。"))
+            completion(.failure(SingGramAiFailure("API 位址唔正確。")))
             return
         }
         var request = URLRequest(url: url)
@@ -78,20 +86,20 @@ public enum SingGramAi {
             ]
         ]
         guard let payload = try? JSONSerialization.data(withJSONObject: body) else {
-            completion(.failure("組唔到請求。"))
+            completion(.failure(SingGramAiFailure("組唔到請求。")))
             return
         }
         request.httpBody = payload
         URLSession.shared.dataTask(with: request) { data, response, error in
-            let result: Result<String, String>
+            let result: Result<String, SingGramAiFailure>
             if let error = error {
-                result = .failure(error.localizedDescription)
+                result = .failure(SingGramAiFailure(error.localizedDescription))
             } else if let http = response as? HTTPURLResponse, !(200..<300).contains(http.statusCode) {
-                result = .failure(errorMessage(data) ?? "HTTP \(http.statusCode)")
+                result = .failure(SingGramAiFailure(errorMessage(data) ?? "HTTP \(http.statusCode)"))
             } else if let data = data, let text = responseText(data), !text.isEmpty {
                 result = .success(text.trimmingCharacters(in: .whitespacesAndNewlines))
             } else {
-                result = .failure("AI 冇返回內容。")
+                result = .failure(SingGramAiFailure("AI 冇返回內容。"))
             }
             DispatchQueue.main.async {
                 completion(result)

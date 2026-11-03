@@ -116,7 +116,7 @@ private func runSingGramAi(action: SingGramAiAction, source: String, context: Ac
             alertActions.append(TextAlertAction(type: .genericAction, title: presentationData.strings.Common_OK, action: {}))
             controllerInteraction.presentController(textAlertController(context: context, title: action.title, text: text, actions: alertActions, actionLayout: .vertical), nil)
         case let .failure(error):
-            controllerInteraction.displayUndo(.info(title: nil, text: error, timeout: nil, customUndoText: nil))
+            controllerInteraction.displayUndo(.info(title: nil, text: error.message, timeout: nil, customUndoText: nil))
         }
     }
 }

@@ -330,7 +330,7 @@ private final class SingGramSettingsActions {
             case let .success(value):
                 text = value
             case let .failure(error):
-                text = error
+                text = error.message
             }
             guard let self, let controller = self.controller else {
                 return
