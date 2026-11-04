@@ -1,6 +1,6 @@
 name: Build SingGram iOS
 
-# A push builds when this workflow or the fake provisioning profiles change.
+# A push builds only when this workflow or the fake provisioning profiles change.
 on:
   workflow_dispatch:
   push:
