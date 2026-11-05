@@ -11,7 +11,11 @@ on:
       - official-ios/build-system/fake-codesigning/profiles/**
 
 permissions:
-  contents: read
+  contents: write
+
+concurrency:
+  group: singgram-ios-ipa
+  cancel-in-progress: false
 
 jobs:
   build:
@@ -67,9 +71,19 @@ jobs:
             --outputBuildArtifactsPath="$GITHUB_WORKSPACE/ios-artifacts"
           mv "$GITHUB_WORKSPACE/ios-artifacts/Telegram.ipa" "$GITHUB_WORKSPACE/ios-artifacts/SingGram-unsigned.ipa"
 
-      - name: Upload unsigned IPA
-        uses: actions/upload-artifact@v7
-        with:
-          name: SingGram-ios-unsigned
-          path: ios-artifacts/SingGram-unsigned.ipa
-          if-no-files-found: error
+      - name: Publish IPA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="ios-${GITHUB_SHA::7}"
+          IPA="$GITHUB_WORKSPACE/ios-artifacts/SingGram-unsigned.ipa"
+          test -f "$IPA"
+          gh release create "$TAG" "$IPA" \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --latest=false \
+            --title "SingGram iOS ${GITHUB_SHA::7}" \
+            --notes "Unsigned IPA. Bundle id com.sing.singgram. Re-sign with your own certificate and leave the bundle id. Direct file: SingGram-unsigned.ipa"
+          echo "Download: https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/SingGram-unsigned.ipa"
