@@ -21,7 +21,7 @@ iOS:
 
 - Base: official Telegram iOS source from `https://github.com/TelegramMessenger/Telegram-iOS`
 - Current imported upstream: Telegram iOS `13.1.2` at `279f89e4d4f63f17227bf877dc3d8990f22ecd58`
-- Re-sign the Actions IPA locally as `com.sing.singgram`
+- Bundle id: `com.sing.singgram`. Re-sign the Actions IPA with your own certificate and leave this id.
 - Same `TELEGRAM_API_ID` and `TELEGRAM_API_HASH` as the Android app
 - License: GPL-2.0-or-later, following upstream Telegram iOS
 
@@ -167,7 +167,7 @@ TELEGRAM_API_ID=123456 TELEGRAM_API_HASH=your_hash SINGGRAM_IOS_TEAM_ID=YOURTEAM
 
 The configuration file stays untracked. It reuses the same `TELEGRAM_API_ID` and `TELEGRAM_API_HASH` as the Android build.
 
-GitHub Actions workflow `Build SingGram iOS` runs on the `xcode-27` runner. It signs with the upstream fake certificates so the IPA can be downloaded and re-signed locally. That fake profile matches bundle id `ph.telegra.Telegraph` and team `C67CF9S4VU`, so the workflow keeps those two values. Change the bundle id to `com.sing.singgram` when re-signing. APNs still needs a paid Apple Developer membership and an APNs certificate uploaded for this `api_id` at https://my.telegram.org.
+GitHub Actions workflow `Build SingGram iOS` runs on the `xcode-27` runner. It signs with the upstream fake certificates so the IPA can be downloaded and re-signed locally. The app and its extensions already use bundle id `com.sing.singgram`; the fake team is `C67CF9S4VU`. Leave the bundle id when re-signing. APNs still needs a paid Apple Developer membership and an APNs certificate uploaded for this `api_id` at https://my.telegram.org.
 
 ## Security Notes
 

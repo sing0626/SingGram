@@ -21,9 +21,9 @@ jobs:
     env:
       TELEGRAM_API_ID: ${{ secrets.TELEGRAM_API_ID }}
       TELEGRAM_API_HASH: ${{ secrets.TELEGRAM_API_HASH }}
-      # fake-codesigning profiles are issued for this id and team.
-      # Re-sign the downloaded IPA locally as com.sing.singgram.
-      SINGGRAM_IOS_BUNDLE_ID: ph.telegra.Telegraph
+      # Fake profiles are issued for this id and team C67CF9S4VU.
+      # Re-sign the downloaded IPA with your own certificate and leave this id.
+      SINGGRAM_IOS_BUNDLE_ID: com.sing.singgram
       SINGGRAM_IOS_TEAM_ID: C67CF9S4VU
       SINGGRAM_IOS_APPSTORE_BUILD: "true"
       SINGGRAM_IOS_ENABLE_SIRI: "true"
