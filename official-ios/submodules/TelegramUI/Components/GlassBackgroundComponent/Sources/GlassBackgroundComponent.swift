@@ -902,6 +902,10 @@ public class GlassBackgroundView: UIView {
             contentView.sendSubviewToBack(host.view)
         }
         host.view.frame = contentView.bounds
+        host.view.backgroundColor = .clear
+        host.view.isOpaque = false
+        host.view.isUserInteractionEnabled = false
+        host.view.clipsToBounds = true
         let animated = previousLiquidLevel != -1 && previousLiquidLevel != liquidLevel && !UIAccessibility.isReduceMotionEnabled
         host.update(
             isEnabled: isVisible && liquidLevel > 0,
@@ -925,6 +929,8 @@ public class GlassBackgroundView: UIView {
         super.layoutSubviews()
         if #available(iOS 26.0, *), let host = self.singGramSwiftUIGlass as? SingGramSwiftUIGlassHost, let nativeView = self.nativeView {
             host.view.frame = nativeView.contentView.bounds
+            host.view.isOpaque = false
+            nativeView.contentView.sendSubviewToBack(host.view)
         }
     }
 

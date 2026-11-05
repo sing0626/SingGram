@@ -27,6 +27,19 @@ private struct SingGramGlassPlate: View {
 }
 
 @available(iOS 26.0, *)
+private final class SingGramGlassController: UIHostingController<SingGramGlassPlate> {
+    override var canBecomeFirstResponder: Bool {
+        return false
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        self.view.backgroundColor = .clear
+        self.view.isOpaque = false
+    }
+}
+
+@available(iOS 26.0, *)
 final class SingGramSwiftUIGlassHost {
     private let model: SingGramGlassModel
     private let controller: UIHostingController<SingGramGlassPlate>
@@ -34,12 +47,15 @@ final class SingGramSwiftUIGlassHost {
     init() {
         let model = SingGramGlassModel()
         self.model = model
-        self.controller = UIHostingController(rootView: SingGramGlassPlate(model: model))
-        self.controller.view.backgroundColor = .clear
-        self.controller.view.isUserInteractionEnabled = false
-        self.controller.sizingOptions = []
-        self.controller.safeAreaRegions = []
-        self.controller.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        let controller = SingGramGlassController(rootView: SingGramGlassPlate(model: model))
+        self.controller = controller
+        controller.view.backgroundColor = .clear
+        controller.view.isOpaque = false
+        controller.view.isUserInteractionEnabled = false
+        controller.view.clipsToBounds = true
+        controller.sizingOptions = []
+        controller.safeAreaRegions = []
+        controller.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
     }
 
     var view: UIView {

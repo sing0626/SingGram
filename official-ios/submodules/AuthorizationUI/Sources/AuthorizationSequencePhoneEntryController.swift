@@ -345,7 +345,22 @@ public final class AuthorizationSequencePhoneEntryController: ViewController, MF
         
         if !self.animatingIn {
             self.controllerNode.activateInput()
+        } else {
+            // willAnimateIn hides the form until the keyboard inset arrives. If the keyboard
+            // never opens, that leaves the dark window with nothing on it.
+            Queue.mainQueue().after(0.6) { [weak self] in
+                self?.singGramRevealLoginForm()
+            }
         }
+    }
+
+    private func singGramRevealLoginForm() {
+        guard self.shouldAnimateIn, let (buttonFrame, buttonTitle, animationSnapshot, textSnapshot) = self.transitionInArguments else {
+            return
+        }
+        self.shouldAnimateIn = false
+        self.animatingIn = false
+        self.controllerNode.animateIn(buttonFrame: buttonFrame, buttonTitle: buttonTitle, animationSnapshot: animationSnapshot, textSnapshot: textSnapshot)
     }
     
     override public func viewWillDisappear(_ animated: Bool) {

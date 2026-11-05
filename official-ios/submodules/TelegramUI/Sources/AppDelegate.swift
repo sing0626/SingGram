@@ -696,9 +696,15 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             networkEngineFactory: RustNetworkEngineFactory()
         )
         
-        guard let appGroupUrl = maybeAppGroupUrl else {
-            self.mainWindow?.presentNative(UIAlertController(title: nil, message: "Error 2", preferredStyle: .alert))
-            return true
+        // Re-signing often drops the app-group entitlement. containerURL is then nil, and
+        // returning here left a blank window (black in dark mode) before any login UI existed.
+        let appGroupUrl: URL
+        if let containerUrl = maybeAppGroupUrl {
+            appGroupUrl = containerUrl
+        } else {
+            let fallback = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("SingGram", isDirectory: true)
+            try? FileManager.default.createDirectory(at: fallback, withIntermediateDirectories: true)
+            appGroupUrl = fallback
         }
         
         var isDebugConfiguration = false
