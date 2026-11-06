@@ -2025,17 +2025,15 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                 }
             }
             
-            var avatarDiameter = min(CGFloat(SingGramAppearance.listDensity.avatarDiameter), floor(item.presentationData.fontSize.baseDisplaySize * CGFloat(SingGramAppearance.listDensity.avatarDiameter) / 17.0))
+            var avatarDiameter = min(CGFloat(item.presentationData.listDensity.avatarDiameter), floor(item.presentationData.fontSize.baseDisplaySize * CGFloat(item.presentationData.listDensity.avatarDiameter) / 17.0))
             
             if case let .peer(peerData) = item.content, let customMessageListData = peerData.customMessageListData, customMessageListData.commandPrefix != nil {
                 avatarDiameter = 40.0
             }
                 
-            if avatarDiameter != 60.0 {
-                let avatarFontSize = floor(avatarDiameter * 26.0 / 60.0)
-                if self.avatarNode.font.pointSize != avatarFontSize {
-                    self.avatarNode.font = avatarPlaceholderFont(size: avatarFontSize)
-                }
+            let avatarFontSize = floor(avatarDiameter * 26.0 / 60.0)
+            if self.avatarNode.font.pointSize != avatarFontSize {
+                self.avatarNode.font = avatarPlaceholderFont(size: avatarFontSize)
             }
             let avatarClipStyle: AvatarNodeClipStyle
             if peerIsMonoforum {
@@ -2557,7 +2555,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
             let enableChatListPhotos = true
             
             // if changed, adjust setupItem accordingly
-            var avatarDiameter = min(CGFloat(SingGramAppearance.listDensity.avatarDiameter), floor(item.presentationData.fontSize.baseDisplaySize * CGFloat(SingGramAppearance.listDensity.avatarDiameter) / 17.0))
+            var avatarDiameter = min(CGFloat(item.presentationData.listDensity.avatarDiameter), floor(item.presentationData.fontSize.baseDisplaySize * CGFloat(item.presentationData.listDensity.avatarDiameter) / 17.0))
             let avatarLeftEdgeInset: CGFloat = item.useCommunityViewLayout ? 10.0 : 16.0
             let avatarLeftInset: CGFloat
             
@@ -4052,7 +4050,7 @@ public class ChatListItemNode: ItemListRevealOptionsItemNode {
                 itemHeight += authorSpacing
             }
                         
-            let densityPadding = CGFloat(SingGramAppearance.listDensity.verticalPadding)
+            let densityPadding = CGFloat(item.presentationData.listDensity.verticalPadding)
             itemHeight += densityPadding
             let rawContentRect = CGRect(origin: CGPoint(x: 2.0, y: layoutOffset + floor(item.presentationData.fontSize.itemListBaseFontSize * 8.0 / 17.0) + densityPadding * 0.5), size: CGSize(width: rawContentWidth, height: itemHeight - densityPadding - 12.0 - 9.0))
             

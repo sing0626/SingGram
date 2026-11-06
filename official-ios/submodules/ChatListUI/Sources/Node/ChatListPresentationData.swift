@@ -1,3 +1,4 @@
+import SingGramAppearance
 import Foundation
 import UIKit
 import TelegramPresentationData
@@ -11,8 +12,10 @@ public final class ChatListPresentationData {
     public let nameSortOrder: PresentationPersonNameOrder
     public let nameDisplayOrder: PresentationPersonNameOrder
     public let disableAnimations: Bool
+    public let listDensity: SingGramListDensity
     
     public init(theme: PresentationTheme, fontSize: PresentationFontSize, strings: PresentationStrings, dateTimeFormat: PresentationDateTimeFormat, nameSortOrder: PresentationPersonNameOrder, nameDisplayOrder: PresentationPersonNameOrder, disableAnimations: Bool) {
+        self.listDensity = SingGramAppearance.listDensity
         self.theme = theme
         self.fontSize = fontSize
         self.strings = strings

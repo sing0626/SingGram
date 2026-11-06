@@ -5903,42 +5903,44 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
         self.requestLayout()
     }
 
-    private func singGramPresent(_ alert: UIAlertController) {
+    private func singGramPresent(_ alert: UIAlertController, completion: (() -> Void)? = nil) {
         var presenter = self.view.window?.rootViewController
         while let next = presenter?.presentedViewController { presenter = next }
-        presenter?.present(alert, animated: !UIAccessibility.isReduceMotionEnabled)
+        presenter?.present(alert, animated: !UIAccessibility.isReduceMotionEnabled, completion: completion)
     }
 
     private func singGramRunComposerAction(_ action: SingGramAiAction) {
         let source = self.inputTextState.inputText.string.trimmingCharacters(in: .whitespacesAndNewlines)
         guard SingGramSettings.isAiActive, !source.isEmpty else { return }
         let loading = UIAlertController(title: "SingGram AI", message: "處理中…", preferredStyle: .alert)
-        self.singGramPresent(loading)
-        SingGramAi.run(action: action, input: source) { [weak self, weak loading] result in
-            DispatchQueue.main.async {
-                guard let self else { return }
-                loading?.dismiss(animated: false, completion: { [weak self] in
+        self.singGramPresent(loading) { [weak self, weak loading] in
+            guard self != nil else { return }
+            SingGramAi.run(action: action, input: source) { [weak self, weak loading] result in
+                DispatchQueue.main.async {
                     guard let self else { return }
-                    let message: String
-                    switch result {
-                    case let .success(text): message = text
-                    case let .failure(error): message = error.message
-                    }
-                    let alert = UIAlertController(title: action.title, message: message, preferredStyle: .alert)
-                    if case let .success(text) = result {
-                        alert.addAction(UIAlertAction(title: "複製", style: .default, handler: { _ in UIPasteboard.general.string = text }))
-                        if SingGramSettings.isAiInsertResultEnabled {
-                            alert.addAction(UIAlertAction(title: "插入游標位置", style: .default, handler: { [weak self] _ in
-                                self?.interfaceInteraction?.updateTextInputStateAndMode { state, mode in
-                                    let range = NSRange(location: state.selectionRange.lowerBound, length: state.selectionRange.count)
-                                    return (state.replacingFlatRange(range, with: NSAttributedString(string: text)), mode)
-                                }
-                            }))
+                    loading?.dismiss(animated: false, completion: { [weak self] in
+                        guard let self else { return }
+                        let message: String
+                        switch result {
+                        case let .success(text): message = text
+                        case let .failure(error): message = error.message
                         }
-                    }
-                    alert.addAction(UIAlertAction(title: "完成", style: .cancel))
-                    self.singGramPresent(alert)
-                })
+                        let alert = UIAlertController(title: action.title, message: message, preferredStyle: .alert)
+                        if case let .success(text) = result {
+                            alert.addAction(UIAlertAction(title: "複製", style: .default, handler: { _ in UIPasteboard.general.string = text }))
+                            if SingGramSettings.isAiInsertResultEnabled {
+                                alert.addAction(UIAlertAction(title: "插入游標位置", style: .default, handler: { [weak self] _ in
+                                    self?.interfaceInteraction?.updateTextInputStateAndMode { state, mode in
+                                        let range = NSRange(location: state.selectionRange.lowerBound, length: state.selectionRange.count)
+                                        return (state.replacingFlatRange(range, with: NSAttributedString(string: text)), mode)
+                                    }
+                                }))
+                            }
+                        }
+                        alert.addAction(UIAlertAction(title: "完成", style: .cancel))
+                        self.singGramPresent(alert)
+                    })
+                }
             }
         }
     }
@@ -6252,9 +6254,9 @@ extension ChatTextInputPanelNode: UIContextMenuInteractionDelegate {
         guard self.presentationInterfaceState?.interfaceState.mediaDraftState == nil else { return nil }
         return UIContextMenuConfiguration(identifier: nil, previewProvider: nil, actionProvider: { [weak self] _ in
             guard let self else { return nil }
-            var items: [UIMenuElement] = [UIAction(title: "加入附件", image: UIImage(systemName: "paperclip"), handler: { [weak self] _ in self?.displayAttachmentMenu() })]
+            var items: [UIMenuElement] = [UIAction(title: "加入附件", image: UIImage(systemName: "paperclip"), handler: { [weak self] _ in Queue.mainQueue().after(0.2) { [weak self] in self?.displayAttachmentMenu() } })]
             if self.isAIEnabled {
-                items.append(UIAction(title: "AI 寫作", image: UIImage(systemName: "wand.and.stars"), handler: { [weak self] _ in self?.interfaceInteraction?.openAICompose() }))
+                items.append(UIAction(title: "AI 寫作", image: UIImage(systemName: "wand.and.stars"), handler: { [weak self] _ in Queue.mainQueue().after(0.2) { [weak self] in self?.interfaceInteraction?.openAICompose() } }))
             }
             if SingGramSettings.isAiActive {
                 var choices: [SingGramAiAction] = [.rewriteCantonese, .shorten, .summarize]
@@ -6262,7 +6264,7 @@ extension ChatTextInputPanelNode: UIContextMenuInteractionDelegate {
                 if SingGramSettings.isQuickReplyIdeasEnabled { choices.append(.replyIdeas) }
                 let isEmpty = self.inputTextState.inputText.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 let actions = choices.map { action in
-                    UIAction(title: action.title, image: UIImage(systemName: "sparkles"), attributes: isEmpty ? [.disabled] : [], handler: { [weak self] _ in self?.singGramRunComposerAction(action) })
+                    UIAction(title: action.title, image: UIImage(systemName: "sparkles"), attributes: isEmpty ? [.disabled] : [], handler: { [weak self] _ in Queue.mainQueue().after(0.2) { [weak self] in self?.singGramRunComposerAction(action) } })
                 }
                 items.append(UIMenu(title: "SingGram AI", options: .displayInline, children: actions))
             }

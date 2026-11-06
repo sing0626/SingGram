@@ -1,3 +1,4 @@
+import SingGramAppearance
 import Foundation
 import UIKit
 import Postbox
@@ -296,6 +297,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         )
                 
         super.init(context: context, navigationBarPresentationData: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(self.singGramAppearanceChanged), name: SingGramAppearance.changed, object: nil)
         
         self.accessoryPanelContainer = ASDisplayNode()
         
@@ -467,11 +469,12 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
             if let strongSelf = self {
                 let previousTheme = strongSelf.presentationData.theme
                 let previousStrings = strongSelf.presentationData.strings
+                let previousFontSize = strongSelf.presentationData.listsFontSize
                 
                 strongSelf.presentationData = presentationData
                 strongSelf.presentationDataValue.set(.single(presentationData))
                 
-                if previousTheme !== presentationData.theme || previousStrings !== presentationData.strings {
+                if previousTheme !== presentationData.theme || previousStrings !== presentationData.strings || previousFontSize != presentationData.listsFontSize {
                     strongSelf.updateThemeAndStrings()
                 }
             }
@@ -803,6 +806,7 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
     }
     
     deinit {
+        NotificationCenter.default.removeObserver(self)
         self.openMessageFromSearchDisposable.dispose()
         self.badgeDisposable?.dispose()
         self.badgeIconDisposable?.dispose()
@@ -928,6 +932,10 @@ public class ChatListControllerImpl: TelegramBaseController, ChatListController 
         }
     }
     
+    @objc private func singGramAppearanceChanged() {
+        if self.isNodeLoaded { self.updateThemeAndStrings() }
+    }
+
     private func updateThemeAndStrings() {
         if case .chatList(.root) = self.location {
             self.tabBarItem.title = self.presentationData.strings.DialogList_Title

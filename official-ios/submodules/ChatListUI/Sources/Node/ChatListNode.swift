@@ -1,3 +1,4 @@
+import SingGramAppearance
 import Foundation
 import LottieSettings
 import UIKit
@@ -3313,7 +3314,7 @@ public final class ChatListNode: ListViewImpl {
     }
     
     public func updateThemeAndStrings(theme: PresentationTheme, fontSize: PresentationFontSize, strings: PresentationStrings, dateTimeFormat: PresentationDateTimeFormat, nameSortOrder: PresentationPersonNameOrder, nameDisplayOrder: PresentationPersonNameOrder, disableAnimations: Bool) {
-        if theme !== self.currentState.presentationData.theme || strings !== self.currentState.presentationData.strings || dateTimeFormat != self.currentState.presentationData.dateTimeFormat {
+        if theme !== self.currentState.presentationData.theme || strings !== self.currentState.presentationData.strings || dateTimeFormat != self.currentState.presentationData.dateTimeFormat || fontSize != self.currentState.presentationData.fontSize || SingGramAppearance.listDensity != self.currentState.presentationData.listDensity {
             self.theme = theme
             if self.keepTopItemOverscrollBackground != nil {
                 self.keepTopItemOverscrollBackground = ListViewKeepTopItemOverscrollBackground(color:  theme.chatList.pinnedItemBackgroundColor, direction: true)

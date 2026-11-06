@@ -35,7 +35,8 @@ Expected recordings, in light and dark modes and with large accessibility text:
 1. Chat list scrolling with unread, pinned, muted, long-title, draft and archived
    rows: title/sender/preview must stay inside each row, dates and unread badges
    must not overlap titles, avatars remain vertically centered. Switch all three
-   densities and return to the list; native list-font changes must remeasure it.
+   densities and return to the list; presentation-data invalidation must remeasure
+   it even when system text size stays the same.
 2. Switching bottom tabs: icon and label move together, selected state stays
    visible, badges do not clip. On iPad, side tabs stay in their original position.
    Rotating and opening search/keyboard must not cover content or move the capsule

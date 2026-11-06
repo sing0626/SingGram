@@ -426,10 +426,7 @@ private final class SingGramSettingsActions {
             (density.title, { [weak self] in
                 guard let self else { return }
                 SingGramAppearance.listDensity = density
-                let _ = updatePresentationThemeSettingsInteractively(accountManager: self.context.sharedContext.accountManager, { current in
-                    let sizes: [PresentationFontSize] = [.small, .regular, .large]
-                    return current.withUpdatedFontSizes(fontSize: current.fontSize, listsFontSize: sizes[density.rawValue])
-                }).start(completed: { [weak self] in self?.changed() })
+                self.changed()
             })
         })
     }

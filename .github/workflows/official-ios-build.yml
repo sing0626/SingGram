@@ -59,6 +59,9 @@ jobs:
           exec > >(tee "$RUNNER_TEMP/ios-preflight.log") 2>&1
           for source in \
             official-ios/submodules/ChatListUI/Sources/Node/ChatListItem.swift \
+            official-ios/submodules/ChatListUI/Sources/Node/ChatListPresentationData.swift \
+            official-ios/submodules/ChatListUI/Sources/Node/ChatListNode.swift \
+            official-ios/submodules/ChatListUI/Sources/ChatListController.swift \
             official-ios/submodules/TabBarUI/Sources/TabBarContollerNode.swift \
             official-ios/submodules/TelegramUI/Components/TabBarComponent/Sources/TabBarComponent.swift \
             official-ios/submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/SingGramSettingsController.swift \
