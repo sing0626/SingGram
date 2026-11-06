@@ -1,7 +1,7 @@
 name: Build SingGram iOS
 
 # A push builds only when this workflow or the fake provisioning profiles change.
-# Rebuild after skipping PushKit when the re-signed profile has no push entitlement.
+# Rebuild with iCloud off. CKContainer.default() aborts a re-signed launch.
 on:
   workflow_dispatch:
   push:
@@ -32,7 +32,9 @@ jobs:
       SINGGRAM_IOS_TEAM_ID: C67CF9S4VU
       SINGGRAM_IOS_APPSTORE_BUILD: "true"
       SINGGRAM_IOS_ENABLE_SIRI: "true"
-      SINGGRAM_IOS_ENABLE_ICLOUD: "true"
+      # CKContainer.default() raises an Objective-C exception without a usable iCloud
+      # container after re-signing, and the process is killed before the login screen.
+      SINGGRAM_IOS_ENABLE_ICLOUD: "false"
 
     steps:
       - name: Checkout
@@ -59,8 +61,8 @@ jobs:
           set -euo pipefail
           python3 build-system/Make/ImportCertificates.py --path build-system/fake-codesigning/certs
           BUILD_NUMBER_OFFSET="$(tr -d '[:space:]' < build_number_offset)"
-          COMMIT_COUNT="$(git -C "$GITHUB_WORKSPACE" rev-list --count HEAD)"
-          BUILD_NUMBER="$((COMMIT_COUNT + BUILD_NUMBER_OFFSET))"
+          # A shallow checkout reports one commit, so every previous IPA stayed at build 3732.
+          BUILD_NUMBER="$((GITHUB_RUN_NUMBER + BUILD_NUMBER_OFFSET))"
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
           python3 -u build-system/Make/Make.py \
             --bazelUserRoot="/private/var/tmp/_bazel_singgram" \
