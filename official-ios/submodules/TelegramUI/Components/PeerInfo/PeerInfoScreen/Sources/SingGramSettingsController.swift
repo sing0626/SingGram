@@ -520,6 +520,10 @@ private final class SingGramSettingsActions {
         alert.addTextField { textField in
             textField.text = value
             textField.clearButtonMode = .whileEditing
+            textField.isSecureTextEntry = title == "API 金鑰"
+            textField.autocapitalizationType = .none
+            textField.autocorrectionType = .no
+            textField.spellCheckingType = .no
         }
         alert.addAction(UIAlertAction(title: "取消", style: .cancel))
         alert.addAction(UIAlertAction(title: "儲存", style: .default, handler: { _ in

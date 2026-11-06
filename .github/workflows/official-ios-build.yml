@@ -54,7 +54,9 @@ jobs:
 
       - name: Verify appearance preferences
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
+          trap 'result=$?; trap - ERR; python3 scripts/annotate_ios_swift_errors.py "$RUNNER_TEMP/ios-preflight.log" || true; exit "$result"' ERR
+          exec > >(tee "$RUNNER_TEMP/ios-preflight.log") 2>&1
           for source in \
             official-ios/submodules/ChatListUI/Sources/Node/ChatListItem.swift \
             official-ios/submodules/TabBarUI/Sources/TabBarContollerNode.swift \
@@ -87,6 +89,7 @@ jobs:
           # A shallow checkout reports one commit, so every previous IPA stayed at build 3732.
           BUILD_NUMBER="$((GITHUB_RUN_NUMBER + BUILD_NUMBER_OFFSET))"
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
+          set +e
           python3 -u build-system/Make/Make.py \
             --bazelUserRoot="/private/var/tmp/_bazel_singgram" \
             build \
@@ -94,7 +97,13 @@ jobs:
             --codesigningInformationPath=build-system/fake-codesigning \
             --configuration=release_arm64 \
             --buildNumber="$BUILD_NUMBER" \
-            --outputBuildArtifactsPath="$GITHUB_WORKSPACE/ios-artifacts"
+            --outputBuildArtifactsPath="$GITHUB_WORKSPACE/ios-artifacts" 2>&1 | tee "$RUNNER_TEMP/ios-build.log"
+          build_status=${PIPESTATUS[0]}
+          set -e
+          if [[ "$build_status" != 0 ]]; then
+            python3 "$GITHUB_WORKSPACE/scripts/annotate_ios_swift_errors.py" "$RUNNER_TEMP/ios-build.log" || true
+            exit "$build_status"
+          fi
           mv "$GITHUB_WORKSPACE/ios-artifacts/Telegram.ipa" "$GITHUB_WORKSPACE/ios-artifacts/SingGram-unsigned.ipa"
 
       - name: Save IPA and matching debug symbols

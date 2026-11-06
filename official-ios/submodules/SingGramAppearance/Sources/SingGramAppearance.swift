@@ -39,7 +39,8 @@ public enum SingGramAccent: Int, CaseIterable {
     }
 }
 
-public final class SingGramAppearancePreferences {
+// UserDefaults serializes access; UI invalidations are delivered on the main queue.
+public final class SingGramAppearancePreferences: @unchecked Sendable {
     private let defaults: UserDefaults
 
     public init(defaults: UserDefaults) { self.defaults = defaults }
@@ -64,7 +65,13 @@ public final class SingGramAppearancePreferences {
         set { defaults.set(newValue, forKey: "compact_composer"); notify() }
     }
     private func notify() {
-        NotificationCenter.default.post(name: SingGramAppearance.changed, object: nil)
+        if Thread.isMainThread {
+            NotificationCenter.default.post(name: SingGramAppearance.changed, object: nil)
+        } else {
+            DispatchQueue.main.async {
+                NotificationCenter.default.post(name: SingGramAppearance.changed, object: nil)
+            }
+        }
     }
 }
 
