@@ -1,3 +1,4 @@
+import SingGramAppearance
 import Foundation
 import UIKit
 import AsyncDisplayKit
@@ -128,6 +129,7 @@ final class TabBarControllerNode: ASDisplayNode {
         self.deactivateSearch = deactivateSearch
 
         super.init()
+        NotificationCenter.default.addObserver(self, selector: #selector(self.singGramAppearanceChanged), name: SingGramAppearance.changed, object: nil)
         
         self.setViewBlock({
             return View(frame: CGRect())
@@ -201,6 +203,14 @@ final class TabBarControllerNode: ASDisplayNode {
         }
     }
     
+    deinit {
+        NotificationCenter.default.removeObserver(self)
+    }
+
+    @objc private func singGramAppearanceChanged() {
+        self.requestUpdate()
+    }
+
     private func requestUpdate() {
         self.isUpdateRequested = true
         self.view.setNeedsLayout()
@@ -224,12 +234,12 @@ final class TabBarControllerNode: ASDisplayNode {
             }
         }
 
-        var sideInset: CGFloat = 12.0
-        if tabBarBottomInset <= 28.0 {
-            sideInset = 20.0
-        }
-        
         let sidePlacement = self.sidePlacement(for: params.layout)
+        var sideInset: CGFloat = tabBarBottomInset <= 28.0 ? 20.0 : 12.0
+        if sidePlacement == nil && SingGramAppearance.floatingNavigation {
+            sideInset = tabBarBottomInset <= 28.0 ? 28.0 : 24.0
+        }
+
         let previousAppliedPlacement = self.tabBarView.view == nil ? nil : self.appliedPlacement
         let appliedPlacement = TabBarAppliedPlacement(placement: sidePlacement, containerSize: params.layout.size, isHidden: self.tabBarHidden)
         self.appliedPlacement = appliedPlacement

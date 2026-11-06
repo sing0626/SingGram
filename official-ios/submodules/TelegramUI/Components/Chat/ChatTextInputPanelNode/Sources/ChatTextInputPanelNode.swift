@@ -1,3 +1,4 @@
+import SingGramAppearance
 import Foundation
 import LottieSettings
 import UniformTypeIdentifiers
@@ -885,6 +886,9 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
         }
         
         self.attachmentButton.addTarget(self, action: #selector(self.attachmentButtonPressed), for: .touchUpInside)
+        self.attachmentButton.addInteraction(UIContextMenuInteraction(delegate: self))
+        self.attachmentButton.accessibilityHint = "輕按加入附件，長按開啟聊天工具"
+        NotificationCenter.default.addObserver(self, selector: #selector(self.singGramAppearanceChanged), name: SingGramAppearance.changed, object: nil)
         self.attachmentButton.highligthedChanged = { [weak self] highlighted in
             if let self {
                 if highlighted {
@@ -1093,6 +1097,7 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
     }
     
     deinit {
+        NotificationCenter.default.removeObserver(self)
         self.statusDisposable.dispose()
         self.tooltipController?.dismiss()
         self.currentEmojiSuggestion?.disposable.dispose()
@@ -3571,7 +3576,7 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
         var isAIButtonVisible = false
         var attachmentPillHeight: CGFloat = 40.0
         let inputHasNonWhitespaceText = !(self.richTextInputNode?.inputContentIsEmptyWhitespaceTrimmed ?? true)
-        if self.isAIEnabled, inputHasNonWhitespaceText, let node = self.richTextInputNode {
+        if !SingGramAppearance.compactComposer, self.isAIEnabled, inputHasNonWhitespaceText, let node = self.richTextInputNode {
             let threeLineHeight = self.threeLineFieldHeight(forWidth: baseWidth, node: node, metrics: metrics, bottomInset: bottomInset, textFieldInsets: textFieldInsets)
             if textInputHeight >= threeLineHeight - 0.5 {
                 isAIButtonVisible = true
@@ -3593,7 +3598,7 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
         }
 
         // AI button in the TOP 40x40 slot of the capsule (fades in with the 3-line rule).
-        if self.isAIEnabled {
+        if self.isAIEnabled && !SingGramAppearance.compactComposer {
             let aiButton: (button: HighlightTrackingButton, icon: UIImageView)
             if let current = self.attachmentAIButton {
                 aiButton = current
@@ -5894,6 +5899,50 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
         }
     }
 
+    @objc private func singGramAppearanceChanged() {
+        self.requestLayout()
+    }
+
+    private func singGramPresent(_ alert: UIAlertController) {
+        var presenter = self.view.window?.rootViewController
+        while let next = presenter?.presentedViewController { presenter = next }
+        presenter?.present(alert, animated: !UIAccessibility.isReduceMotionEnabled)
+    }
+
+    private func singGramRunComposerAction(_ action: SingGramAiAction) {
+        let source = self.inputTextState.inputText.string.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard SingGramSettings.isAiActive, !source.isEmpty else { return }
+        let loading = UIAlertController(title: "SingGram AI", message: "處理中…", preferredStyle: .alert)
+        self.singGramPresent(loading)
+        SingGramAi.run(action: action, input: source) { [weak self, weak loading] result in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                loading?.dismiss(animated: false, completion: { [weak self] in
+                    guard let self else { return }
+                    let message: String
+                    switch result {
+                    case let .success(text): message = text
+                    case let .failure(error): message = error.message
+                    }
+                    let alert = UIAlertController(title: action.title, message: message, preferredStyle: .alert)
+                    if case let .success(text) = result {
+                        alert.addAction(UIAlertAction(title: "複製", style: .default, handler: { _ in UIPasteboard.general.string = text }))
+                        if SingGramSettings.isAiInsertResultEnabled {
+                            alert.addAction(UIAlertAction(title: "插入游標位置", style: .default, handler: { [weak self] _ in
+                                self?.interfaceInteraction?.updateTextInputStateAndMode { state, mode in
+                                    let range = NSRange(location: state.selectionRange.lowerBound, length: state.selectionRange.count)
+                                    return (state.replacingFlatRange(range, with: NSAttributedString(string: text)), mode)
+                                }
+                            }))
+                        }
+                    }
+                    alert.addAction(UIAlertAction(title: "完成", style: .cancel))
+                    self.singGramPresent(alert)
+                })
+            }
+        }
+    }
+
     @objc func attachmentButtonPressed() {
         if let presentationInterfaceState = self.presentationInterfaceState, presentationInterfaceState.interfaceState.mediaDraftState != nil {
             self.viewOnce = false
@@ -6195,5 +6244,29 @@ public class ChatTextInputPanelNode: ChatInputPanelNode, ASEditableTextNodeDeleg
     
     public func makeAttachmentMenuTransition(accessoryPanelNode: ASDisplayNode?) -> AttachmentInputPanelTransition {
         return AttachmentInputPanelTransition(inputNode: self, accessoryPanelNode: accessoryPanelNode, menuButtonNode: self.menuButton, menuButtonBackgroundView: self.menuButtonBackgroundView, menuIconNode: self.menuButtonIconNode, menuTextNode: self.menuButtonTextNode, prepareForDismiss: { self.menuButtonIconNode.enqueueState(.app, animated: false) })
+    }
+}
+
+extension ChatTextInputPanelNode: UIContextMenuInteractionDelegate {
+    public func contextMenuInteraction(_ interaction: UIContextMenuInteraction, configurationForMenuAtLocation location: CGPoint) -> UIContextMenuConfiguration? {
+        guard self.presentationInterfaceState?.interfaceState.mediaDraftState == nil else { return nil }
+        return UIContextMenuConfiguration(identifier: nil, previewProvider: nil, actionProvider: { [weak self] _ in
+            guard let self else { return nil }
+            var items: [UIMenuElement] = [UIAction(title: "加入附件", image: UIImage(systemName: "paperclip"), handler: { [weak self] _ in self?.displayAttachmentMenu() })]
+            if self.isAIEnabled {
+                items.append(UIAction(title: "AI 寫作", image: UIImage(systemName: "wand.and.stars"), handler: { [weak self] _ in self?.interfaceInteraction?.openAICompose() }))
+            }
+            if SingGramSettings.isAiActive {
+                var choices: [SingGramAiAction] = [.rewriteCantonese, .shorten, .summarize]
+                if SingGramSettings.isAiTranslateActionEnabled { choices.append(.translateTraditional) }
+                if SingGramSettings.isQuickReplyIdeasEnabled { choices.append(.replyIdeas) }
+                let isEmpty = self.inputTextState.inputText.string.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                let actions = choices.map { action in
+                    UIAction(title: action.title, image: UIImage(systemName: "sparkles"), attributes: isEmpty ? [.disabled] : [], handler: { [weak self] _ in self?.singGramRunComposerAction(action) })
+                }
+                items.append(UIMenu(title: "SingGram AI", options: .displayInline, children: actions))
+            }
+            return UIMenu(title: "聊天工具", children: items)
+        })
     }
 }

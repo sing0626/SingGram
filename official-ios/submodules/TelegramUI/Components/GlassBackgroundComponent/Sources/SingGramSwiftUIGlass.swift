@@ -6,6 +6,8 @@ private final class SingGramGlassModel: ObservableObject {
     @Published var isEnabled = false
     @Published var isCapsule = true
     @Published var cornerRadius: CGFloat = 0
+    @Published var isDark = false
+    @Published var level = 1
 }
 
 @available(iOS 26.0, *)
@@ -16,9 +18,9 @@ private struct SingGramGlassPlate: View {
         let plate = Color.clear.frame(maxWidth: .infinity, maxHeight: .infinity)
         if self.model.isEnabled {
             if self.model.isCapsule {
-                plate.glassEffect(.regular.interactive(), in: Capsule(style: .continuous))
+                plate.glassEffect(.regular.tint((self.model.isDark ? Color.black : Color.white).opacity(self.model.level == 2 ? 0.12 : 0.04)).interactive(), in: Capsule(style: .continuous))
             } else {
-                plate.glassEffect(.regular.interactive(), in: RoundedRectangle(cornerRadius: self.model.cornerRadius, style: .continuous))
+                plate.glassEffect(.regular.tint((self.model.isDark ? Color.black : Color.white).opacity(self.model.level == 2 ? 0.12 : 0.04)).interactive(), in: RoundedRectangle(cornerRadius: self.model.cornerRadius, style: .continuous))
             }
         } else {
             plate
@@ -62,11 +64,13 @@ final class SingGramSwiftUIGlassHost {
         return self.controller.view
     }
 
-    func update(isEnabled: Bool, isCapsule: Bool, cornerRadius: CGFloat, animated: Bool) {
+    func update(isEnabled: Bool, isCapsule: Bool, cornerRadius: CGFloat, animated: Bool, isDark: Bool, level: Int) {
         let apply = {
             self.model.isEnabled = isEnabled
             self.model.isCapsule = isCapsule
             self.model.cornerRadius = cornerRadius
+            self.model.isDark = isDark
+            self.model.level = level
         }
         if animated {
             withAnimation(.smooth(duration: 0.5), apply)

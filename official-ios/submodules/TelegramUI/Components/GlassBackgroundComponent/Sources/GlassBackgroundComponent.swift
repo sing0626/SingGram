@@ -54,6 +54,7 @@ enum SingGramLiquidGlass {
     static let changed = Notification.Name("SingGramLiquidGlassChanged")
 
     static func level() -> Int {
+        if UIAccessibility.isReduceTransparencyEnabled { return 0 }
         let defaults = UserDefaults(suiteName: "singgram")
         if defaults?.bool(forKey: "crash_safe_mode") == true {
             return 0
@@ -657,6 +658,8 @@ public class GlassBackgroundView: UIView {
             self.addSubview(legacyHighlightContainerView)
         }
         NotificationCenter.default.addObserver(self, selector: #selector(self.singGramLiquidGlassDidChange), name: SingGramLiquidGlass.changed, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(self.singGramLiquidGlassDidChange), name: UIAccessibility.reduceTransparencyStatusDidChangeNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(self.singGramLiquidGlassDidChange), name: UIAccessibility.reduceMotionStatusDidChangeNotification, object: nil)
     }
 
     deinit {
@@ -906,12 +909,15 @@ public class GlassBackgroundView: UIView {
         host.view.isOpaque = false
         host.view.isUserInteractionEnabled = false
         host.view.clipsToBounds = true
+        nativeView.backgroundColor = liquidLevel == 0 ? UIColor(white: (self.singGramLayout?.2 ?? false) ? 0.12 : 0.98, alpha: 1.0) : .clear
         let animated = previousLiquidLevel != -1 && previousLiquidLevel != liquidLevel && !UIAccessibility.isReduceMotionEnabled
         host.update(
             isEnabled: isVisible && liquidLevel > 0,
             isCapsule: self.singGramShapeIsCapsule(size: size, shape: shape),
             cornerRadius: shape.maximumCornerRadius(for: size),
-            animated: animated
+            animated: animated,
+            isDark: self.singGramLayout?.2 ?? false,
+            level: liquidLevel
         )
         if self.nativeBlurRadius != nil {
             self.nativeBlurRadius = nil
@@ -1013,6 +1019,8 @@ public final class GlassBackgroundContainerView: UIView {
             self.addSubview(legacyView)
         }
         NotificationCenter.default.addObserver(self, selector: #selector(self.singGramLiquidGlassDidChange), name: SingGramLiquidGlass.changed, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(self.singGramLiquidGlassDidChange), name: UIAccessibility.reduceTransparencyStatusDidChangeNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(self.singGramLiquidGlassDidChange), name: UIAccessibility.reduceMotionStatusDidChangeNotification, object: nil)
     }
 
     deinit {

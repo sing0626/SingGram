@@ -1,3 +1,5 @@
+import SingGramAppearance
+import TelegramUIPreferences
 import Foundation
 import UIKit
 import SwiftSignalKit
@@ -8,7 +10,29 @@ import TelegramPresentationData
 import TelegramCore
 import PresentationDataUtils
 
+private enum SingGramSettingsPage: String {
+    case overview = "SingGram"
+    case appearance = "外觀"
+    case privacy = "隱私與訊息保護"
+    case ai = "AI 與聊天工具"
+    case diagnostics = "診斷與安全模式"
+}
+
 private enum SingGramSettingsEntry: ItemListNodeEntry {
+    case homeAppearance(PresentationTheme)
+    case homePrivacy(PresentationTheme)
+    case homeAi(PresentationTheme)
+    case homeDiagnostics(PresentationTheme)
+    case homeInfo(PresentationTheme)
+    case themeColor(PresentationTheme, String)
+    case bubbleRadius(PresentationTheme, String)
+    case listDensity(PresentationTheme, String)
+    case systemFont(PresentationTheme, Bool)
+    case compactComposer(PresentationTheme, Bool)
+    case floatingNavigation(PresentationTheme, Bool)
+    case appearanceInfo(PresentationTheme)
+    case aiInfo(PresentationTheme)
+    case diagnosticsInfo(PresentationTheme)
     case ghostHeader(PresentationTheme)
     case ghostEnabled(PresentationTheme, Bool)
     case ghostSelectedChats(PresentationTheme, Bool)
@@ -48,6 +72,14 @@ private enum SingGramSettingsEntry: ItemListNodeEntry {
 
     var section: ItemListSectionId {
         switch self {
+        case .homeAppearance, .homePrivacy, .homeAi, .homeDiagnostics, .homeInfo:
+            return 0
+        case .themeColor, .bubbleRadius, .listDensity, .systemFont, .compactComposer, .floatingNavigation, .appearanceInfo:
+            return 4
+        case .aiInfo:
+            return 3
+        case .diagnosticsInfo:
+            return 5
         case .ghostHeader, .ghostEnabled, .ghostSelectedChats, .disableReadReceipts, .hideTyping, .hidePhone, .addGhostChat, .clearGhostChats, .ghostInfo:
             return 0
         case .protectionHeader, .keepDeleted, .keepEdits, .protectionInfo:
@@ -65,6 +97,20 @@ private enum SingGramSettingsEntry: ItemListNodeEntry {
 
     var stableId: Int {
         switch self {
+        case .homeAppearance: return -5
+        case .homePrivacy: return -4
+        case .homeAi: return -3
+        case .homeDiagnostics: return -2
+        case .homeInfo: return -1
+        case .themeColor: return 31
+        case .bubbleRadius: return 32
+        case .listDensity: return 33
+        case .systemFont: return 34
+        case .compactComposer: return 35
+        case .floatingNavigation: return 36
+        case .appearanceInfo: return 37
+        case .aiInfo: return 38
+        case .diagnosticsInfo: return 39
         case .ghostHeader: return 0
         case .ghostEnabled: return 1
         case .ghostSelectedChats: return 2
@@ -106,6 +152,34 @@ private enum SingGramSettingsEntry: ItemListNodeEntry {
     func item(presentationData: ItemListPresentationData, arguments: Any) -> ListViewItem {
         let actions = arguments as? SingGramSettingsActions
         switch self {
+        case .homeAppearance:
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: "外觀", label: "主題・玻璃・氣泡", sectionId: self.section, style: .blocks, action: { actions?.open(.appearance) })
+        case .homePrivacy:
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: "隱私與訊息保護", label: "隱身・已讀・保留訊息", sectionId: self.section, style: .blocks, action: { actions?.open(.privacy) })
+        case .homeAi:
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: "AI 與聊天工具", label: SingGramSettings.isAiActive ? "已開啟" : "未開啟", sectionId: self.section, style: .blocks, action: { actions?.open(.ai) })
+        case .homeDiagnostics:
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: "診斷與安全模式", label: "連線・疑難排解", sectionId: self.section, style: .blocks, action: { actions?.open(.diagnostics) })
+        case .homeInfo:
+            return ItemListTextItem(presentationData: presentationData, text: .plain("將 SingGram 調整成你習慣嘅樣。外觀設定會保留，隨時都可以再改。"), sectionId: self.section)
+        case let .themeColor(_, value):
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: "主題色", label: value, sectionId: self.section, style: .blocks, action: { actions?.chooseAccent() })
+        case let .bubbleRadius(_, value):
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: "訊息氣泡", label: value, sectionId: self.section, style: .blocks, action: { actions?.chooseBubbles() })
+        case let .listDensity(_, value):
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: "聊天列表疏密", label: value, sectionId: self.section, style: .blocks, action: { actions?.chooseDensity() })
+        case let .systemFont(_, value):
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: "跟隨系統文字大小", value: value, sectionId: self.section, style: .blocks, updated: { actions?.setSystemFont($0) })
+        case let .compactComposer(_, value):
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: "簡潔輸入列", value: value, sectionId: self.section, style: .blocks, updated: { SingGramAppearance.compactComposer = $0; actions?.changed() })
+        case let .floatingNavigation(_, value):
+            return ItemListSwitchItem(presentationData: presentationData, systemStyle: .glass, title: "加闊導航兩側留白", value: value, sectionId: self.section, style: .blocks, updated: { SingGramAppearance.floatingNavigation = $0; actions?.changed() })
+        case .appearanceInfo:
+            return ItemListTextItem(presentationData: presentationData, text: .plain("長按輸入列嘅 ＋ 可開啟 AI 工具。玻璃效果會配合淺色／深色模式，並尊重系統嘅「減少透明度」同「減少動態效果」。"), sectionId: self.section)
+        case .aiInfo:
+            return ItemListTextItem(presentationData: presentationData, text: .plain("設定好 AI 服務後，可喺訊息選單或長按輸入列 ＋ 使用。只有你選用 AI 時，相關文字先會送去你設定嘅服務。"), sectionId: self.section)
+        case .diagnosticsInfo:
+            return ItemListTextItem(presentationData: presentationData, text: .plain("遇到畫面或 AI 問題，可以先開安全模式。呢個模式會暫停玻璃效果同 AI，唔會刪除聊天。"), sectionId: self.section)
         case .ghostHeader:
             return ItemListSectionHeaderItem(presentationData: presentationData, text: "隱身模式", sectionId: self.section)
         case let .ghostEnabled(_, value):
@@ -218,7 +292,10 @@ private enum SingGramSettingsEntry: ItemListNodeEntry {
     }
 }
 
-private func singGramSettingsEntries(theme: PresentationTheme) -> [SingGramSettingsEntry] {
+private func singGramSettingsEntries(theme: PresentationTheme, page: SingGramSettingsPage, themeSettings: PresentationThemeSettings) -> [SingGramSettingsEntry] {
+    if page == .overview {
+        return [.homeAppearance(theme), .homePrivacy(theme), .homeAi(theme), .homeDiagnostics(theme), .homeInfo(theme)]
+    }
     var entries: [SingGramSettingsEntry] = [
         .ghostHeader(theme),
         .ghostEnabled(theme, SingGramSettings.isGhostModeEnabled),
@@ -251,6 +328,15 @@ private func singGramSettingsEntries(theme: PresentationTheme) -> [SingGramSetti
         .testAi(theme),
         .appearanceHeader(theme),
         .liquidGlass(theme, SingGramSettings.liquidGlassLevelName),
+        .themeColor(theme, SingGramAppearance.accent.title),
+        .bubbleRadius(theme, "\(themeSettings.chatBubbleSettings.mainRadius) pt"),
+        .listDensity(theme, SingGramAppearance.listDensity.title),
+        .systemFont(theme, themeSettings.useSystemFont),
+        .compactComposer(theme, SingGramAppearance.compactComposer),
+        .floatingNavigation(theme, SingGramAppearance.floatingNavigation),
+        .appearanceInfo(theme),
+        .aiInfo(theme),
+        .diagnosticsInfo(theme),
         .diagnosticsHeader(theme),
         .diagnosticsVisible(theme, SingGramSettings.isDiagnosticsEnabled),
         .crashSafeMode(theme, SingGramSettings.isCrashSafeModeEnabled)
@@ -258,7 +344,15 @@ private func singGramSettingsEntries(theme: PresentationTheme) -> [SingGramSetti
     if SingGramSettings.isDiagnosticsEnabled {
         entries.append(.diagnosticsReport(theme))
     }
-    return entries
+    return entries.filter { entry in
+        switch page {
+        case .overview: return false
+        case .privacy: return entry.section == 0 || entry.section == 1
+        case .ai: return entry.section == 2 || entry.section == 3
+        case .appearance: return entry.section == 4
+        case .diagnostics: return entry.section == 5
+        }
+    }.sorted()
 }
 
 private final class SingGramSettingsActions {
@@ -269,6 +363,81 @@ private final class SingGramSettingsActions {
     init(context: AccountContext, changed: @escaping () -> Void) {
         self.context = context
         self.changed = changed
+    }
+
+    func open(_ page: SingGramSettingsPage) {
+        (self.controller?.navigationController as? NavigationController)?.pushViewController(singGramSettingsPageController(context: self.context, page: page))
+    }
+
+    func choose(title: String, options: [(String, () -> Void)]) {
+        let sheet = UIAlertController(title: title, message: nil, preferredStyle: .actionSheet)
+        for (title, action) in options {
+            sheet.addAction(UIAlertAction(title: title, style: .default, handler: { _ in action() }))
+        }
+        sheet.addAction(UIAlertAction(title: "取消", style: .cancel))
+        if let view = self.controller?.view {
+            sheet.popoverPresentationController?.sourceView = view
+            sheet.popoverPresentationController?.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 1, height: 1)
+        }
+        self.controller?.view.window?.rootViewController?.present(sheet, animated: true)
+    }
+
+    func chooseAccent() {
+        self.choose(title: "主題色", options: SingGramAccent.allCases.map { choice in
+            (choice.title, { [weak self] in
+                guard let self else { return }
+                SingGramAppearance.accent = choice
+                let colors: [PresentationThemeBaseColor] = [.blue, .green, .purple, .pink, .orange]
+                let color = PresentationThemeAccentColor(baseColor: colors[choice.rawValue])
+                let _ = updatePresentationThemeSettingsInteractively(accountManager: self.context.sharedContext.accountManager, { current in
+                    var colors = current.themeSpecificAccentColors
+                    let themes: [PresentationBuiltinThemeReference] = [.dayClassic, .day, .night, .nightAccent]
+                    for theme in themes {
+                        colors[PresentationThemeReference.builtin(theme).index] = color
+                    }
+                    var theme = current.theme
+                    if case let .cloud(info) = theme, let settings = info.theme.settings?.first {
+                        theme = .builtin(PresentationBuiltinThemeReference(baseTheme: settings.baseTheme))
+                    }
+                    var automatic = current.automaticThemeSwitchSetting
+                    if case let .cloud(info) = automatic.theme, let settings = info.theme.settings?.first {
+                        automatic.theme = .builtin(PresentationBuiltinThemeReference(baseTheme: settings.baseTheme))
+                    }
+                    colors[theme.index] = color
+                    return current.withUpdatedTheme(theme).withUpdatedAutomaticThemeSwitchSetting(automatic).withUpdatedThemeSpecificAccentColors(colors)
+                }).start(completed: { [weak self] in self?.changed() })
+            })
+        })
+    }
+
+    func chooseBubbles() {
+        self.choose(title: "訊息氣泡", options: [("俐落", Int32(8)), ("柔和", Int32(16)), ("圓潤", Int32(22))].map { title, radius in
+            (title, { [weak self] in
+                guard let self else { return }
+                let _ = updatePresentationThemeSettingsInteractively(accountManager: self.context.sharedContext.accountManager, { current in
+                    return current.withUpdatedChatBubbleSettings(PresentationChatBubbleSettings(mainRadius: radius, auxiliaryRadius: max(4, radius / 2), mergeBubbleCorners: current.chatBubbleSettings.mergeBubbleCorners))
+                }).start(completed: { [weak self] in self?.changed() })
+            })
+        })
+    }
+
+    func chooseDensity() {
+        self.choose(title: "聊天列表疏密", options: SingGramListDensity.allCases.map { density in
+            (density.title, { [weak self] in
+                guard let self else { return }
+                SingGramAppearance.listDensity = density
+                let _ = updatePresentationThemeSettingsInteractively(accountManager: self.context.sharedContext.accountManager, { current in
+                    let sizes: [PresentationFontSize] = [.small, .regular, .large]
+                    return current.withUpdatedFontSizes(fontSize: current.fontSize, listsFontSize: sizes[density.rawValue])
+                }).start(completed: { [weak self] in self?.changed() })
+            })
+        })
+    }
+
+    func setSystemFont(_ value: Bool) {
+        let _ = updatePresentationThemeSettingsInteractively(accountManager: self.context.sharedContext.accountManager, { current in
+            return current.withUpdatedUseSystemFont(value)
+        }).start(completed: { [weak self] in self?.changed() })
     }
 
     func setGhost(_ value: Bool) { SingGramSettings.isGhostModeEnabled = value; self.changed() }
@@ -362,16 +531,21 @@ private final class SingGramSettingsActions {
 }
 
 func singGramSettingsController(context: AccountContext) -> ViewController {
+    return singGramSettingsPageController(context: context, page: .overview)
+}
+
+private func singGramSettingsPageController(context: AccountContext, page: SingGramSettingsPage) -> ViewController {
     let version = ValuePromise<Int>(0, ignoreRepeated: true)
     var currentVersion = 0
     let actions = SingGramSettingsActions(context: context, changed: {
         currentVersion += 1
         version.set(currentVersion)
     })
-    let signal = combineLatest(context.sharedContext.presentationData, version.get())
-    |> map { presentationData, _ -> (ItemListControllerState, (ItemListNodeState, Any)) in
-        let entries = singGramSettingsEntries(theme: presentationData.theme)
-        let state = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text("SingGram"), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
+    let signal = combineLatest(context.sharedContext.presentationData, version.get(), context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.presentationThemeSettings]))
+    |> map { presentationData, _, sharedData -> (ItemListControllerState, (ItemListNodeState, Any)) in
+        let themeSettings = sharedData.entries[ApplicationSpecificSharedDataKeys.presentationThemeSettings]?.get(PresentationThemeSettings.self) ?? PresentationThemeSettings.defaultSettings
+        let entries = singGramSettingsEntries(theme: presentationData.theme, page: page, themeSettings: themeSettings)
+        let state = ItemListControllerState(presentationData: ItemListPresentationData(presentationData), title: .text(page.rawValue), leftNavigationButton: nil, rightNavigationButton: nil, backNavigationButton: ItemListBackButton(title: presentationData.strings.Common_Back))
         return (state, (ItemListNodeState(presentationData: ItemListPresentationData(presentationData), entries: entries, style: .blocks), actions))
     }
     let controller = ItemListController(context: context, state: signal)

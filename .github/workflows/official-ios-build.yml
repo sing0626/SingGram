@@ -7,16 +7,19 @@ on:
   push:
     branches:
       - telegram-ios
+      - feature/ios-ui-refresh
     paths:
       - .github/workflows/official-ios-build.yml
-      - official-ios/build-system/fake-codesigning/profiles/**
+      - official-ios/**
+      - scripts/write_singgram_ios_configuration.sh
+      - scripts/publish_ios_prerelease.sh
 
 permissions:
   contents: write
 
 concurrency:
-  group: singgram-ios-ipa
-  cancel-in-progress: false
+  group: singgram-ios-ipa-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -48,6 +51,26 @@ jobs:
           sudo xcode-select -s "/Applications/Xcode_${XCODE_VERSION}.app/Contents/Developer"
           xcodebuild -version
           df -h
+
+      - name: Verify appearance preferences
+        run: |
+          set -euo pipefail
+          for source in \
+            official-ios/submodules/ChatListUI/Sources/Node/ChatListItem.swift \
+            official-ios/submodules/TabBarUI/Sources/TabBarContollerNode.swift \
+            official-ios/submodules/TelegramUI/Components/TabBarComponent/Sources/TabBarComponent.swift \
+            official-ios/submodules/TelegramUI/Components/PeerInfo/PeerInfoScreen/Sources/SingGramSettingsController.swift \
+            official-ios/submodules/TelegramUI/Components/Chat/ChatTextInputPanelNode/Sources/ChatTextInputPanelNode.swift \
+            official-ios/submodules/TelegramUI/Components/GlassBackgroundComponent/Sources/GlassBackgroundComponent.swift \
+            official-ios/submodules/TelegramUI/Components/GlassBackgroundComponent/Sources/SingGramSwiftUIGlass.swift
+          do
+            swiftc -frontend -parse "$source"
+          done
+          swiftc -warnings-as-errors \
+            official-ios/submodules/SingGramAppearance/Sources/SingGramAppearance.swift \
+            official-ios/submodules/SingGramAppearance/Tests/main.swift \
+            -o "$RUNNER_TEMP/appearance-preferences-tests"
+          "$RUNNER_TEMP/appearance-preferences-tests"
 
       - name: Fetch iOS submodules
         run: scripts/fetch_official_ios_submodules.sh

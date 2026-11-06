@@ -19,6 +19,7 @@ swift_library(
         "-warnings-as-errors",
     ],
     deps = [
+        "//submodules/SingGramAppearance",
         "//submodules/Display",
         "//submodules/LottieSettings:LottieSettings",
         "//submodules/AsyncDisplayKit",
