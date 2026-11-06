@@ -1,12 +1,12 @@
 name: Build SingGram iOS
 
-# A push builds only when this workflow or the fake provisioning profiles change.
-# Rebuild after skipping PushKit when the re-signed profile has no push entitlement.
+# Build the re-signable IPA without requiring an iCloud container owned by the signer.
 on:
   workflow_dispatch:
   push:
     branches:
       - telegram-ios
+      - fix/ios-cloudkit-launch
     paths:
       - .github/workflows/official-ios-build.yml
       - official-ios/build-system/fake-codesigning/profiles/**
@@ -32,7 +32,10 @@ jobs:
       SINGGRAM_IOS_TEAM_ID: C67CF9S4VU
       SINGGRAM_IOS_APPSTORE_BUILD: "true"
       SINGGRAM_IOS_ENABLE_SIRI: "true"
-      SINGGRAM_IOS_ENABLE_ICLOUD: "true"
+      # CKContainer.default() raises an Objective-C exception without usable iCloud
+      # entitlements after re-signing. Telegram networking does not require this
+      # optional emergency-address source.
+      SINGGRAM_IOS_ENABLE_ICLOUD: "false"
 
     steps:
       - name: Checkout
@@ -59,8 +62,8 @@ jobs:
           set -euo pipefail
           python3 build-system/Make/ImportCertificates.py --path build-system/fake-codesigning/certs
           BUILD_NUMBER_OFFSET="$(tr -d '[:space:]' < build_number_offset)"
-          COMMIT_COUNT="$(git -C "$GITHUB_WORKSPACE" rev-list --count HEAD)"
-          BUILD_NUMBER="$((COMMIT_COUNT + BUILD_NUMBER_OFFSET))"
+          # A shallow checkout always has one commit. Identify new IPAs by CI run.
+          BUILD_NUMBER="$((GITHUB_RUN_NUMBER + BUILD_NUMBER_OFFSET))"
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
           python3 -u build-system/Make/Make.py \
             --bazelUserRoot="/private/var/tmp/_bazel_singgram" \
@@ -72,7 +75,17 @@ jobs:
             --outputBuildArtifactsPath="$GITHUB_WORKSPACE/ios-artifacts"
           mv "$GITHUB_WORKSPACE/ios-artifacts/Telegram.ipa" "$GITHUB_WORKSPACE/ios-artifacts/SingGram-unsigned.ipa"
 
+      - name: Save IPA and matching debug symbols
+        uses: actions/upload-artifact@v7
+        with:
+          name: SingGram-ios-${{ github.run_number }}-${{ github.run_attempt }}
+          path: |
+            ios-artifacts/SingGram-unsigned.ipa
+            ios-artifacts/Telegram.DSYMs.zip
+          if-no-files-found: error
+
       - name: Publish IPA
+        if: github.ref == 'refs/heads/telegram-ios'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
