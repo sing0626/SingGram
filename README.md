@@ -167,7 +167,7 @@ TELEGRAM_API_ID=123456 TELEGRAM_API_HASH=your_hash SINGGRAM_IOS_TEAM_ID=YOURTEAM
 
 The configuration file stays untracked. It reuses the same `TELEGRAM_API_ID` and `TELEGRAM_API_HASH` as the Android build.
 
-GitHub Actions workflow `Build SingGram iOS` runs on the `xcode-27` runner. It signs with the upstream fake certificates so the IPA can be downloaded and re-signed locally. The app and its extensions already use bundle id `com.sing.singgram`; the fake team is `C67CF9S4VU`. Each successful run publishes `SingGram-unsigned.ipa` on a prerelease named `ios-` plus the commit, so the download is the IPA itself. Leave the bundle id when re-signing. APNs still needs a paid Apple Developer membership and an APNs certificate uploaded for this `api_id` at https://my.telegram.org.
+GitHub Actions workflow `Build SingGram iOS` runs on the `xcode-27` runner. It signs with the upstream fake certificates so the IPA can be downloaded and re-signed locally. The app and its extensions already use bundle id `com.sing.singgram`; the fake team is `C67CF9S4VU`. Each successful run publishes `SingGram-unsigned.ipa` directly on a prerelease named `ios-<run-number>-<attempt>`. Re-running a build produces a separate prerelease; retrying publication of the same build replaces its IPA. Debug symbols stay in Actions artifacts, so the Release download is the IPA itself. Leave the bundle id when re-signing. APNs still needs a paid Apple Developer membership and an APNs certificate uploaded for this `api_id` at https://my.telegram.org.
 
 ## Security Notes
 

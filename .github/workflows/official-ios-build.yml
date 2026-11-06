@@ -74,19 +74,16 @@ jobs:
             --outputBuildArtifactsPath="$GITHUB_WORKSPACE/ios-artifacts"
           mv "$GITHUB_WORKSPACE/ios-artifacts/Telegram.ipa" "$GITHUB_WORKSPACE/ios-artifacts/SingGram-unsigned.ipa"
 
-      - name: Publish IPA
+      - name: Save IPA and matching debug symbols
+        uses: actions/upload-artifact@v7
+        with:
+          name: SingGram-ios-${{ github.run_number }}-${{ github.run_attempt }}
+          path: |
+            ios-artifacts/SingGram-unsigned.ipa
+            ios-artifacts/Telegram.DSYMs.zip
+          if-no-files-found: error
+
+      - name: Publish IPA as prerelease
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          TAG="ios-${GITHUB_SHA::7}"
-          IPA="$GITHUB_WORKSPACE/ios-artifacts/SingGram-unsigned.ipa"
-          test -f "$IPA"
-          gh release create "$TAG" "$IPA" \
-            --repo "$GITHUB_REPOSITORY" \
-            --target "$GITHUB_SHA" \
-            --prerelease \
-            --latest=false \
-            --title "SingGram iOS ${GITHUB_SHA::7}" \
-            --notes "Unsigned IPA. Bundle id com.sing.singgram. Re-sign with your own certificate and leave the bundle id. Direct file: SingGram-unsigned.ipa"
-          echo "Download: https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/SingGram-unsigned.ipa"
+        run: bash scripts/publish_ios_prerelease.sh ios-artifacts/SingGram-unsigned.ipa
