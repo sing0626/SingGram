@@ -1,7 +1,7 @@
 name: Build SingGram iOS
 
 # A push builds only when this workflow or the fake provisioning profiles change.
-# Rebuild after the login black-screen fix.
+# Rebuild after skipping PushKit when the re-signed profile has no push entitlement.
 on:
   workflow_dispatch:
   push:

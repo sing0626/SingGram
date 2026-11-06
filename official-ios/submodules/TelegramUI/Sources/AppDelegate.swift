@@ -180,6 +180,40 @@ private func legacyDocumentsPath() -> String {
     return NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0] + "/legacy"
 }
 
+private func singGramProvisioningIncludesPush() -> Bool {
+    guard let url = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision"),
+          let data = try? Data(contentsOf: url),
+          let text = String(data: data, encoding: .isoLatin1) else {
+        return false
+    }
+    return text.contains("aps-environment")
+}
+
+private func singGramWritableContainer(preferred: URL?) -> URL {
+    var candidates: [URL] = []
+    if let preferred {
+        candidates.append(preferred)
+    }
+    let fileManager = FileManager.default
+    if let applicationSupport = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first {
+        candidates.append(applicationSupport.appendingPathComponent("SingGram", isDirectory: true))
+    }
+    if let documents = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first {
+        candidates.append(documents.appendingPathComponent("SingGram", isDirectory: true))
+    }
+    for candidate in candidates {
+        try? fileManager.createDirectory(at: candidate, withIntermediateDirectories: true)
+        let probe = candidate.appendingPathComponent(".write-probe")
+        if (try? Data([0]).write(to: probe, options: .atomic)) != nil {
+            try? fileManager.removeItem(at: probe)
+            return candidate
+        }
+    }
+    let temporary = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true).appendingPathComponent("SingGram", isDirectory: true)
+    try? fileManager.createDirectory(at: temporary, withIntermediateDirectories: true)
+    return temporary
+}
+
 protocol SupportedStartCallIntent {
     @available(iOS 10.0, *)
     var contacts: [INPerson]? { get }
@@ -696,16 +730,9 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             networkEngineFactory: RustNetworkEngineFactory()
         )
         
-        // Re-signing often drops the app-group entitlement. containerURL is then nil, and
-        // returning here left a blank window (black in dark mode) before any login UI existed.
-        let appGroupUrl: URL
-        if let containerUrl = maybeAppGroupUrl {
-            appGroupUrl = containerUrl
-        } else {
-            let fallback = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("SingGram", isDirectory: true)
-            try? FileManager.default.createDirectory(at: fallback, withIntermediateDirectories: true)
-            appGroupUrl = fallback
-        }
+        // Re-signing often drops the app-group entitlement. An unwritable container used to
+        // leave a black window, or crash as soon as the database was opened.
+        let appGroupUrl = singGramWritableContainer(preferred: maybeAppGroupUrl)
         
         var isDebugConfiguration = false
         #if DEBUG
@@ -1111,12 +1138,16 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             return true
         }
 
-        let pushRegistry = PKPushRegistry(queue: .main)
-        if #available(iOS 9.0, *) {
-            pushRegistry.desiredPushTypes = Set([.voIP])
+        // A re-signed profile without aps-environment throws inside PKPushRegistry and
+        // iOS sends the app straight back to the home screen.
+        if singGramProvisioningIncludesPush() {
+            let pushRegistry = PKPushRegistry(queue: .main)
+            pushRegistry.delegate = self
+            if #available(iOS 9.0, *) {
+                pushRegistry.desiredPushTypes = Set([.voIP])
+            }
+            self.pushRegistry = pushRegistry
         }
-        self.pushRegistry = pushRegistry
-        pushRegistry.delegate = self
 
         self.accountManagerState = extractAccountManagerState(records: accountManager._internalAccountRecordsSync())
         let _ = (accountManager.accountRecords()
