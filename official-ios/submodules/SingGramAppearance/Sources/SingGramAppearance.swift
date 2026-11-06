@@ -26,6 +26,20 @@ public enum SingGramListDensity: Int, CaseIterable {
     }
 }
 
+public enum SingGramBubbleStyle: Int32, CaseIterable {
+    case crisp = 8
+    case soft = 16
+    case rounded = 22
+
+    public var title: String {
+        switch self {
+        case .crisp: return "俐落"
+        case .soft: return "柔和"
+        case .rounded: return "圓潤"
+        }
+    }
+}
+
 public enum SingGramAccent: Int, CaseIterable {
     case blue, green, purple, pink, orange
     public var title: String {

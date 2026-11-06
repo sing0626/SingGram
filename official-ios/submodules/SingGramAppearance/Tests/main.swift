@@ -27,4 +27,8 @@ check(padding.allSatisfy { $0 >= 0 } && zip(padding, padding.dropFirst()).allSat
 check(defaults.bool(forKey: "ghost_mode") && defaults.string(forKey: "ai_model") == "existing-model", "Appearance changes must preserve privacy and AI settings")
 check(densities.map { $0.avatarDiameter }.allSatisfy { (44...60).contains($0) }, "Avatar geometry must remain bounded")
 check(Set(SingGramAccent.allCases.map { $0.title }).count == SingGramAccent.allCases.count, "Distinct palette labels")
+
+check(SingGramBubbleStyle(rawValue: 18) == nil, "A custom native radius must not be mislabeled as a preset")
+check(SingGramBubbleStyle(rawValue: -1) == nil, "Invalid native radius must remain custom")
+
 print("SingGramAppearance: defaults, persistence, invalid values and layout bounds passed")

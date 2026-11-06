@@ -329,7 +329,7 @@ private func singGramSettingsEntries(theme: PresentationTheme, page: SingGramSet
         .appearanceHeader(theme),
         .liquidGlass(theme, SingGramSettings.liquidGlassLevelName),
         .themeColor(theme, SingGramAppearance.accent.title),
-        .bubbleRadius(theme, "\(themeSettings.chatBubbleSettings.mainRadius) pt"),
+        .bubbleRadius(theme, SingGramBubbleStyle(rawValue: themeSettings.chatBubbleSettings.mainRadius)?.title ?? "自訂"),
         .listDensity(theme, SingGramAppearance.listDensity.title),
         .systemFont(theme, themeSettings.useSystemFont),
         .compactComposer(theme, SingGramAppearance.compactComposer),
@@ -369,17 +369,21 @@ private final class SingGramSettingsActions {
         (self.controller?.navigationController as? NavigationController)?.pushViewController(singGramSettingsPageController(context: self.context, page: page))
     }
 
-    func choose(title: String, options: [(String, () -> Void)]) {
-        let sheet = UIAlertController(title: title, message: nil, preferredStyle: .actionSheet)
-        for (title, action) in options {
-            sheet.addAction(UIAlertAction(title: title, style: .default, handler: { _ in action() }))
+    func choose(title: String, options: [(String, () -> Void)], selectedIndex: Int? = nil) {
+        let presentationData = self.context.sharedContext.currentPresentationData.with { $0 }
+        let sheet = ActionSheetController(presentationData: presentationData)
+        var items: [ActionSheetItem] = [ActionSheetTextItem(title: title)]
+        for (index, option) in options.enumerated() {
+            items.append(ActionSheetCheckboxItem(title: option.0, label: "", value: index == selectedIndex, style: .alignRight, action: { [weak sheet] _ in
+                sheet?.dismissAnimated()
+                option.1()
+            }))
         }
-        sheet.addAction(UIAlertAction(title: "取消", style: .cancel))
-        if let view = self.controller?.view {
-            sheet.popoverPresentationController?.sourceView = view
-            sheet.popoverPresentationController?.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 1, height: 1)
-        }
-        self.controller?.view.window?.rootViewController?.present(sheet, animated: true)
+        sheet.setItemGroups([
+            ActionSheetItemGroup(items: items),
+            ActionSheetItemGroup(items: [ActionSheetButtonItem(title: "取消", font: .bold, action: { [weak sheet] in sheet?.dismissAnimated() })])
+        ])
+        self.controller?.present(sheet, in: .window(.root))
     }
 
     func chooseAccent() {
@@ -407,17 +411,25 @@ private final class SingGramSettingsActions {
                     return current.withUpdatedTheme(theme).withUpdatedAutomaticThemeSwitchSetting(automatic).withUpdatedThemeSpecificAccentColors(colors)
                 }).start(completed: { [weak self] in self?.changed() })
             })
-        })
+        }, selectedIndex: SingGramAppearance.accent.rawValue)
     }
 
     func chooseBubbles() {
-        self.choose(title: "訊息氣泡", options: [("俐落", Int32(8)), ("柔和", Int32(16)), ("圓潤", Int32(22))].map { title, radius in
-            (title, { [weak self] in
-                guard let self else { return }
-                let _ = updatePresentationThemeSettingsInteractively(accountManager: self.context.sharedContext.accountManager, { current in
-                    return current.withUpdatedChatBubbleSettings(PresentationChatBubbleSettings(mainRadius: radius, auxiliaryRadius: max(4, radius / 2), mergeBubbleCorners: current.chatBubbleSettings.mergeBubbleCorners))
-                }).start(completed: { [weak self] in self?.changed() })
-            })
+        let _ = (self.context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.presentationThemeSettings])
+        |> take(1)
+        |> deliverOnMainQueue).start(next: { [weak self] data in
+            guard let self else { return }
+            let current = data.entries[ApplicationSpecificSharedDataKeys.presentationThemeSettings]?.get(PresentationThemeSettings.self) ?? PresentationThemeSettings.defaultSettings
+            let styles = SingGramBubbleStyle.allCases
+            let selected = styles.firstIndex(where: { $0.rawValue == current.chatBubbleSettings.mainRadius })
+            self.choose(title: "訊息氣泡", options: styles.map { style in
+                (style.title, { [weak self] in
+                    guard let self else { return }
+                    let _ = updatePresentationThemeSettingsInteractively(accountManager: self.context.sharedContext.accountManager, { current in
+                        return current.withUpdatedChatBubbleSettings(PresentationChatBubbleSettings(mainRadius: style.rawValue, auxiliaryRadius: max(4, style.rawValue / 2), mergeBubbleCorners: current.chatBubbleSettings.mergeBubbleCorners))
+                    }).start(completed: { [weak self] in self?.changed() })
+                })
+            }, selectedIndex: selected)
         })
     }
 
@@ -428,7 +440,7 @@ private final class SingGramSettingsActions {
                 SingGramAppearance.listDensity = density
                 self.changed()
             })
-        })
+        }, selectedIndex: SingGramAppearance.listDensity.rawValue)
     }
 
     func setSystemFont(_ value: Bool) {
@@ -537,10 +549,9 @@ func singGramSettingsController(context: AccountContext) -> ViewController {
 
 private func singGramSettingsPageController(context: AccountContext, page: SingGramSettingsPage) -> ViewController {
     let version = ValuePromise<Int>(0, ignoreRepeated: true)
-    var currentVersion = 0
+    let currentVersion = Atomic<Int>(value: 0)
     let actions = SingGramSettingsActions(context: context, changed: {
-        currentVersion += 1
-        version.set(currentVersion)
+        version.set(currentVersion.modify { $0 + 1 })
     })
     let signal = combineLatest(context.sharedContext.presentationData, version.get(), context.sharedContext.accountManager.sharedData(keys: [ApplicationSpecificSharedDataKeys.presentationThemeSettings]))
     |> map { presentationData, _, sharedData -> (ItemListControllerState, (ItemListNodeState, Any)) in

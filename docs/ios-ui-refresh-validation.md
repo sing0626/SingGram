@@ -23,7 +23,7 @@
   fallbacks. Glass follows light/dark appearance, Reduce Transparency and Reduce
   Motion. Disabled glass uses an opaque surface rather than a clear backdrop.
 
-## Required visual checks (not yet verified)
+## Remaining visual checks
 
 No XcodeBuildMCP, simulator, Apple SDK or logged-in iOS UI is available in this
 Linux task. The macOS Actions build checks Swift parsing, appearance preference
@@ -56,3 +56,32 @@ Follow official-ios/AGENTS.md: record with `simctl io recordVideo`, extract labe
 frames using `tools/animation_sheet.py`, and report clipping/jumps/settling with
 frame indexes and timestamps. A phone screen recording can additionally show the
 signed build on the affected device. Do not substitute a mockup for these checks.
+
+## Device recording review — 2026-11-06
+
+Reviewed the supplied 31.733-second device recording as 947 timestamped frames.
+The recording is 592 × 1280 at approximately 30 fps; it cannot establish native
+screen point geometry or high-refresh frame pacing. Private recording and frame
+artifacts stay outside the repository.
+
+- Frames #135–164 (4.500–5.567 s): Chats → Settings transitions show the native
+  content change and tab selection together; no persistent overlap is visible.
+- Frame #270 (9.133 s): the bubble picker is a central popover, obscuring several
+  settings rows, without a visible Cancel button or selected-style indicator.
+- Frames #392–410 (13.200–13.800 s): choosing the soft style dismisses the picker;
+  the row then displays a radius rather than the style name used in the picker.
+- Frames #785–814 (26.300–27.267 s): back navigation through the settings pages
+  settles into the native header/cards. The recording also shows palette changes
+  reaching the navigation and chat surfaces.
+
+The follow-up replaces the custom UIKit popover anchor with Telegram's bottom
+sheet, adds an explicit Cancel group and selected checkmarks, and uses the same
+bubble-style names in the picker and row. A native radius outside the presets is
+labelled Custom rather than a misleading preset name. Expected next recording:
+opening places the sheet at the bottom without a center arrow; exactly the current
+preset is checked; selection updates the row name and dismisses; Cancel preserves
+all settings. This replacement still needs device-frame verification.
+
+The supplied recording does not verify the AI composer menu, changing list
+density, light mode, large accessibility text, or relaunch persistence. Those
+checks above remain open; build success does not close them.
