@@ -1,7 +1,6 @@
 name: Build SingGram iOS
 
-# A push builds only when this workflow or the fake provisioning profiles change.
-# Rebuild after skipping PushKit when the re-signed profile has no push entitlement.
+# Build source fixes as well as signing and build configuration changes.
 on:
   workflow_dispatch:
   push:
@@ -9,7 +8,9 @@ on:
       - telegram-ios
     paths:
       - .github/workflows/official-ios-build.yml
-      - official-ios/build-system/fake-codesigning/profiles/**
+      - official-ios/**
+      - scripts/fetch_official_ios_submodules.sh
+      - scripts/write_singgram_ios_configuration.sh
 
 permissions:
   contents: write
@@ -47,6 +48,18 @@ jobs:
           xcodebuild -version
           df -h
 
+      - name: Check launch helpers
+        run: |
+          set -euo pipefail
+          cc -std=c11 -Wall -Wextra -Werror -fsanitize=address,undefined \
+            official-ios/submodules/BuildConfigExtra/Tests/SignatureDataTests.c \
+            -o "$RUNNER_TEMP/signature-data-tests"
+          "$RUNNER_TEMP/signature-data-tests"
+          swiftc official-ios/submodules/TelegramUI/Sources/SingGram/SingGramLaunchConfiguration.swift \
+            official-ios/submodules/TelegramUI/Tests/LaunchConfiguration/main.swift \
+            -o "$RUNNER_TEMP/launch-configuration-tests"
+          "$RUNNER_TEMP/launch-configuration-tests"
+
       - name: Fetch iOS submodules
         run: scripts/fetch_official_ios_submodules.sh
 
@@ -59,8 +72,8 @@ jobs:
           set -euo pipefail
           python3 build-system/Make/ImportCertificates.py --path build-system/fake-codesigning/certs
           BUILD_NUMBER_OFFSET="$(tr -d '[:space:]' < build_number_offset)"
-          COMMIT_COUNT="$(git -C "$GITHUB_WORKSPACE" rev-list --count HEAD)"
-          BUILD_NUMBER="$((COMMIT_COUNT + BUILD_NUMBER_OFFSET))"
+          # Checkout is shallow; commit count would always be 1.
+          BUILD_NUMBER="$((GITHUB_RUN_NUMBER + BUILD_NUMBER_OFFSET))"
           echo "BUILD_NUMBER=$BUILD_NUMBER" >> "$GITHUB_ENV"
           python3 -u build-system/Make/Make.py \
             --bazelUserRoot="/private/var/tmp/_bazel_singgram" \
@@ -72,6 +85,15 @@ jobs:
             --outputBuildArtifactsPath="$GITHUB_WORKSPACE/ios-artifacts"
           mv "$GITHUB_WORKSPACE/ios-artifacts/Telegram.ipa" "$GITHUB_WORKSPACE/ios-artifacts/SingGram-unsigned.ipa"
 
+      - name: Save IPA artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: SingGram-ios-${{ github.run_number }}-${{ github.run_attempt }}
+          path: |
+            ios-artifacts/SingGram-unsigned.ipa
+            ios-artifacts/Telegram.DSYMs.zip
+          if-no-files-found: error
+
       - name: Publish IPA
         env:
           GH_TOKEN: ${{ github.token }}
@@ -80,6 +102,10 @@ jobs:
           TAG="ios-${GITHUB_SHA::7}"
           IPA="$GITHUB_WORKSPACE/ios-artifacts/SingGram-unsigned.ipa"
           test -f "$IPA"
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$IPA" --repo "$GITHUB_REPOSITORY" --clobber
+            exit 0
+          fi
           gh release create "$TAG" "$IPA" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$GITHUB_SHA" \

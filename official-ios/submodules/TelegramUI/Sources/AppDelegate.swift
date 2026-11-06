@@ -180,15 +180,6 @@ private func legacyDocumentsPath() -> String {
     return NSSearchPathForDirectoriesInDomains(.documentDirectory, .userDomainMask, true)[0] + "/legacy"
 }
 
-private func singGramProvisioningIncludesPush() -> Bool {
-    guard let url = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision"),
-          let data = try? Data(contentsOf: url),
-          let text = String(data: data, encoding: .isoLatin1) else {
-        return false
-    }
-    return text.contains("aps-environment")
-}
-
 private func singGramWritableContainer(preferred: URL?) -> URL {
     var candidates: [URL] = []
     if let preferred {
@@ -353,7 +344,9 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         let appGroupName = "group.\(baseAppBundleId)"
 
         let configuration = URLSessionConfiguration.background(withIdentifier: identifier)
-        configuration.sharedContainerIdentifier = appGroupName
+        if FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroupName) != nil {
+            configuration.sharedContainerIdentifier = appGroupName
+        }
         configuration.isDiscretionary = false
         let session = URLSession(configuration: configuration, delegate: self, delegateQueue: .main)
         self.urlSessions.append(session)
@@ -1140,7 +1133,9 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
 
         // A re-signed profile without aps-environment throws inside PKPushRegistry and
         // iOS sends the app straight back to the home screen.
-        if singGramProvisioningIncludesPush() {
+        let provisioningData = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision").flatMap { try? Data(contentsOf: $0) }
+        let provisioningIncludesPush = singGramProvisioningIncludesPush(provisioningData)
+        if provisioningIncludesPush {
             let pushRegistry = PKPushRegistry(queue: .main)
             pushRegistry.delegate = self
             if #available(iOS 9.0, *) {
@@ -1721,7 +1716,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             })
         }
         
-        if #available(iOS 12.0, *) {
+        if provisioningIncludesPush {
             UIApplication.shared.registerForRemoteNotifications()
         }
         
