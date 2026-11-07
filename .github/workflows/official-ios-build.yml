@@ -52,12 +52,15 @@ jobs:
           xcodebuild -version
           df -h
 
-      - name: Verify appearance preferences
+      - name: Verify appearance and notification diagnostics
         run: |
           set -Eeuo pipefail
           trap 'result=$?; trap - ERR; python3 scripts/annotate_ios_swift_errors.py "$RUNNER_TEMP/ios-preflight.log" || true; exit "$result"' ERR
           exec > >(tee "$RUNNER_TEMP/ios-preflight.log") 2>&1
           for source in \
+            official-ios/submodules/TelegramCore/Sources/SingGram/SingGramPushDiagnostics.swift \
+            official-ios/submodules/TelegramCore/Sources/TelegramEngine/AccountData/RegisterNotificationToken.swift \
+            official-ios/submodules/TelegramUI/Sources/AppDelegate.swift \
             official-ios/submodules/ChatListUI/Sources/Node/ChatListItem.swift \
             official-ios/submodules/ChatListUI/Sources/Node/ChatListPresentationData.swift \
             official-ios/submodules/ChatListUI/Sources/Node/ChatListNode.swift \
@@ -76,6 +79,11 @@ jobs:
             official-ios/submodules/SingGramAppearance/Tests/main.swift \
             -o "$RUNNER_TEMP/appearance-preferences-tests"
           "$RUNNER_TEMP/appearance-preferences-tests"
+          swiftc -warnings-as-errors \
+            official-ios/submodules/TelegramCore/Sources/SingGram/SingGramPushDiagnostics.swift \
+            official-ios/Tests/SingGramPushDiagnostics/main.swift \
+            -o "$RUNNER_TEMP/push-diagnostics-tests"
+          "$RUNNER_TEMP/push-diagnostics-tests"
 
       - name: Fetch iOS submodules
         run: scripts/fetch_official_ios_submodules.sh

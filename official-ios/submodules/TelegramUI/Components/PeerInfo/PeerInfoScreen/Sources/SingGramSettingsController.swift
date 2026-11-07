@@ -2,6 +2,7 @@ import SingGramAppearance
 import TelegramUIPreferences
 import Foundation
 import UIKit
+import UserNotifications
 import SwiftSignalKit
 import Display
 import AccountContext
@@ -69,6 +70,9 @@ private enum SingGramSettingsEntry: ItemListNodeEntry {
     case diagnosticsVisible(PresentationTheme, Bool)
     case crashSafeMode(PresentationTheme, Bool)
     case diagnosticsReport(PresentationTheme)
+    case notificationStatus(PresentationTheme)
+    case notificationRegister(PresentationTheme)
+    case notificationTest(PresentationTheme)
 
     var section: ItemListSectionId {
         switch self {
@@ -90,7 +94,7 @@ private enum SingGramSettingsEntry: ItemListNodeEntry {
             return 3
         case .appearanceHeader, .liquidGlass:
             return 4
-        case .diagnosticsHeader, .diagnosticsVisible, .crashSafeMode, .diagnosticsReport:
+        case .diagnosticsHeader, .diagnosticsVisible, .crashSafeMode, .diagnosticsReport, .notificationStatus, .notificationRegister, .notificationTest:
             return 5
         }
     }
@@ -142,6 +146,9 @@ private enum SingGramSettingsEntry: ItemListNodeEntry {
         case .diagnosticsVisible: return 28
         case .crashSafeMode: return 29
         case .diagnosticsReport: return 30
+        case .notificationStatus: return 40
+        case .notificationRegister: return 41
+        case .notificationTest: return 42
         }
     }
 
@@ -179,7 +186,7 @@ private enum SingGramSettingsEntry: ItemListNodeEntry {
         case .aiInfo:
             return ItemListTextItem(presentationData: presentationData, text: .plain("設定好 AI 服務後，可喺訊息選單或長按輸入列 ＋ 使用。只有你選用 AI 時，相關文字先會送去你設定嘅服務。"), sectionId: self.section)
         case .diagnosticsInfo:
-            return ItemListTextItem(presentationData: presentationData, text: .plain("遇到畫面或 AI 問題，可以先開安全模式。呢個模式會暫停玻璃效果同 AI，唔會刪除聊天。"), sectionId: self.section)
+            return ItemListTextItem(presentationData: presentationData, text: .plain("通知狀態會分開顯示手機權限、Apple 同 Telegram 註冊結果。本機測試通知只測試手機顯示，唔代表新訊息推送已連通。畫面或 AI 問題可先開安全模式，唔會刪除聊天。"), sectionId: self.section)
         case .ghostHeader:
             return ItemListSectionHeaderItem(presentationData: presentationData, text: "隱身模式", sectionId: self.section)
         case let .ghostEnabled(_, value):
@@ -288,6 +295,12 @@ private enum SingGramSettingsEntry: ItemListNodeEntry {
             return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: "查看診斷", label: "", sectionId: self.section, style: .blocks, action: {
                 actions?.showDiagnostics()
             })
+        case .notificationStatus:
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: "通知狀態", label: "", sectionId: self.section, style: .blocks, action: { actions?.showNotificationStatus() })
+        case .notificationRegister:
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: "重新註冊通知", label: "", sectionId: self.section, style: .blocks, action: { actions?.registerNotifications() })
+        case .notificationTest:
+            return ItemListDisclosureItem(presentationData: presentationData, systemStyle: .glass, title: "測試本機通知", label: "5 秒後", sectionId: self.section, style: .blocks, action: { actions?.testLocalNotification() })
         }
     }
 }
@@ -339,7 +352,10 @@ private func singGramSettingsEntries(theme: PresentationTheme, page: SingGramSet
         .diagnosticsInfo(theme),
         .diagnosticsHeader(theme),
         .diagnosticsVisible(theme, SingGramSettings.isDiagnosticsEnabled),
-        .crashSafeMode(theme, SingGramSettings.isCrashSafeModeEnabled)
+        .crashSafeMode(theme, SingGramSettings.isCrashSafeModeEnabled),
+        .notificationStatus(theme),
+        .notificationRegister(theme),
+        .notificationTest(theme)
     ])
     if SingGramSettings.isDiagnosticsEnabled {
         entries.append(.diagnosticsReport(theme))
@@ -522,6 +538,125 @@ private final class SingGramSettingsActions {
             return
         }
         controller.present(textAlertController(context: self.context, title: "診斷", text: SingGramSettings.diagnosticsText(), actions: [TextAlertAction(type: .defaultAction, title: "確定", action: {})], actionLayout: .vertical), in: .window(.root))
+    }
+
+    private func notificationMessage(title: String, text: String) {
+        self.controller?.present(textAlertController(context: self.context, title: title, text: text, actions: [TextAlertAction(type: .defaultAction, title: "確定", action: {})]), in: .window(.root))
+    }
+
+    func showNotificationStatus() {
+        UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
+            Queue.mainQueue().async {
+                guard let self, let controller = self.controller else { return }
+                let permission: String
+                switch settings.authorizationStatus {
+                case .notDetermined: permission = "未申請"
+                case .denied: permission = "已拒絕"
+                case .authorized: permission = "已允許"
+                case .provisional: permission = "靜默授權"
+                case .ephemeral: permission = "暫時授權"
+                @unknown default: permission = "未知"
+                }
+                let snapshot = SingGramPushDiagnostics.shared.snapshot(accountId: self.context.account.id.int64)
+                let apple: String
+                switch snapshot.apple {
+                case .notObserved: apple = "本次啟動未觀察到回覆"
+                case .registered: apple = "已取得裝置 token"
+                case let .failed(code): apple = "註冊失敗（\(code)）"
+                }
+                let telegram: String
+                switch snapshot.telegram {
+                case .notObserved: telegram = "本次啟動未觀察到回覆"
+                case .registering: telegram = "正在註冊"
+                case .accepted: telegram = "已接受註冊"
+                case .rejected: telegram = "未接受註冊"
+                case .invalidated: telegram = "token 已失效"
+                case let .failed(code): telegram = "註冊失敗（\(code)）"
+                }
+                let bundleId = Bundle.main.bundleIdentifier ?? "未知"
+                let groupAvailable = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.\(bundleId)") != nil
+                var environment = "未知"
+                var profileMatches = "未知"
+                if let url = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision"),
+                   let data = try? Data(contentsOf: url),
+                   let start = data.range(of: Data("<?xml".utf8)),
+                   let end = data.range(of: Data("</plist>".utf8)), end.upperBound > start.lowerBound,
+                   let profile = (try? PropertyListSerialization.propertyList(from: data.subdata(in: start.lowerBound ..< end.upperBound), options: [], format: nil)) as? [String: Any],
+                   let entitlements = profile["Entitlements"] as? [String: Any] {
+                    if let value = entitlements["aps-environment"] as? String, ["production", "development"].contains(value) {
+                        environment = value
+                    } else {
+                        environment = "未授權"
+                    }
+                    if let identifier = entitlements["application-identifier"] as? String, let team = entitlements["com.apple.developer.team-identifier"] as? String {
+                        let expected = "\(team).\(bundleId)"
+                        let matches = identifier == expected || (identifier.hasSuffix("*") && expected.hasPrefix(String(identifier.dropLast())))
+                        profileMatches = matches ? "相符" : "不同"
+                    }
+                }
+                let lines = [
+                    "App: \(bundleId)",
+                    "通知授權: \(permission)",
+                    "提示 / 聲音: \(settings.alertSetting == .enabled ? "開" : "關") / \(settings.soundSetting == .enabled ? "開" : "關")",
+                    "iOS 已註冊 APNs: \(UIApplication.shared.isRegisteredForRemoteNotifications ? "係" : "否")",
+                    "Apple 回覆: \(apple)",
+                    "Telegram 回覆: \(telegram)",
+                    "描述檔推送環境: \(environment)",
+                    "描述檔 App ID: \(profileMatches)",
+                    "預期 App Group: \(groupAvailable ? "可存取" : "無法存取")",
+                    "",
+                    "註冊成功唔代表遠端訊息已送達。報告唔包含 token、訊息內容或金鑰。"
+                ]
+                let text = lines.joined(separator: "\n")
+                controller.present(textAlertController(context: self.context, title: "通知狀態", text: text, actions: [
+                    TextAlertAction(type: .genericAction, title: "複製報告", action: { UIPasteboard.general.string = text }),
+                    TextAlertAction(type: .defaultAction, title: "關閉", action: {})
+                ], actionLayout: .vertical), in: .window(.root))
+            }
+        }
+    }
+
+    func registerNotifications() {
+        self.context.sharedContext.applicationBindings.registerForNotifications { [weak self] allowed in
+            Queue.mainQueue().async {
+                guard let self else { return }
+                if allowed {
+                    self.notificationMessage(title: "已要求註冊通知", text: "等幾秒後再開「通知狀態」睇實際結果。")
+                } else {
+                    self.controller?.present(textAlertController(context: self.context, title: "通知未獲允許", text: "請喺 iPhone 設定允許通知，再返回查看通知狀態。", actions: [
+                        TextAlertAction(type: .genericAction, title: "開啟設定", action: { [weak self] in self?.context.sharedContext.applicationBindings.openSettings() }),
+                        TextAlertAction(type: .defaultAction, title: "關閉", action: {})
+                    ], actionLayout: .vertical), in: .window(.root))
+                }
+            }
+        }
+    }
+
+    func testLocalNotification() {
+        self.context.sharedContext.applicationBindings.registerForNotifications { [weak self] allowed in
+            Queue.mainQueue().async {
+                guard let self else { return }
+                guard allowed else {
+                    self.notificationMessage(title: "通知未獲允許", text: "請先用「重新註冊通知」允許通知。")
+                    return
+                }
+                let content = UNMutableNotificationContent()
+                content.title = "SingGram 通知測試"
+                content.body = "呢個只測試手機通知顯示，唔代表 Telegram 新訊息推送已連通。"
+                content.sound = .default
+                let request = UNNotificationRequest(identifier: SingGramPushDiagnostics.localTestIdentifier, content: content, trigger: UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false))
+                UNUserNotificationCenter.current().add(request) { [weak self] error in
+                    Queue.mainQueue().async {
+                        guard let self else { return }
+                        if let error {
+                            self.notificationMessage(title: "測試通知未能安排", text: "系統錯誤：\((error as NSError).code)")
+                        } else {
+                            self.notificationMessage(title: "已安排本機測試", text: "約 5 秒後會收到。你可以返回主畫面或鎖屏測試；呢個唔會測試 Telegram 伺服器推送。")
+                        }
+                    }
+                }
+            }
+        }
     }
 
     func editText(title: String, value: String, save: @escaping (String) -> Void) {

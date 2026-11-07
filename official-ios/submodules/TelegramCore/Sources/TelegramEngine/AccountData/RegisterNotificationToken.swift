@@ -41,11 +41,26 @@ func _internal_registerNotificationToken(account: Account, token: Data, type: No
         if excludeMutedChats {
             flags |= 1 << 0
         }
+        if case .aps = type {
+            SingGramPushDiagnostics.shared.recordTelegram(accountId: account.id.int64, .registering)
+        }
         return account.network.request(Api.functions.account.registerDevice(flags: flags, tokenType: mappedType, token: hexString(token), appSandbox: sandbox ? .boolTrue : .boolFalse, secret: Buffer(data: keyData), otherUids: otherAccountUserIds.map({ $0._internalGetInt64Value() })))
-        |> map { _ -> Bool in
+        |> map { result -> Bool in
+            if case .aps = type {
+                let accepted: Bool
+                if case .boolTrue = result {
+                    accepted = true
+                } else {
+                    accepted = false
+                }
+                SingGramPushDiagnostics.shared.recordTelegram(accountId: account.id.int64, accepted ? .accepted : .rejected)
+            }
             return true
         }
         |> `catch` { error -> Signal<Bool, NoError> in
+            if case .aps = type {
+                SingGramPushDiagnostics.shared.recordTelegram(accountId: account.id.int64, error.errorDescription == "TOKEN_WAS_INVALIDATED" ? .invalidated : .failed(code: Int(error.errorCode)))
+            }
             if error.errorDescription == "TOKEN_WAS_INVALIDATED" {
                 return .single(false)
             } else {

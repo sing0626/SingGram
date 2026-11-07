@@ -2218,11 +2218,13 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
     }
     
     func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        SingGramPushDiagnostics.shared.recordApple(.registered)
         Logger.shared.log("App \(self.episodeId)", "register for notifications: didRegisterForRemoteNotificationsWithDeviceToken (deviceToken: \(hexString(deviceToken)))")
         self.notificationTokenPromise.set(.single(deviceToken))
     }
     
     func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        SingGramPushDiagnostics.shared.recordApple(.failed(code: (error as NSError).code))
         Logger.shared.log("App \(self.episodeId)", "register for notifications: didFailToRegisterForRemoteNotificationsWithError (error: \(error))")
     }
     
@@ -3196,7 +3198,9 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
             Logger.shared.log("App \(self.episodeId)", "register for notifications: received settings: \(settings.authorizationStatus)")
             
             switch (settings.authorizationStatus, authorize) {
-                case (.authorized, _), (.notDetermined, true):
+                case (.provisional, false):
+                    completion(true)
+                case (.authorized, _), (.provisional, true), (.notDetermined, true):
                     var authorizationOptions: UNAuthorizationOptions = [.badge, .sound, .alert, .carPlay]
                     if #available(iOS 12.0, *) {
                         authorizationOptions.insert(.providesAppNotificationSettings)
@@ -3255,20 +3259,27 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
                         }
                     })
                 default:
-                    break
+                    completion(false)
             }
         })
     }
     
     @available(iOS 10.0, *)
     func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        if notification.request.identifier == SingGramPushDiagnostics.localTestIdentifier {
+            completionHandler([.banner, .list, .sound])
+            return
+        }
         let _ = (accountIdFromNotification(notification, sharedContext: self.sharedContextPromise.get())
+        |> take(1)
         |> deliverOnMainQueue).start(next: { accountId in
             if let context = self.contextValue {
                 if let accountId = accountId, context.context.account.id != accountId || notification.request.content.userInfo["url"] != nil {
                     completionHandler([.banner, .list])
+                    return
                 }
             }
+            completionHandler([])
         })
     }
     
