@@ -61,6 +61,7 @@ jobs:
             official-ios/submodules/TelegramCore/Sources/SingGram/SingGramPushDiagnostics.swift \
             official-ios/submodules/TelegramCore/Sources/TelegramEngine/AccountData/RegisterNotificationToken.swift \
             official-ios/submodules/TelegramUI/Sources/AppDelegate.swift \
+            official-ios/submodules/TelegramUI/Sources/SharedAccountContext.swift \
             official-ios/submodules/ChatListUI/Sources/Node/ChatListItem.swift \
             official-ios/submodules/ChatListUI/Sources/Node/ChatListPresentationData.swift \
             official-ios/submodules/ChatListUI/Sources/Node/ChatListNode.swift \

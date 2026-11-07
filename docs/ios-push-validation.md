@@ -23,6 +23,16 @@ notification keys/payloads nor server error descriptions. Existing Telegram
 registration retries/return behavior are preserved. A server accepting a token
 does not establish that a remote notification was delivered.
 
+A follow-up to an observed Telegram 400 rejection adds a fixed allowlist of
+machine-readable failure names (such as `TOKEN_INVALID` and `API_ID_INVALID`).
+Unknown descriptions become `UNCLASSIFIED`; raw descriptions are never copied.
+The configured numeric API application id is included, without the API hash, so
+the application's server-side push configuration can be matched to the build.
+An explicit registration action also rebuilds the native Telegram registration
+subscription: a repeated Apple token would otherwise be discarded by the
+existing `distinctUntilChanged` and never retried at Telegram. This retry is only
+requested by the user's registration action, not by the local-test action.
+
 The report labels provisioning-profile metadata separately from live iOS
 registration state. Profile metadata describes permitted capabilities, not the
 final executable entitlements. App Group availability is checked with the real
@@ -55,3 +65,18 @@ These interactions require the user's signed device build. Linux source checks
 and the macOS build do not establish real push delivery or visual correctness.
 Follow `official-ios/AGENTS.md` to evaluate timestamped device/simulator frames.
 Keep recordings, signing profiles and user account data out of public commits.
+
+## Swiftgram comparison
+
+Swiftgram source at `c7972b52fd25efe1fc40a9cc098238e1b5c93489` was inspected.
+Its `RegisterNotificationToken.swift` is byte-identical to SingGram's version
+before diagnostic instrumentation (`a721bbaff`). In particular, APNs token type
+1, hex token encoding, sandbox argument and encrypted secret construction match.
+This source comparison does not establish that installed builds have identical
+credentials, registration parameters or signing identities.
+
+The reported device state established that local notifications were allowed and
+Apple returned a token, while Telegram rejected registration with code 400.
+It did not include the machine-readable reason, so neither a specific backend
+misconfiguration nor the App Group issue can be declared the cause of that RPC
+rejection. App Group availability and remote registration are separate checks.

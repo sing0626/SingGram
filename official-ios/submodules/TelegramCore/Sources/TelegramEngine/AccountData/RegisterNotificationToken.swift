@@ -59,7 +59,7 @@ func _internal_registerNotificationToken(account: Account, token: Data, type: No
         }
         |> `catch` { error -> Signal<Bool, NoError> in
             if case .aps = type {
-                SingGramPushDiagnostics.shared.recordTelegram(accountId: account.id.int64, error.errorDescription == "TOKEN_WAS_INVALIDATED" ? .invalidated : .failed(code: Int(error.errorCode)))
+                SingGramPushDiagnostics.shared.recordTelegram(accountId: account.id.int64, error.errorDescription == "TOKEN_WAS_INVALIDATED" ? .invalidated : .failed(code: Int(error.errorCode), reason: .init(serverDescription: error.errorDescription)))
             }
             if error.errorDescription == "TOKEN_WAS_INVALIDATED" {
                 return .single(false)

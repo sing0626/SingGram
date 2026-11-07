@@ -571,7 +571,7 @@ private final class SingGramSettingsActions {
                 case .accepted: telegram = "已接受註冊"
                 case .rejected: telegram = "未接受註冊"
                 case .invalidated: telegram = "token 已失效"
-                case let .failed(code): telegram = "註冊失敗（\(code)）"
+                case let .failed(code, reason): telegram = "註冊失敗（\(code)，\(reason.rawValue)）"
                 }
                 let bundleId = Bundle.main.bundleIdentifier ?? "未知"
                 let groupAvailable = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: "group.\(bundleId)") != nil
@@ -596,6 +596,7 @@ private final class SingGramSettingsActions {
                 }
                 let lines = [
                     "App: \(bundleId)",
+                    "Telegram API ID: \(snapshot.apiId.map { String($0) } ?? "未知")",
                     "通知授權: \(permission)",
                     "提示 / 聲音: \(settings.alertSetting == .enabled ? "開" : "關") / \(settings.soundSetting == .enabled ? "開" : "關")",
                     "iOS 已註冊 APNs: \(UIApplication.shared.isRegisteredForRemoteNotifications ? "係" : "否")",
@@ -621,6 +622,7 @@ private final class SingGramSettingsActions {
             Queue.mainQueue().async {
                 guard let self else { return }
                 if allowed {
+                    NotificationCenter.default.post(name: SingGramPushDiagnostics.retryRegistrationRequested, object: nil)
                     self.notificationMessage(title: "已要求註冊通知", text: "等幾秒後再開「通知狀態」睇實際結果。")
                 } else {
                     self.controller?.present(textAlertController(context: self.context, title: "通知未獲允許", text: "請喺 iPhone 設定允許通知，再返回查看通知狀態。", actions: [

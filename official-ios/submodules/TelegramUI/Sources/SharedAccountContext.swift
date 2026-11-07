@@ -206,6 +206,7 @@ public final class SharedAccountContextImpl: SharedAccountContext {
     }
     
     private let registeredNotificationTokensDisposable = MetaDisposable()
+    private var pushRegistrationRetryObserver: NSObjectProtocol?
     
     public let mediaManager: MediaManager
     public let contactDataManager: DeviceContactDataManager?
@@ -1081,6 +1082,9 @@ public final class SharedAccountContextImpl: SharedAccountContext {
         
         let _ = managedCleanupAccounts(networkArguments: networkArguments, accountManager: self.accountManager, rootPath: rootPath, auxiliaryMethods: makeTelegramAccountAuxiliaryMethods(uploadInBackground: appDelegate?.uploadInBackround), encryptionParameters: encryptionParameters).start()
         
+        self.pushRegistrationRetryObserver = NotificationCenter.default.addObserver(forName: SingGramPushDiagnostics.retryRegistrationRequested, object: nil, queue: .main) { [weak self] _ in
+            self?.updateNotificationTokensRegistration()
+        }
         self.updateNotificationTokensRegistration()
         
         if applicationBindings.isMainApp {
@@ -1123,6 +1127,9 @@ public final class SharedAccountContextImpl: SharedAccountContext {
     }
     
     deinit {
+        if let observer = self.pushRegistrationRetryObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
         assertionFailure("SharedAccountContextImpl is not supposed to be deallocated")
         self.registeredNotificationTokensDisposable.dispose()
         self.presentationDataDisposable.dispose()

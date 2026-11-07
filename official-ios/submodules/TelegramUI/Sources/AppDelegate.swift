@@ -614,6 +614,7 @@ private func extractAccountManagerState(records: AccountRecordsView<TelegramAcco
         let signatureDict = BuildConfigExtra.signatureDict()
         
         let apiId: Int32 = buildConfig.apiId
+        SingGramPushDiagnostics.shared.recordApiId(apiId)
         let apiHash: String = buildConfig.apiHash
         let languagesCategory = "ios"
         
